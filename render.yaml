@@ -1,0 +1,22 @@
+services:
+  - type: web
+    name: tourbo
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    healthCheckPath: /healthz
+    plan: free
+    envVars:
+      - key: QLOO_API_KEY
+        sync: false
+      - key: QLOO_BASE_URL
+        value: https://hackathon.api.qloo.com
+      - key: ANTHROPIC_API_KEY
+        sync: false
+      - key: DATABASE_URL
+        fromDatabase:
+          name: tourbo-db
+          property: connectionString
+
+databases:
+  - name: tourbo-db
+    plan: free

@@ -20,7 +20,7 @@ One plain TypeScript React Router app (no workspace, no packages). No separate b
 
 | Layer                | Choice                                                                                                                                          | Why                                                                                                                                                |
 | -------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Language             | TypeScript, Node 22 LTS, pnpm, single app                                                                                                       | One language, shared types between engine, agent, DB and UI; fast iteration                                                                        |
+| Language             | TypeScript, Node 22 LTS, npm, single app                                                                                                        | One language, shared types between engine, agent, DB and UI; fast iteration                                                                        |
 | Web framework        | React Router v8 framework mode (`react-router@8.5.x`, Remix successor), SSR, Vite                                                               | Stable; loaders/actions for pages, resource routes for SSE + webhooks                                                                              |
 | Server               | Custom Express server (`node-custom-server` template) running the React Router request handler                                                  | One long-lived process: background agent runs survive the request; room for `/healthz`. **No compression on `text/event-stream`** (it buffers SSE) |
 | Agent                | `@anthropic-ai/sdk@1.3.x`, `client.beta.messages.toolRunner()` + `betaZodTool`                                                                  | Custom tools only, we host the loop, per-turn hooks for the trace                                                                                  |
@@ -29,10 +29,10 @@ One plain TypeScript React Router app (no workspace, no packages). No separate b
 | Validation           | `zod@4`                                                                                                                                         | Tool input schemas, worker structured output, env, API payloads                                                                                    |
 | Streaming            | SSE: resource route `loader` returns `new Response(ReadableStream)`; browser `EventSource`                                                      | One-way trace stream; no websockets                                                                                                                |
 | DB                   | Render Postgres (free tier); `postgres` (porsager) + plain SQL                                                                                  | Holds runs, trace events, Qloo cache, outreach state; filesystem is wiped on restart                                                               |
-| UI                   | Tailwind v4 + shadcn/ui (`base-nova` preset, Base UI, lucide); add components with `pnpm dlx shadcn@latest add <name>`                          | Fast, consistent UI; components land in `app/components/ui`                                                                                        |
+| UI                   | Tailwind v4 + shadcn/ui (`base-nova` preset, Base UI, lucide); add components with `npx shadcn@latest add <name>`                               | Fast, consistent UI; components land in `app/components/ui`                                                                                        |
 | Map                  | MapLibre GL JS (`maplibre-gl@6`) + OpenFreeMap tiles, client-only (lazy import)                                                                 | No map API key; route lines, heatmap layer, markers                                                                                                |
 | Email                | Transactional provider with an HTTP send API + inbound webhook (Resend or Postmark; **verify inbound support and free limits first**)           | Render free tier blocks SMTP ports                                                                                                                 |
-| Deploy               | Single Render web service (`pnpm build`, `node server.js`) + Render Postgres, `render.yaml` blueprint                                           | Free tier allows web services only, no free workers or cron jobs                                                                                   |
+| Deploy               | Single Render web service (Docker: `npm run build`, `node server.js`) + Render Postgres, `render.yaml` blueprint                                           | Free tier allows web services only, no free workers or cron jobs                                                                                   |
 
 Docs-first rule: before writing each integration, check the current official docs against the pinned version (Anthropic TS SDK, React Router, MapLibre, the email provider). Qloo: trust `qloo-docs/` + live probes over memory.
 
@@ -80,7 +80,7 @@ tourbo/
     components/               # Map (client-only), Trace, CityCard, Compare, Pipeline
     components/ui/            # shadcn components
     lib/utils.ts              # shadcn cn()
-  scripts/probe.ts            # run with `tsx`
+  scripts/probe.ts            # `npm run qloo:probe` (Node native TS)
   test/                       # vitest
 ```
 
@@ -95,7 +95,7 @@ tourbo/
   4. mark the city as "thin data"
 - **Cache:** key = sha256 of the sorted query string, stored in the `qloo_cache` table with a TTL. Allowed server-side; **never commit Qloo responses to the repo**.
 - **Concurrency:** `p-limit` (start at 8) plus backoff on 429. Log the call count per run.
-- **Probe script** `scripts/probe.ts` (`pnpm tsx scripts/probe.ts`), the first thing to run when the key arrives. It answers:
+- **Probe script** `scripts/probe.ts` (`npm run qloo:probe`), the first thing to run when the key arrives. It answers:
   1. Does `/search` resolve 3 test artists (one big, one mid, one niche)?
   2. Does `urn:heatmap` + `signal.interests.entities=<artist>` + `filter.location.query=<city>` + `output.heatmap.boundary=urn:geohash` return points? How dense?
   3. Do `/v2/tags` queries ("live music", "music venue", "concert", "nightclub", "bar") give place tag IDs, and do `urn:entity:place` insights with those tags + `filter.location.geohash` return real venues?
@@ -176,7 +176,7 @@ outreach(id, run_id, city, venue_id, venue_name, status, draft text, thread_toke
 ## 10. Render deploy
 
 - `render.yaml`:
-  - one web service: build `corepack enable && pnpm install --frozen-lockfile && pnpm build`; start `pnpm start` (`node server.js`, listens on `$PORT`)
+  - one web service, `runtime: docker` (same `Dockerfile` as local), health check `/healthz`, listens on `$PORT`
   - one Postgres (free)
 - Env vars set in the Render dashboard: `QLOO_API_KEY`, `QLOO_BASE_URL`, `ANTHROPIC_API_KEY`, `DATABASE_URL`, `EMAIL_API_KEY`, `EMAIL_INBOUND_SECRET`, `OUTREACH_LIVE=false`.
 - Free tier: sleeps after 15 min idle, takes ~1 min to wake. Keep it awake Nov 2–5 with an uptime ping on `/healthz` (~744 h < 750 free h/month), or upgrade for judging week. Free Postgres expires 30 days after creation, which is fine through judging.
@@ -188,7 +188,7 @@ outreach(id, run_id, city, venue_id, venue_name, status, draft text, thread_toke
    - ~~plain React Router app on custom Express server + shadcn~~ (done); add `/healthz` + skip compression for SSE in `server.js`
    - Render deploy working end to end (deploy early)
 2. **M1 Qloo layer + probes:** client, param whitelist, cache, `probe.ts` run → decide the fallbacks.
-3. **M2 Engine:** resolve → city scoring → per-city venue/opener → routing. CLI `pnpm tsx server/core/engine/demo.ts "<artist>"` prints the plan JSON.
+3. **M2 Engine:** resolve → city scoring → per-city venue/opener → routing. CLI `node server/core/engine/demo.ts "<artist>"` prints the plan JSON.
 4. **M3 Agent:** orchestrator + workers + critic, trace events over SSE.
 5. **M4 UI:** run view with the map, trace and city cards. _This is the minimum to submit._
 6. **M5 Compare:** the Qloo-OFF baseline + compare tab.

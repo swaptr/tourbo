@@ -1,0 +1,77 @@
+import pLimit from "p-limit";
+
+import { getEnv } from "../env.server.ts";
+
+export type QlooParams = Record<
+  string,
+  string | number | boolean | (string | number)[] | undefined
+>;
+
+export class QlooError extends Error {
+  readonly status: number;
+  readonly path: string;
+  readonly body: unknown;
+
+  constructor(status: number, path: string, body: unknown) {
+    super(`Qloo ${status} on ${path}: ${describe(body)}`);
+    this.name = "QlooError";
+    this.status = status;
+    this.path = path;
+    this.body = body;
+  }
+}
+
+const MAX_RETRIES = 3;
+const TIMEOUT_MS = 15_000;
+const limit = pLimit(8);
+
+let callCount = 0;
+export const qlooCallCount = () => callCount;
+
+// Qloo is GET-only with query-string params; arrays become comma-separated lists.
+export function qlooGet<T = unknown>(
+  path: string,
+  params: QlooParams = {},
+): Promise<T> {
+  return limit(() => request<T>(path, params));
+}
+
+async function request<T>(path: string, params: QlooParams): Promise<T> {
+  const { QLOO_API_KEY, QLOO_BASE_URL } = getEnv();
+  const url = new URL(path, QLOO_BASE_URL);
+  for (const [key, value] of Object.entries(params)) {
+    if (value === undefined) continue;
+    url.searchParams.set(key, Array.isArray(value) ? value.join(",") : String(value));
+  }
+
+  for (let attempt = 0; ; attempt++) {
+    callCount++;
+    const res = await fetch(url, {
+      headers: { "X-Api-Key": QLOO_API_KEY, Accept: "application/json" },
+      signal: AbortSignal.timeout(TIMEOUT_MS),
+    });
+    const body = await res.json().catch(() => null);
+    if (res.ok) return body as T;
+
+    const retryable = res.status === 429 || res.status >= 500;
+    if (!retryable || attempt >= MAX_RETRIES) {
+      throw new QlooError(res.status, url.pathname, body);
+    }
+    const retryAfter = Number(res.headers.get("retry-after"));
+    const delay = retryAfter > 0 ? retryAfter * 1000 : 500 * 2 ** attempt;
+    await new Promise((r) => setTimeout(r, delay));
+  }
+}
+
+// Errors arrive as {code, reason, message}, {error: {...}} or {errors: [{message, path}]}.
+function describe(body: unknown): string {
+  if (!body || typeof body !== "object") return "no details";
+  const record = body as Record<string, unknown>;
+  if (Array.isArray(record.errors)) {
+    return record.errors
+      .map((e: { message?: string; path?: string }) => `${e.path ?? ""}: ${e.message ?? ""}`)
+      .join("; ");
+  }
+  const err = (record.error && typeof record.error === "object" ? record.error : record) as Record<string, unknown>;
+  return [err.reason, err.message].filter(Boolean).join(" - ") || JSON.stringify(body);
+}

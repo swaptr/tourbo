@@ -9,8 +9,19 @@ const PORT = Number.parseInt(process.env.PORT || "3000");
 
 const app = express();
 
-app.use(compression());
 app.disable("x-powered-by");
+app.get("/healthz", (_req, res) => {
+  res.send("ok");
+});
+// Compression buffers SSE; skip text/event-stream responses.
+app.use(
+  compression({
+    filter: (req, res) =>
+      !String(res.getHeader("Content-Type") ?? "").startsWith(
+        "text/event-stream",
+      ) && compression.filter(req, res),
+  }),
+);
 
 if (DEVELOPMENT) {
   console.log("Starting development server");
