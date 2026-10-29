@@ -1,7 +1,13 @@
 import { qlooGet, type QlooParams } from "./client.server.ts";
-import { PARAMS_BY_TYPE, type InsightsType } from "./params.ts";
+import { PARAMS_BY_TYPE, VERIFIED_EXTRA, type InsightsType } from "./params.ts";
 
-export type QlooTag = { id: string; name: string; type?: string };
+// /v2/tags returns `id`; tags embedded in entities use `tag_id`.
+export type QlooTag = {
+  id?: string;
+  tag_id?: string;
+  name: string;
+  type?: string;
+};
 
 export type QlooEntity = {
   name: string;
@@ -32,7 +38,10 @@ export class UnsupportedParamError extends Error {
 }
 
 export function unsupportedParams(type: InsightsType, params: QlooParams) {
-  const allowed: readonly string[] = PARAMS_BY_TYPE[type];
+  const allowed: readonly string[] = [
+    ...PARAMS_BY_TYPE[type],
+    ...(VERIFIED_EXTRA[type] ?? []),
+  ];
   return Object.keys(params).filter((key) => !allowed.includes(key));
 }
 
@@ -68,7 +77,9 @@ export async function searchTags(
   query: string,
   params: { "filter.tag.types"?: string[]; take?: number } = {},
 ) {
-  const res = await qlooGet<{ results?: { tags?: QlooTag[] } }>("/v2/tags", {
+  const res = await qlooGet<{
+    results?: { tags?: (QlooTag & { id: string })[] };
+  }>("/v2/tags", {
     "filter.query": query,
     ...params,
   });

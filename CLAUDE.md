@@ -16,7 +16,12 @@ Plain React Router v8 (framework mode) app on a custom Express server (`server.j
 - `npm run typecheck`
 - `npm run qloo:ping` — check Qloo key + connectivity
 - `npm run qloo:probe` — probe Qloo capabilities (raw output in /tmp only)
+- `npm run plan:demo -- "<artist>" [na|in] [shows]` — run the deterministic engine, print plan JSON
 - Scripts run with Node's built-in TS support: relative imports need `.ts` extensions; erasable syntax only (no enums/parameter properties)
+
+## Local DB
+- All dev services run via `compose.yaml`: `docker compose up -d` (Postgres 17 on 127.0.0.1:5433, user/pass/db `tourbo`). Add any new service there, not as ad-hoc containers.
+- `DATABASE_URL` defaults to that Postgres; schema auto-applies on first use.
 
 ## Secrets
 - `.env` (git- and docker-ignored) loaded via `node --env-file-if-exists`. Template: `.env.example`. Never commit keys or Qloo responses.

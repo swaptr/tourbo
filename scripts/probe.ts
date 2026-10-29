@@ -9,7 +9,12 @@ import {
   searchTags,
   type QlooEntity,
 } from "../server/core/qloo/api.server.ts";
-import { qlooCallCount, qlooGet } from "../server/core/qloo/client.server.ts";
+import { closeDb } from "../server/core/db/client.server.ts";
+import {
+  qlooCacheHits,
+  qlooCallCount,
+  qlooGet,
+} from "../server/core/qloo/client.server.ts";
 
 const OUT = "/tmp/qloo-probe";
 mkdirSync(OUT, { recursive: true });
@@ -138,7 +143,10 @@ console.log(
   `     ${localities?.results?.entities?.map((e) => e.name).join(" | ") || "none"}`,
 );
 
-console.log(`\nTotal Qloo calls: ${qlooCallCount()}. Raw responses: ${OUT}`);
+console.log(
+  `\nQloo calls: ${qlooCallCount()}, cache hits: ${qlooCacheHits()}. Raw responses: ${OUT}`,
+);
+await closeDb();
 
 function slug(s: string) {
   return s.toLowerCase().replace(/[^a-z0-9]+/g, "-");

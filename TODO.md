@@ -22,8 +22,8 @@ Stages follow PLAN.md §11. Deadline **2026-10-30 11:45pm EDT**. Stage 4 = minim
 - [x] `params.ts`: per-`filter.type` param whitelist (generated from docs), unknown params rejected; `allowUnlisted` escape hatch
 - [x] `api.server.ts`: `searchEntities`, `searchTags`, `insights`, `heatmap`
 - [ ] `api.server.ts`: `compare`, `trending` (if needed)
-- [ ] Postgres client + `schema.sql` (runs, trace_events, qloo_cache, outreach)
-- [ ] Cache: sha256(sorted query) → `qloo_cache`, TTL
+- [x] Postgres client + schema (runs, trace_events, qloo_cache, outreach); dev Postgres via `compose.yaml` on :5433
+- [x] Cache: sha256(sorted query) → `qloo_cache`, 7-day TTL, best-effort (probe rerun 17 s → 2.5 s)
 - [x] `scripts/probe.ts` (`npm run qloo:probe`). Findings (Chicago):
   - [x] `/search` resolves big / mid / niche (Taylor Swift, Japanese Breakfast, Water From Your Eyes)
   - [x] heatmap works: 5255 / 1799 / 23 cells — niche artist sparse
@@ -31,27 +31,27 @@ Stages follow PLAN.md §11. Deadline **2026-10-30 11:45pm EDT**. Stage 4 = minim
   - [x] `signal.location.query` on artists: 8/10 overlap → weak/ignored → fallback: filter by heatmap presence
   - [x] locality insights: 400 with artist signal → seed city list only
   - [x] latency 0.3–1.7 s/call (first calls ~3.7 s); no 429 seen at 17 calls
-- [ ] Decide fallbacks (PLAN §9) from probe results
-- [ ] Pick 3 demo artists
+- [x] Decide fallbacks (PLAN §9 "Probe decisions"): venues via WKT point + radius repair chain
+- [x] Pick 3 demo artists: Japanese Breakfast (mid), Arijit Singh (India), Water From Your Eyes (niche, thin data); comedian later: Zakir Khan
 
 ## Stage 2 — Engine (`server/core/engine/`)
-- [ ] Shared zod types: Plan, CityPlan, TraceEvent, Outreach
-- [ ] `data/cities-na.json`: ~50 cities (name, lat, lon, region)
-- [ ] Resolve artist → id, name, image, genre tags
-- [ ] City scoring from heatmaps (score 0–100, top-3 hotspots)
-- [ ] Shortlist top N×1.5
-- [ ] Venues: place insights near hotspots, venue + backup
-- [ ] Openers: local artists, exclude headliner + bigger acts
-- [ ] Promo-angle facts (brands, places, shows)
-- [ ] Empty-result repair chain (radius → next tag → city query → "thin data")
-- [ ] Routing: haversine, nearest-neighbour + 2-opt, dates (≤500 km/day, day off every 4–5)
-- [ ] CLI `node server/core/engine/demo.ts "<artist>"` prints plan JSON
+- [x] Shared zod types (`server/core/shared/types.ts`): TourParams, Artist, City, CityScore, Venue, Opener, CityPlan, Plan, TraceEvent (Outreach later)
+- [x] `data/cities.json`: 52 NA + 17 India seed cities; `seedCities(region)`
+- [x] Resolve artist → id, name, image, genre tags (`engine/resolve.ts`)
+- [x] City scoring from heatmaps (`engine/score.ts`): footprint + over-index blend, top-3 spread hotspots, thin < 50 cells; 52 NA cities in ~7 s
+- [x] Shortlist top N×1.5 (thin-data cities last)
+- [x] Venues (`engine/venues.ts`): place insights near top hotspot (WKT point), up to 5 candidates; final venue + backup picked by worker (Stage 3), default top 2
+- [x] Openers (`engine/openers.ts`): similar artists ≤ headliner popularity, ranked per city by heatmap lift (varies per city)
+- [x] Angle facts (`engine/angles.ts`): fan taste (artist), city culture (location-only), local spots (place + artist). Artist+city combined signal ≈ same across cities
+- [x] Repair chain in venue search: 1500 → 3000 → 6000 m → geohash-4 → city, per tag; each step emits `repair`
+- [x] Routing (`engine/routing.ts`): haversine, NN from home base + 2-opt, dates (≤500 km/drive day, >1200 km = fly day, day off every 4)
+- [x] `buildPlan()` (`engine/plan.ts`) + CLI `npm run plan:demo -- "<artist>" [na|in] [shows]`: 6-stop Japanese Breakfast plan in 12.5 s
 
 ## Stage 3 — Agent + trace (`server/core/agent/`)
 - [ ] Trace emitter: in-process pub/sub + persist to `trace_events`
 - [ ] Tools (`betaZodTool`): resolve_artist, score_cities, plan_city, route_tour, get_city_detail, finalize_plan
 - [ ] Orchestrator: Opus `toolRunner`, adaptive thinking (summarized), budgets, `stop_reason` checks, fallbacks
-- [ ] Per-city Haiku worker: structured output, every claim cites a Qloo field
+- [ ] Per-city Haiku worker: structured output, every claim cites a Qloo field; drop festivals/outdoor shells/arenas from venue candidates (seen: Yerba Buena Gardens Festival, Capitol Hill Block Party)
 - [ ] Critic pass (max 2 rounds)
 - [ ] Prompt caching verified (`cache_read_input_tokens`)
 - [ ] Detached run started from action; progress saved to DB
@@ -87,10 +87,25 @@ Stages follow PLAN.md §11. Deadline **2026-10-30 11:45pm EDT**. Stage 4 = minim
 - [ ] README: what, architecture diagram, why it fails without Qloo, judging criteria, local run, env vars
 - [ ] ~2 min video
 - [ ] Devpost text
-- [ ] Repo public + MIT `LICENSE` (if rules require)
+- [ ] Repo public + MIT `LICENSE` (**required**, file visible in repo About)
 - [ ] Render awake Nov 2–5 (uptime ping on `/healthz`)
 
 ## Stretch
 - [ ] Comedians (`urn:entity:person`)
 - [ ] MCP server exposing `plan_tour`
 - [ ] Book tours (`urn:entity:book`)
+
+## Extended scope — all performers + Muse (PLAN §13)
+- [x] Verify performer + city combined signal → weak (Chicago ≈ Austin); use city-only culture + artist-weighted local places
+- [ ] Performer type: artist | comedian (person); per-type venue tags + opener logic
+- [ ] Per-city set notes: local references with Qloo scores; LLM drafts bits/banter citing them
+- [ ] Qloo-off comparison for set notes (generic vs grounded)
+- [ ] Muse mode: city/tour cultural brief + draft material to rehearse
+- [ ] Autonomous background research: refresh upcoming stops' notes (trending, new references)
+
+## Local scene (from 20-city survey, PLAN §13)
+- [ ] Seed cities: `eu` region (UK + mainland), `latam`; add Texas mid-markets (San Antonio, Fort Worth, El Paso)
+- [ ] Openers v2: union of similar artists + city's local artists (`signal.location.query`), rank by audience overlap × local lift
+- [ ] "Local scene" panel per city: local artists, teams/brands, people, TV (podcasts are weakly local)
+- [ ] Filter noise: non-artists in artist results, duplicate names
+- [ ] Thin-venue cities (Lagos, Delhi, Mexico City, Barcelona): widen venue tags

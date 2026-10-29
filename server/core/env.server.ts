@@ -3,6 +3,10 @@ import { z } from "zod";
 const schema = z.object({
   QLOO_API_KEY: z.string().min(1, "QLOO_API_KEY is required"),
   QLOO_BASE_URL: z.url().default("https://hackathon.api.qloo.com"),
+  // Local dev default matches the tourbo-postgres container (see CLAUDE.md).
+  DATABASE_URL: z
+    .string()
+    .default("postgres://tourbo:tourbo@localhost:5433/tourbo"),
 });
 
 export type Env = z.infer<typeof schema>;

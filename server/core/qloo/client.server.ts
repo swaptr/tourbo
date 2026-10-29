@@ -1,6 +1,7 @@
 import pLimit from "p-limit";
 
 import { getEnv } from "../env.server.ts";
+import { cacheKey, readCache, writeCache } from "./cache.server.ts";
 
 export type QlooParams = Record<
   string,
@@ -26,7 +27,9 @@ const TIMEOUT_MS = 15_000;
 const limit = pLimit(8);
 
 let callCount = 0;
+let cacheHits = 0;
 export const qlooCallCount = () => callCount;
+export const qlooCacheHits = () => cacheHits;
 
 // Qloo is GET-only with query-string params; arrays become comma-separated lists.
 export function qlooGet<T = unknown>(
@@ -44,6 +47,13 @@ async function request<T>(path: string, params: QlooParams): Promise<T> {
     url.searchParams.set(key, Array.isArray(value) ? value.join(",") : String(value));
   }
 
+  const key = cacheKey(url);
+  const cached = await readCache<T>(key);
+  if (cached !== undefined) {
+    cacheHits++;
+    return cached;
+  }
+
   for (let attempt = 0; ; attempt++) {
     callCount++;
     const res = await fetch(url, {
@@ -51,7 +61,10 @@ async function request<T>(path: string, params: QlooParams): Promise<T> {
       signal: AbortSignal.timeout(TIMEOUT_MS),
     });
     const body = await res.json().catch(() => null);
-    if (res.ok) return body as T;
+    if (res.ok) {
+      await writeCache(key, url, body);
+      return body as T;
+    }
 
     const retryable = res.status === 429 || res.status >= 500;
     if (!retryable || attempt >= MAX_RETRIES) {

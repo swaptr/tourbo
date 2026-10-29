@@ -331,3 +331,8 @@ export const PARAMS_BY_TYPE = {
 } as const satisfies Record<string, readonly string[]>;
 
 export type InsightsType = keyof typeof PARAMS_BY_TYPE;
+
+// Params missing from the guide but verified against the live hackathon API (npm run qloo:probe).
+export const VERIFIED_EXTRA: Partial<Record<InsightsType, readonly string[]>> = {
+  "urn:entity:place": ["filter.location.query"],
+};

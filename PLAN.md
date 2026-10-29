@@ -110,8 +110,9 @@ The plan is built by **code-controlled steps that the agent drives**. The heavy 
 
 1. **Resolve** the artist → entity ID, name, image, genre tags (`/search`, then tag insights).
 2. **City scoring.** For each seed city (filtered by region and tour window), call the heatmap and get the geohash cells.
-   `city_score = mean(top-10 affinity) × log1p(sum popularity of top cells)`, then normalize to 0–100.
-   Keep the top 3 cells as **fan hotspots**. Optionally add up to 5 extra markets from locality insights.
+   Heatmap `affinity` is percentile-normalized per request (median 0.5), so it can't compare cities (verified 2026-10-29). Instead:
+   `city_score = 0.6 × norm(log1p(Σ affinity × popularity)) + 0.4 × norm(mean affinity_rank)`, scaled to 0–100 (footprint + over-indexing; surfaces small cities that over-index, e.g. Boise).
+   Keep the top 3 cells by affinity × popularity (distinct 5-char geohash prefixes) as **fan hotspots**; < 50 cells = thin data. (Locality insights don't work with an artist signal.)
 3. **Shortlist:** top N×1.5 cities (N = number of shows).
 4. **Per-city worker** (parallel, Haiku):
    - venue candidates: place insights near the hotspots with venue tags, filtered by popularity
@@ -173,6 +174,15 @@ outreach(id, run_id, city, venue_id, venue_name, status, draft text, thread_toke
 | Openers weak                  | Artist insights without location, then filter by heatmap presence in the city                                                                                        |
 | Rate limits                   | Smaller seed list (25), cache aggressively, pre-warm demo artists                                                                                                    |
 
+### Probe decisions (2026-10-29, live API)
+
+- **Venues near a hotspot:** `urn:entity:place` + `filter.location=POINT(<lon> <lat>)` (WKT; the documented `lat,lon` form returns 400) + `filter.location.radius` + `filter.tags=urn:tag:category:place:{live_music_venue,concert_hall,night_club,bar}` + artist signal. 5-char geohash prefixes return nothing.
+- **Repair chain:** radius 1500 → 3000 → 6000 m → 4-char geohash → `filter.location.query=<city>` (works for place though not in the guide) → mark "thin data".
+- **Sparse artist heatmap** (niche: 23 cells in Chicago): use the genre-weighted fallback.
+- **Openers:** `signal.location.query` barely changes artist results (8/10 overlap), so take similar artists and keep those with heatmap presence in the city.
+- **Locality insights:** 400 with an artist signal, so use the seed city list only.
+- **Rate limits:** none hit; 0.3–1.7 s per call. Cache cuts a repeat probe from 17 s to 2.5 s.
+
 ## 10. Render deploy
 
 - `render.yaml`:
@@ -208,3 +218,29 @@ outreach(id, run_id, city, venue_id, venue_name, status, draft text, thread_toke
 - [ ] Email provider choice (inbound webhook + free tier), verified against the current docs.
 - [ ] Demo artists: pick 3 (big / mid / niche), based on the probe results.
 - [ ] Name check: `tourbo.onrender.com` for now; the domain comes later.
+
+## 13. Extended scope (after core): all performers + "Muse"
+
+Verified against the live API on 2026-10-29 (`npm run qloo:probe` + ad-hoc probes):
+- Comedians resolve as `urn:entity:person` (Zakir Khan, Vir Das, Dave Chappelle, Cedric the Entertainer) and **heatmaps work for them** (Zakir: Mumbai 4620 cells, Indore 388, Chicago 124; Cedric: Chicago 1914, St. Louis 582).
+- **City taste is distinctive**: `signal.location.query` on tv_show / podcast / brand / person returns local culture (Mumbai → Sacred Games, Sabyasachi, Virat Kohli; Chicago → The Chi, Cubs, Chance the Rapper; Austin → Joe Rogan, Austin FC, H-E-B; London → Top Boy, Stormzy).
+- Performer audience profile works: `urn:tag` / tv / brand insights with `signal.interests.entities=<performer>` (Zakir fans → Kota Factory, Panchayat, satire, poetry).
+- India coverage is strong (artists, heatmaps, venues in Mumbai/Bengaluru/Delhi/Pune/Hyderabad/Kolkata).
+- Limits: no news/issues/topics (city `urn:tag` insights are generic); `filter.tags=urn:tag:occupation:wikidata:stand_up_comedian` on person and `urn:tag:good_for:qloo:stand_up_comedy` on place returned nothing.
+- To verify: performer signal **+** city signal combined (references that land with *your* fans *there*).
+
+Ideas:
+- **All performers:** artist or comedian (later: podcasters, authors). Same engine; venue tags and opener logic switch by type.
+- **Per-city set notes:** what your fans in that city watch, listen to, buy, follow and go to, each with its Qloo score; LLM drafts bits / banter / callbacks that must cite those references. Qloo-off comparison shows generic vs. grounded material.
+- **Muse mode:** standalone "inspiration + prep" app — pick a city (or a whole tour), get a grounded cultural brief and draft material to rehearse.
+- **Autonomous background research:** the agent keeps researching upcoming tour stops (trending shifts, new local references) and refreshes each city's notes before the show.
+- Judge fit: Cedric the Entertainer (comedy) and Live Nation (touring) are both on the panel.
+
+### Local-scene survey (2026-10-29, 20 cities, location-only signal)
+
+- **Works globally:** India, Texas/US mid-markets, UK, EU, LatAm, Lagos, Tokyo, Sydney all return clearly local TV, brands (sports teams, local food/fashion), people (incl. local comedians and politicians) and artists.
+- **Localness** (share of a city's items not in any other city's list): US 38–55% (shared national TV), non-English cities 63–93%. Podcasts are the least local (global English shows dominate); TV, brands, people and artists carry the local flavour.
+- **Local artists = local scene:** `urn:entity:artist` + `signal.location.query` gives a city's own scene (Houston → Slim Thug / Paul Wall / Bun B; New Orleans → Big Freedia / Trombone Shorty; Bengaluru → Anirudh; Barcelona → Rosalía / Txarango). Better opener candidates than similarity alone: pick local acts that also overlap the headliner's audience.
+- **Venue coverage:** 50+ live-music venues in most US/EU/Tokyo/Sydney/São Paulo; thin in Lagos (2), Delhi (9), Mexico City (11), Barcelona (16) → widen tags (bar, night club, concert hall) there.
+- **Noise to filter:** non-artists in artist results (actors, "BVG" transit, models), duplicates (Jassie Gill / Jassi Gill, Utada / 宇多田ヒカル).
+- **Next regions:** add seed lists for `eu` (UK + mainland) and `latam`; Texas mid-markets (San Antonio, El Paso, Fort Worth) to the NA list.
