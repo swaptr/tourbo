@@ -1,4 +1,9 @@
-import type { CityPlan, Plan, TourParams } from "../shared/types.ts";
+import {
+  locationQuery,
+  type CityPlan,
+  type Plan,
+  type TourParams,
+} from "../shared/types.ts";
 import { fanTaste, angleFacts } from "./angles.ts";
 import { seedCities } from "./cities.ts";
 import { openerCandidates, pickOpeners } from "./openers.ts";
@@ -29,7 +34,7 @@ export async function buildPlan(params: TourParams, emit: Emit = noopEmit): Prom
     fanTaste(artist.id),
     Promise.all(picks.map((city) => findVenues(artist.id, city, emit))),
   ]);
-  const facts = await Promise.all(picks.map((city) => angleFacts(artist.id, city.city.name, fans)));
+  const facts = await Promise.all(picks.map((city) => angleFacts(artist.id, locationQuery(city.city), fans)));
 
   const stops: CityPlan[] = route.stops.map(({ city, date }) => {
     const i = picks.indexOf(city);
@@ -42,6 +47,7 @@ export async function buildPlan(params: TourParams, emit: Emit = noopEmit): Prom
       backupVenue: venues[i][1],
       opener: openers.get(city.city.name),
       facts: facts[i],
+      evidence: [],
       thinData: city.thinData,
     };
   });

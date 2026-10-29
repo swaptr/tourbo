@@ -1,5 +1,10 @@
 import { heatmap, type HeatmapCell } from "../qloo/api.server.ts";
-import type { City, CityScore, Hotspot } from "../shared/types.ts";
+import {
+  locationQuery,
+  type City,
+  type CityScore,
+  type Hotspot,
+} from "../shared/types.ts";
 import { noopEmit, type Emit } from "./trace.ts";
 
 const THIN_CELLS = 50;
@@ -18,7 +23,7 @@ export async function scoreCities(
     cities.map(async (city) => {
       const cells = await heatmap({
         "signal.interests.entities": artistId,
-        "filter.location.query": city.name,
+        "filter.location.query": locationQuery(city),
         "output.heatmap.boundary": "urn:geohash",
       }).catch((error: Error) => {
         emit("repair", `Heatmap failed for ${city.name}: ${error.message}`);

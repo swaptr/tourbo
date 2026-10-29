@@ -1,5 +1,10 @@
 import { heatmap, insights } from "../qloo/api.server.ts";
-import type { Artist, CityScore, Opener } from "../shared/types.ts";
+import {
+  locationQuery,
+  type Artist,
+  type CityScore,
+  type Opener,
+} from "../shared/types.ts";
 import { noopEmit, type Emit } from "./trace.ts";
 
 const CANDIDATES = 8;
@@ -36,7 +41,7 @@ export async function pickOpeners(
         cities.map((city) =>
           heatmap({
             "signal.interests.entities": candidate.id,
-            "filter.location.query": city.city.name,
+            "filter.location.query": locationQuery(city.city),
             "output.heatmap.boundary": "urn:geohash",
           })
             .then((result) => result.length)

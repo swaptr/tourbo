@@ -48,14 +48,19 @@ Stages follow PLAN.md §11. Deadline **2026-10-30 11:45pm EDT**. Stage 4 = minim
 - [x] `buildPlan()` (`engine/plan.ts`) + CLI `npm run plan:demo -- "<artist>" [na|in] [shows]`: 6-stop Japanese Breakfast plan in 12.5 s
 
 ## Stage 3 — Agent + trace (`server/core/agent/`)
-- [ ] Trace emitter: in-process pub/sub + persist to `trace_events`
-- [ ] Tools (`betaZodTool`): resolve_artist, score_cities, plan_city, route_tour, get_city_detail, finalize_plan
-- [ ] Orchestrator: Opus `toolRunner`, adaptive thinking (summarized), budgets, `stop_reason` checks, fallbacks
-- [ ] Per-city Haiku worker: structured output, every claim cites a Qloo field; drop festivals/outdoor shells/arenas from venue candidates (seen: Yerba Buena Gardens Festival, Capitol Hill Block Party)
-- [ ] Critic pass (max 2 rounds)
-- [ ] Prompt caching verified (`cache_read_input_tokens`)
-- [ ] Detached run started from action; progress saved to DB
-- [ ] SSE route `api.runs.$id.events`: replay from `Last-Event-ID`, then live
+- [x] Trace (`trace.server.ts`): in-process pub/sub + persisted `trace_events` (ordered writes, best-effort)
+- [x] Runs (`runs.server.ts`): pending → running → done/failed; "interrupted" when not owned by this process
+- [x] Tools (`tools.ts`, `betaZodTool`): resolve_artist, score_cities, plan_city, route_tour, critique_plan, finalize_plan (per-run context; compact tool results)
+- [x] Orchestrator (`orchestrator.server.ts`): Haiku 5.5 tool runner (Opus dropped for cost), effort medium, adaptive thinking (summarized), max 30 iterations, refusal / max_tokens checks, stable cached system prompt
+- [x] Haiku 5.5 worker (`worker.ts`): structured output; venue + backup, exclusions (festivals/arenas/restaurants), capacity estimate, fit, angle, evidence refs
+- [x] Critic (`critic.ts`): deterministic, max 2 rounds; flags ungrounded refs, missing venues, thin data, capacity mismatch, long legs (tested on a seeded bad plan)
+- [x] `startRun()`: detached run, status + trace persisted
+- [x] SSE route `api/runs/:id/events`: replay after `Last-Event-ID`, then live, heartbeat, `end` / `interrupted` events (tested: replay, resume, interrupted, 404, no compression)
+- [x] `npm run agent:demo -- "<artist>" [na|in] [shows]`; fails cleanly without credentials
+- [x] Live runs (2026-10-29): Japanese Breakfast NA 6 shows → critic 2 issues, all backups, $0.017, 78 s; Arijit Singh IN 5 shows → no issues, $0.013, 38 s; prompt cache reads > 0. (Opus orchestrator was $0.18/run → switched to Haiku 5.5.)
+- [x] Fixed: critic ref matching ("Name (type)"), ambiguous seed cities (`query`: Washington → D.C., New York → NYC, Richmond → Virginia; Shillong dropped; all 68 verified within ~1 km), venue pool (all 4 tags per step, 12 candidates, parallel)
+- [ ] Known quality gaps: India venues include hotel banquet halls (thin venue data); LLM copy occasionally embellishes ("comes home to Capitol Hill"); default room size 200–800 is wrong for arena-level artists (UI should set it)
+- [ ] Wire `startRun()` into the home action (Stage 4)
 
 ## Stage 4 — UI (minimum to submit)
 - [ ] Home form: artist autocomplete (`api.search`), home base, dates, #shows, room size, "Try" button
@@ -66,7 +71,7 @@ Stages follow PLAN.md §11. Deadline **2026-10-30 11:45pm EDT**. Stage 4 = minim
 - [ ] "Run interrupted — retry" state
 
 ## Stage 5 — Compare
-- [ ] Baseline: Opus without Qloo tools
+- [ ] Baseline: same model without Qloo tools
 - [ ] Compare tab: side by side, highlight differences
 
 ## Stage 6 — Outreach

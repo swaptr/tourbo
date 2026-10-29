@@ -3,7 +3,8 @@
   "name": "New York",
   "region": "na",
   "lat": 40.7128,
-  "lon": -74.006
+  "lon": -74.006,
+  "query": "New York City"
  },
  {
   "name": "Brooklyn",
@@ -27,7 +28,8 @@
   "name": "Washington",
   "region": "na",
   "lat": 38.9072,
-  "lon": -77.0369
+  "lon": -77.0369,
+  "query": "Washington, D.C."
  },
  {
   "name": "Baltimore",
@@ -45,7 +47,8 @@
   "name": "Richmond",
   "region": "na",
   "lat": 37.5407,
-  "lon": -77.436
+  "lon": -77.436,
+  "query": "Richmond, Virginia"
  },
  {
   "name": "Raleigh",
@@ -406,11 +409,5 @@
   "region": "in",
   "lat": 26.1445,
   "lon": 91.7362
- },
- {
-  "name": "Shillong",
-  "region": "in",
-  "lat": 25.5788,
-  "lon": 91.8933
  }
 ]

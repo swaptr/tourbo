@@ -28,6 +28,7 @@ export type Artist = z.infer<typeof Artist>;
 
 export const City = z.object({
   name: z.string(),
+  query: z.string().optional(), // Qloo locality query when the bare name is ambiguous
   region: Region,
   lat: z.number(),
   lon: z.number(),
@@ -93,6 +94,14 @@ export const AngleFacts = z.object({
 });
 export type AngleFacts = z.infer<typeof AngleFacts>;
 
+export const Evidence = z.object({
+  claim: z.string(),
+  source: z.enum(["heatmap", "venue", "fanTaste", "cityCulture", "localSpots", "opener"]),
+  ref: z.string(), // exact Qloo item name (or metric) the claim rests on
+  value: z.string().optional(), // the Qloo number quoted, e.g. "affinity 0.94"
+});
+export type Evidence = z.infer<typeof Evidence>;
+
 export const CityPlan = z.object({
   city: City,
   score: z.number(),
@@ -103,6 +112,11 @@ export const CityPlan = z.object({
   opener: Opener.optional(),
   facts: AngleFacts.optional(),
   angle: z.string().optional(),
+  capacity: z
+    .object({ min: z.number(), max: z.number(), estimate: z.literal(true) })
+    .optional(), // Qloo has no capacity field; LLM estimate, always labelled
+  fit: z.string().optional(),
+  evidence: z.array(Evidence).default([]),
   thinData: z.boolean(),
 });
 export type CityPlan = z.infer<typeof CityPlan>;
@@ -136,3 +150,6 @@ export const TraceEvent = z.object({
   at: z.iso.datetime(),
 });
 export type TraceEvent = z.infer<typeof TraceEvent>;
+
+// Name to send as `filter.location.query` / `signal.location.query`.
+export const locationQuery = (city: City) => city.query ?? city.name;
