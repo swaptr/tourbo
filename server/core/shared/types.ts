@@ -134,6 +134,20 @@ export const Plan = z.object({
 });
 export type Plan = z.infer<typeof Plan>;
 
+// Qloo-OFF plan: same model, same request, no tools. Shown next to the real plan.
+export const Baseline = z.object({
+  stops: z.array(
+    z.object({
+      city: z.string(),
+      venue: z.string(),
+      opener: z.string().nullable(),
+      why: z.string(),
+    }),
+  ),
+  summary: z.string(),
+});
+export type Baseline = z.infer<typeof Baseline>;
+
 export const TraceKind = z.enum([
   "thinking_summary",
   "tool_call",

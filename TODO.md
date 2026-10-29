@@ -72,8 +72,9 @@ Stages follow PLAN.md §11. Deadline **2026-10-30 11:45pm EDT**. Stage 4 = minim
 - [x] Verified live (2026-10-29): Arijit Singh IN 6 shows end to end in browser, 236 trace events
 
 ## Stage 5 — Compare
-- [ ] Baseline: same model without Qloo tools
-- [ ] Compare tab: side by side, highlight differences
+- [x] Baseline (`agent/baseline.ts`): same model, plain prompt, no tools, structured output; runs alongside the agent, stored in `runs.baseline` (~$0.001)
+- [x] Compare tab `/plan/:id/compare` (`engine/compare.ts`): both plans scored with the run's own city scores + heatmap cells (from trace, no extra Qloo calls); highlights cities only in one plan; baseline venues marked unverified
+- [x] Verified (2026-10-29): Arijit Singh IN → mean city score 73 (on) vs 66 (off); off picked Delhi 43 + Chennai 34
 
 ## Stage 6 — Outreach
 - [ ] Draft venue emails, approve flow

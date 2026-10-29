@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { Form, redirect, useNavigation, useRevalidator } from "react-router";
 
 import { CityCard } from "~/components/city-card";
+import { RunTabs } from "~/components/run-tabs";
 import { TourMap } from "~/components/tour-map";
 import { Trace, formatNumber } from "~/components/trace";
 import { Badge } from "~/components/ui/badge";
@@ -80,6 +81,8 @@ export default function PlanView({ loaderData }: Route.ComponentProps) {
           {plan?.summary && <p className="mt-2 max-w-3xl text-sm">{plan.summary}</p>}
         </div>
       </div>
+
+      <RunTabs runId={run.id} />
 
       {(run.status === "interrupted" || run.status === "failed") && (
         <div className="flex flex-wrap items-center gap-3 rounded-lg border border-destructive/30 bg-destructive/5 p-3 text-sm">

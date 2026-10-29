@@ -78,6 +78,9 @@ export function createTools(ctx: RunContext) {
         if (!ctx.artist) return "Call resolve_artist first.";
         const scores = await scoreCities(ctx.artist.id, seedCities(ctx.params.region), emit);
         ctx.shortlist = shortlist(scores, ctx.params.shows);
+        emit("decision", `Shortlist: ${ctx.shortlist.map((c) => `${c.city.name} ${c.score}`).join(", ")}`, {
+          scores: Object.fromEntries(scores.map((c) => [c.city.name, c.score])),
+        });
         const candidates = ctx.shortlist;
         ctx.openers = openerCandidates(ctx.artist).then((c) => pickOpeners(c, candidates, emit));
         return JSON.stringify(

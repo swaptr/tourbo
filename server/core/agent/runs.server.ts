@@ -1,7 +1,7 @@
 import type postgres from "postgres";
 
 import { db } from "../db/client.server.ts";
-import type { Plan, TourParams } from "../shared/types.ts";
+import type { Baseline, Plan, TourParams } from "../shared/types.ts";
 
 export type RunStatus = "pending" | "running" | "done" | "failed" | "interrupted";
 
@@ -11,6 +11,7 @@ export type Run = {
   params: TourParams;
   status: RunStatus;
   plan: Plan | null;
+  baseline: Baseline | null;
   createdAt: Date;
 };
 
@@ -44,8 +45,16 @@ export async function setRunStatus(id: string, status: RunStatus, plan?: Plan) {
 export async function getRun(id: string): Promise<Run | undefined> {
   const sql = await db();
   const [row] = await sql<
-    { id: string; artist_name: string; params: TourParams; status: RunStatus; plan: Plan | null; created_at: Date }[]
-  >`select id, artist_name, params, status, plan, created_at from runs where id = ${id}`;
+    {
+      id: string;
+      artist_name: string;
+      params: TourParams;
+      status: RunStatus;
+      plan: Plan | null;
+      baseline: Baseline | null;
+      created_at: Date;
+    }[]
+  >`select id, artist_name, params, status, plan, baseline, created_at from runs where id = ${id}`;
   if (!row) return undefined;
   const status =
     (row.status === "running" || row.status === "pending") && !active.has(row.id)
@@ -57,8 +66,14 @@ export async function getRun(id: string): Promise<Run | undefined> {
     params: row.params,
     status,
     plan: row.plan,
+    baseline: row.baseline,
     createdAt: row.created_at,
   };
+}
+
+export async function setBaseline(id: string, baseline: Baseline) {
+  const sql = await db();
+  await sql`update runs set baseline = ${sql.json(baseline as postgres.JSONValue)} where id = ${id}`;
 }
 
 export function markActive(id: string) {

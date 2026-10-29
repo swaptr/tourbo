@@ -3,7 +3,8 @@ import Anthropic from "@anthropic-ai/sdk";
 import type { Emit } from "../engine/trace.ts";
 import { TourParams, type Plan } from "../shared/types.ts";
 import { ORCHESTRATOR_MODEL } from "./models.ts";
-import { createRun, markActive, setRunStatus } from "./runs.server.ts";
+import { planBaseline } from "./baseline.ts";
+import { createRun, markActive, setBaseline, setRunStatus } from "./runs.server.ts";
 import { createContext, createTools } from "./tools.ts";
 import { recordUsage } from "./usage.ts";
 import { createTrace } from "./trace.server.ts";
@@ -65,9 +66,15 @@ export async function startRun(input: unknown): Promise<string> {
   markActive(id);
   const emit = createTrace(id);
   void (async () => {
+    // The Qloo-OFF baseline runs alongside; its failure never fails the run.
+    const baseline = planBaseline(params)
+      .then((b) => setBaseline(id, b))
+      .then(() => emit("decision", "Baseline (no Qloo) ready for comparison"))
+      .catch((error: Error) => emit("repair", `Baseline failed: ${error.message}`));
     try {
       await setRunStatus(id, "running");
       const plan = await orchestrate(params, emit);
+      await baseline;
       await setRunStatus(id, "done", plan);
       emit("decision", "Plan ready", { done: true });
     } catch (error) {
