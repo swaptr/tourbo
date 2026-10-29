@@ -1,7 +1,7 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { zodOutputFormat } from "@anthropic-ai/sdk/helpers/zod";
 
-import { Baseline, type TourParams } from "../shared/types.ts";
+import { Baseline, REGION_NAMES, type TourParams } from "../shared/types.ts";
 import { ORCHESTRATOR_MODEL } from "./models.ts";
 import { recordUsage } from "./usage.ts";
 
@@ -12,7 +12,7 @@ let client: Anthropic | undefined;
 
 export async function planBaseline(params: TourParams): Promise<Baseline> {
   client ??= new Anthropic();
-  const region = params.region === "in" ? "India" : "North America";
+  const region = REGION_NAMES[params.region];
   const response = await client.messages.parse({
     model: ORCHESTRATOR_MODEL,
     max_tokens: 4000,

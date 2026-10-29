@@ -9,7 +9,7 @@ import { Label } from "~/components/ui/label";
 import { startRun } from "../../server/core/agent/orchestrator.server";
 import { recentRuns } from "../../server/core/agent/runs.server";
 import { seedCities } from "../../server/core/engine/cities";
-import { TourParams, type Region } from "../../server/core/shared/types";
+import { REGION_NAMES, Region as RegionSchema, TourParams, type Region } from "../../server/core/shared/types";
 import type { Route } from "./+types/home";
 import type { loader as searchLoader } from "./api.search";
 
@@ -39,7 +39,8 @@ export async function loader() {
   const cities = (region: Region) => seedCities(region).map((c) => c.name).sort();
   // The form still works if the DB is down; only the recent list is lost.
   const recent = await recentRuns().catch(() => []);
-  return { start, homeBases: { na: cities("na"), in: cities("in") }, recent };
+  const homeBases = Object.fromEntries(RegionSchema.options.map((r) => [r, cities(r)])) as Record<Region, string[]>;
+  return { start, homeBases, recent };
 }
 
 export async function action({ request }: Route.ActionArgs) {
@@ -128,8 +129,11 @@ export default function Home({ loaderData, actionData }: Route.ComponentProps) {
                 value={region}
                 onChange={(e) => setRegion(e.target.value as Region)}
               >
-                <option value="na">North America</option>
-                <option value="in">India</option>
+                {RegionSchema.options.map((r) => (
+                  <option key={r} value={r}>
+                    {REGION_NAMES[r]}
+                  </option>
+                ))}
               </select>
             </div>
             <div className="grid gap-1.5">
@@ -181,7 +185,7 @@ export default function Home({ loaderData, actionData }: Route.ComponentProps) {
                 >
                   <span className="font-medium">{run.artistName}</span>
                   <span className="text-muted-foreground">
-                    {run.shows} shows · {run.region === "in" ? "India" : "North America"}
+                    {run.shows} shows · {REGION_NAMES[run.region as Region] ?? run.region}
                   </span>
                 </Link>
               </li>

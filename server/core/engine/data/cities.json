@@ -135,6 +135,24 @@
   "lon": -96.797
  },
  {
+  "name": "San Antonio",
+  "region": "na",
+  "lat": 29.4241,
+  "lon": -98.4936
+ },
+ {
+  "name": "Fort Worth",
+  "region": "na",
+  "lat": 32.7555,
+  "lon": -97.3308
+ },
+ {
+  "name": "El Paso",
+  "region": "na",
+  "lat": 31.7619,
+  "lon": -106.485
+ },
+ {
   "name": "Oklahoma City",
   "region": "na",
   "lat": 35.4676,
@@ -409,5 +427,171 @@
   "region": "in",
   "lat": 26.1445,
   "lon": 91.7362
+ },
+ {
+  "name": "London",
+  "region": "eu",
+  "lat": 51.5074,
+  "lon": -0.1278
+ },
+ {
+  "name": "Manchester",
+  "region": "eu",
+  "lat": 53.4808,
+  "lon": -2.2426,
+  "query": "Manchester, England"
+ },
+ {
+  "name": "Glasgow",
+  "region": "eu",
+  "lat": 55.8642,
+  "lon": -4.2518,
+  "query": "Glasgow, United Kingdom"
+ },
+ {
+  "name": "Bristol",
+  "region": "eu",
+  "lat": 51.4545,
+  "lon": -2.5879,
+  "query": "Bristol, England"
+ },
+ {
+  "name": "Leeds",
+  "region": "eu",
+  "lat": 53.8008,
+  "lon": -1.5491
+ },
+ {
+  "name": "Birmingham",
+  "region": "eu",
+  "lat": 52.4862,
+  "lon": -1.8904,
+  "query": "Birmingham, England"
+ },
+ {
+  "name": "Brighton",
+  "region": "eu",
+  "lat": 50.8225,
+  "lon": -0.1372,
+  "query": "Brighton, England"
+ },
+ {
+  "name": "Dublin",
+  "region": "eu",
+  "lat": 53.3498,
+  "lon": -6.2603,
+  "query": "Dublin, Ireland"
+ },
+ {
+  "name": "Paris",
+  "region": "eu",
+  "lat": 48.8566,
+  "lon": 2.3522,
+  "query": "Paris, France"
+ },
+ {
+  "name": "Amsterdam",
+  "region": "eu",
+  "lat": 52.3676,
+  "lon": 4.9041
+ },
+ {
+  "name": "Brussels",
+  "region": "eu",
+  "lat": 50.8503,
+  "lon": 4.3517
+ },
+ {
+  "name": "Berlin",
+  "region": "eu",
+  "lat": 52.52,
+  "lon": 13.405,
+  "query": "Berlin, Germany"
+ },
+ {
+  "name": "Hamburg",
+  "region": "eu",
+  "lat": 53.5511,
+  "lon": 9.9937
+ },
+ {
+  "name": "Cologne",
+  "region": "eu",
+  "lat": 50.9375,
+  "lon": 6.9603
+ },
+ {
+  "name": "Munich",
+  "region": "eu",
+  "lat": 48.1351,
+  "lon": 11.582
+ },
+ {
+  "name": "Copenhagen",
+  "region": "eu",
+  "lat": 55.6761,
+  "lon": 12.5683,
+  "query": "København"
+ },
+ {
+  "name": "Stockholm",
+  "region": "eu",
+  "lat": 59.3293,
+  "lon": 18.0686
+ },
+ {
+  "name": "Oslo",
+  "region": "eu",
+  "lat": 59.9139,
+  "lon": 10.7522
+ },
+ {
+  "name": "Prague",
+  "region": "eu",
+  "lat": 50.0755,
+  "lon": 14.4378
+ },
+ {
+  "name": "Vienna",
+  "region": "eu",
+  "lat": 48.2082,
+  "lon": 16.3738,
+  "query": "Vienna, Austria"
+ },
+ {
+  "name": "Warsaw",
+  "region": "eu",
+  "lat": 52.2297,
+  "lon": 21.0122
+ },
+ {
+  "name": "Zurich",
+  "region": "eu",
+  "lat": 47.3769,
+  "lon": 8.5417
+ },
+ {
+  "name": "Milan",
+  "region": "eu",
+  "lat": 45.4642,
+  "lon": 9.19
+ },
+ {
+  "name": "Barcelona",
+  "region": "eu",
+  "lat": 41.3874,
+  "lon": 2.1686
+ },
+ {
+  "name": "Madrid",
+  "region": "eu",
+  "lat": 40.4168,
+  "lon": -3.7038
+ },
+ {
+  "name": "Lisbon",
+  "region": "eu",
+  "lat": 38.7223,
+  "lon": -9.1393
  }
 ]

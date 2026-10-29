@@ -10,7 +10,7 @@ Tourbo is an agent that plans the tour from Qloo's taste graph and street-level 
 
 ## What it does
 
-1. **Input:** artist (autocomplete from Qloo), region (North America or India), home base, start date, number of shows, room size.
+1. **Input:** artist (autocomplete from Qloo), region (North America, Europe or India), home base, start date, number of shows, room size.
 2. **The agent works, with a live trace:**
    - scores every seed city in the region from the artist's Qloo heatmap (fan footprint + over-indexing), and finds the fan hotspots in each
    - plans the strongest cities in parallel: venues near the top hotspot (Qloo place insights, with a self-repairing search), a local opener (similar artists with heatmap presence in that city), and the city's culture
@@ -84,7 +84,7 @@ npm run qloo:ping             # check the Qloo key
 npm run dev                   # http://localhost:3000
 ```
 
-Other commands: `npm run qloo:prewarm` (cache the demo artists), `npm run plan:demo -- "<artist>" [na|in] [shows]` (engine only, no LLM), `npm run agent:demo -- "<artist>" [na|in] [shows]` (full agent in the terminal), `npm run typecheck`, `npm run build && npm start`.
+Other commands: `npm run qloo:prewarm` (cache the demo artists), `npm run plan:demo -- "<artist>" [na|eu|in] [shows]` (engine only, no LLM), `npm run agent:demo -- "<artist>" [na|eu|in] [shows]` (full agent in the terminal), `npm run typecheck`, `npm run build && npm start`.
 
 ### Environment
 

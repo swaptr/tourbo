@@ -114,7 +114,8 @@ Stages follow PLAN.md §11. Deadline **2026-10-30 11:45pm EDT**. Stage 4 = minim
 - [ ] Autonomous background research: refresh upcoming stops' notes (trending, new references)
 
 ## Local scene (from 20-city survey, PLAN §13)
-- [ ] Seed cities: `eu` region (UK + mainland), `latam`; add Texas mid-markets (San Antonio, Fort Worth, El Paso)
+- [x] Seed cities: `eu` region (26 cities, UK + mainland; Glasgow / Brighton / Copenhagen need qualified queries), Texas mid-markets (San Antonio, Fort Worth, El Paso). All verified: heatmap centroid within ~4 km (Bristol 19, Lisbon 9). Japanese Breakfast EU plan: London 100, Paris, Berlin, Amsterdam, Glasgow, Dublin
+- [ ] Seed cities: `latam` (optional)
 - [x] Openers v2: city's local acts (`signal.location.query`, kept only if in ≤ 1/3 of tour cities' lists, ≤ headliner popularity) scored against the headliner with `filter.results.entities`; wins if affinity ≥ similar-shortlist min − 0.05, else similar artist by heatmap lift. Verified: Hyderabad → Chinmayi, Bengaluru → Benny Dayal, Portland → Haley Heynderickx
 - [x] "Local scene" panel per city card (TV, brands & teams, people, fans' local spots) + "local favourite" opener badge
 - [x] Filter noise (`isMusician`: no instruments + non-performer description, "ambiguous artist name"; `dedupeArtists`: aliases + edit distance ≤ 1). Verified: drops BVG, Wolfgang Tillmans, Charlotte Roche; dedupes Marsimoto, Trae, Jassie Gill, 宇多田ヒカル

@@ -12,7 +12,7 @@ import { Button } from "~/components/ui/button";
 import { startRun } from "../../server/core/agent/orchestrator.server";
 import { getRun, type RunStatus } from "../../server/core/agent/runs.server";
 import { traceHistory } from "../../server/core/agent/trace.server";
-import type { TraceEvent } from "../../server/core/shared/types";
+import { REGION_NAMES, type TraceEvent } from "../../server/core/shared/types";
 import type { Route } from "./+types/plan.$id";
 
 const UUID = /^[0-9a-f-]{36}$/i;
@@ -68,7 +68,7 @@ export default function PlanView({ loaderData }: Route.ComponentProps) {
             </Badge>
           </div>
           <p className="mt-1 text-sm text-muted-foreground">
-            {run.params.shows} shows · {run.params.region === "in" ? "India" : "North America"} · from{" "}
+            {run.params.shows} shows · {REGION_NAMES[run.params.region]} · from{" "}
             {run.params.startDate}
             {run.params.homeBase && ` · home ${run.params.homeBase}`} · rooms {formatNumber(run.params.roomMin)}–
             {formatNumber(run.params.roomMax)}

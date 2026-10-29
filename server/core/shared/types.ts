@@ -2,8 +2,10 @@ import { z } from "zod";
 
 // Shared between server/core and app/ (no server-only imports here).
 
-export const Region = z.enum(["na", "in"]);
+export const Region = z.enum(["na", "eu", "in"]);
 export type Region = z.infer<typeof Region>;
+
+export const REGION_NAMES: Record<Region, string> = { na: "North America", eu: "Europe", in: "India" };
 
 export const TourParams = z.object({
   artist: z.string().min(1),
