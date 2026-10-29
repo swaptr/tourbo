@@ -230,7 +230,7 @@ Verified against the live API on 2026-10-29 (`npm run qloo:probe` + ad-hoc probe
 - To verify: performer signal **+** city signal combined (references that land with *your* fans *there*).
 
 Ideas:
-- **All performers:** artist or comedian (later: podcasters, authors). Same engine; venue tags and opener logic switch by type.
+- **All performers:** artist or comedian (later: podcasters, authors). Same engine; venue tags and opener logic switch by type. Generalised to any discipline in §16.
 - **Per-city set notes:** what your fans in that city watch, listen to, buy, follow and go to, each with its Qloo score; LLM drafts bits / banter / callbacks that must cite those references. Qloo-off comparison shows generic vs. grounded material.
 - **Muse mode:** standalone "inspiration + prep" app — pick a city (or a whole tour), get a grounded cultural brief and draft material to rehearse.
 - **Autonomous background research:** the agent keeps researching upcoming tour stops (trending shifts, new local references) and refreshes each city's notes before the show.
@@ -354,3 +354,74 @@ tourbo/
 - Publish `@tourbo/core` separately or bundle it into `@tourbo/mcp`? (Bundling keeps one public package.)
 - Cache backend for stdio users: in-memory by default, optional `DATABASE_URL`/SQLite?
 - Whether to keep harness-identical `qloo_*` names or prefix them (`tourbo_qloo_*`) to avoid clashing when a client also runs `qloo mcp`.
+
+## 16. Any artist: a discipline-agnostic model (proposed, 2026-10-29)
+
+Goal: the same agent loop manages a tour for any working artist (singer, DJ, comic, dancer, poet, painter, author, podcaster). The hosted demo stays pinned to one discipline; core and MCP accept all of them. Replaces the `musician | comedian` enum (`PerformerKind`, `packages/core/src/shared/types.ts`) and the per-kind `if`s in `engine/resolve.ts`, `engine/venues.ts`, `engine/openers.ts`, `engine/economics.ts` and `apps/web/server/agent/worker.ts`.
+
+### Discipline profile (one registry, `packages/core/src/disciplines/`)
+Each discipline is a data record, not a code branch:
+- `entityTypes`: Qloo types to resolve the act, in order (fallback when not found: act-less mode below).
+- `signal`: how fan demand is built: act entity heatmap, peer blend (2–3 comparable acts), genre/scene tags (`signal.interests.tags`), or a mix with weights.
+- `spaceTags`: Qloo place tags for venues/spaces, plus `roomType()` labels and default capacities.
+- `peerType` + `peerFilter`: the "opener" equivalent and how to find it (replaces `isMusician` / the comedian branch).
+- `revenue`: economics model (below) + per-region reference prices (replaces `REGION_DEFAULTS.ticket[kind]`).
+- `run`: one-night shows vs multi-day/week stays; routing unit (days vs weeks).
+- `prep`: what "material prep" means; worker + drafting prompt fragment.
+- `verified`: date + probe summary; unverified disciplines can't be enabled.
+
+### Disciplines (Qloo fit is honest; "verify" = needs a `/v2/tags` + insights probe)
+| Discipline | Resolve as | Demand signal | Spaces (place tags) | Peer / "opener" | Revenue | Run | Prep |
+|---|---|---|---|---|---|---|---|
+| Singers / bands | `artist` (verified) | act heatmap; peers for thin acts | live_music_venue, concert_hall, night_club, bar (verified) | support act (similar + local scene, done) | ticketed: door split / guarantee / versus / bar deal; merch | 1 night | setlist order, local cover / shout-out, banter |
+| DJs / producers | `artist` | act heatmap + genre tags (techno, house) | night_club, bar (verified); lounge, rooftop (verify) | guest / warm-up DJ from local scene | club fee or door split, bar deal | 1 night, late | set arc, local tracks/artists to nod to |
+| Comedians | `person` (verified) | act heatmap (verified) | comedy_club (verified; Mumbai thin), bar, concert_hall | similar people, local comics (needs person noise filter) | ticketed; bar deal | 1 night, often 2 shows | bits, banter, callbacks, sensitivity check |
+| Dancers / companies | `person` / `artist` if famous; else none | genre tags (kathak, ballet, contemporary, hip hop) + peers | concert_hall, night_club (verified); theatre, dance_studio, performing_arts_center (verify) | co-bill company, local dance school | ticketed + workshops (per head) | 1–3 nights + workshop day | piece order, music choices, local motif / collab |
+| Theatre / spoken word / poets | `person` | tags (poetry, slam, theatre) + peers | theatre, bar, cafe, bookstore (verify) | local poets / open-mic host | ticketed or door split; book/zine sales | 1 night to short run | set list of pieces, local references |
+| Painters / visual artists | rarely in Qloo; famous ones as `person` | genre/scene tags (street art, contemporary art) + comparable well-known artists as peers + brand/place affinity | art_gallery, museum (verify); cafe, bar, hotel lobby as pop-up (verify) | co-exhibitors, local artists, live-painting slot at a music/club night | sales commission (gallery 40–60%), entry fee, live-painting fee, murals/commissions, workshops, prints | 1–6 weeks per city | show theme, local motifs, piece selection per city, mural brief |
+| Authors | `book` + `author` (search) / `person` | book entity heatmap (verify), genre tags | bookstore, library, cafe, theatre (verify) | in-conversation host, local author | book sales cut, event fee, festival fee | 1 evening | reading excerpt, local angle, Q&A prep |
+| Podcasters | `podcast` | podcast heatmap (verify); global English shows dominate (§13 survey) | theatre, comedy_club, concert_hall | local guest (from `signal.location.query` people) | ticketed live show; sponsor reads; merch | 1 night | episode outline, local guest, local topics (web search) |
+
+Weak signal, stated plainly: most painters, dancers, poets and small DJs are not Qloo entities. Their demand comes from tags + peers + place affinity and is labelled "estimated from comparable acts / scene"; own-data upload (past sales, followers by city) calibrates it (§14 item 6). Qloo has no art-market, gallery capacity or book sales data.
+
+### Act-less mode (act not in Qloo)
+- Inputs: discipline, 2–5 genre/scene tags (picked via `tourbo_find_tags` / `qloo_find_tags`), 1–3 comparable acts (any Qloo type).
+- City demand = weighted blend of tag heatmaps (verified for genre tags, e.g. qawwali) and peer heatmaps; scores flagged `basis: "scene"`.
+- Spaces: place tags near the scene's hotspots; galleries/studios re-ranked by peer audience affinity (same as brands-by-city re-ranked by fans, verified).
+
+### Economics revenue models (`engine/economics.ts`)
+- `ticketed` (today): deals door_split / guarantee / versus / bar_deal; price × elastic draw.
+- `exhibition`: footfall from demand × days; entry fee (often 0) + `sales = buyers × avg price × (1 − commission)`; costs add shipping/crating, framing, space rent per week, insurance; lodging per week.
+- `workshop`: per-head fee × class size × sessions; add-on to any discipline.
+- `commission`: fixed fee (mural, live painting, private event); no draw model.
+- `merch` / `sales_table`: per-head spend × attendance (books, prints, records).
+- A city's outcome = sum of the models the discipline enables; the profit loop (§14 item 1) searches over them like it does deals today. All numbers stay labelled estimates.
+
+### Same agent loop, per discipline
+score markets → pick spaces → economics + verdict → route → promo → prep → outreach → check-ins → post-show learning. What changes:
+- **Exhibitions / residencies:** fewer cities (2–4), longer stays, routing by weeks (no drive-day rule; shipping lead time instead), outreach to galleries/cafes with a portfolio + Qloo audience pack, check-ins track footfall and sales not ticket pace, post-show logs pieces sold and price.
+- **Dance / theatre:** small runs, tech/space needs (stage size, floor) noted by the worker; workshops booked alongside shows.
+- **Authors / podcasters:** one-evening stops, partner-led (bookstore, festival); promo leans on the partner's audience.
+- **Music / comedy / DJ:** unchanged from today.
+
+### Demo scope
+- `DEMO_DISCIPLINES` env (via `getEnv()`, default `musician`): the hosted app offers only these; the home form shows a discipline picker only when more than one is enabled.
+- MCP tools and core accept every discipline in the registry with `verified` set; others return "not verified yet" plus what's missing.
+- Demo story: singer end to end; one slide/CLI run shows the same tools on a painter (act-less mode) to prove it's agnostic.
+
+### Schema + code changes
+- `PerformerKind` → `Discipline` (`z.enum` built from the registry keys); `TourParams.kind` / `Artist.kind` → `discipline` (keep `kind` as an accepted alias for old runs in the DB).
+- `Artist.id` optional (act-less); add `Artist.tags` input + `Artist.peers` as the demand basis.
+- `engine/resolve.ts`: `ENTITY_TYPE` → `profile.entityTypes`; `artistById` infers discipline from entity type.
+- `engine/venues.ts`: `VENUE_TAGS` / `COMEDY_TAGS` / `roomType()` → `profile.spaceTags` (tag → label → default capacity).
+- `engine/openers.ts`: `isMusician` / comedian branch → `profile.peerType` + `peerFilter`; rename "opener" to "support" in the UI copy where it isn't music.
+- `engine/economics.ts`: `REGION_DEFAULTS.ticket[kind]` → per-discipline price table; revenue models above; `ROOM_DEFAULT_CAPACITY` from the profile.
+- `engine/routing.ts`: `run.unit = "day" | "week"`; stay length per stop.
+- `apps/web/server/agent/worker.ts`: `SYSTEM` / `COMEDY_SYSTEM` → base prompt + `profile.prep` fragment (exclusions per discipline, e.g. galleries reject arenas, musicians reject restaurants).
+- MCP (`packages/mcp/src/tourbo/tools.ts`): `kind` param → `discipline` (enum from registry); new `tourbo_disciplines` tool + `tourbo://disciplines` resource (profile, verified status, revenue models); `plan_tour` prompt takes `discipline`.
+
+### Verification before enabling a discipline
+- `/v2/tags` search for each space tag; place insights return ≥ 5 places in 3+ seed cities (one NA, one EU, one IN).
+- Resolve 2–3 sample acts per entity type (e.g. a DJ, a dance company, an author, a podcast); heatmap cell counts recorded.
+- Act-less: 2 genre/scene tags → heatmap top cities make sense (e.g. street art, kathak).
+- Record results in `profile.verified` and in §13-style notes here; raw output in /tmp only.

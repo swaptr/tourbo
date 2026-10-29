@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "tourbo": {
+      "command": "node",
+      "args": ["--env-file-if-exists=.env", "packages/mcp/src/bin/stdio.ts"]
+    }
+  }
+}

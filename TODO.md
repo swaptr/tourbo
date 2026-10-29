@@ -141,3 +141,39 @@ Stages follow PLAN.md §11. Deadline **2026-10-30 11:45pm EDT**. Stage 4 = minim
 - [ ] D. Transports: stdio bin, in-memory (hosted), Streamable HTTP `/mcp` behind tokens; MCP Inspector + Claude Desktop test
 - [ ] E. Agent on `mcpTools()` via in-memory client; trace via MCP notifications; parity check
 - [ ] F. Publish `@tourbo/mcp`; README Claude Desktop config
+
+## Any artist (PLAN §16, proposed)
+- [ ] Discipline registry `packages/core/src/disciplines/`: entity types, signal, space tags, peer type, revenue, run, prep, verified
+- [ ] `PerformerKind` → `Discipline`; `TourParams.kind` / `Artist.kind` → `discipline` (accept `kind` alias for old runs)
+- [ ] Move musician + comedian into the registry; no behaviour change (check `plan:demo` Japanese Breakfast + Zakir Khan)
+- [ ] `resolve.ts`: entity types from profile; `artistById` infers discipline
+- [ ] `venues.ts`: space tags + room labels + default capacities from profile
+- [ ] `openers.ts`: peer type + filter from profile ("support" copy outside music)
+- [ ] Act-less mode: genre/scene tags + comparable acts → blended heatmap demand, `basis: "scene"`
+- [ ] Economics: per-discipline prices; revenue models `exhibition`, `workshop`, `commission`, `merch`
+- [ ] Routing: `run.unit` day | week, stay length per stop
+- [ ] Worker: base prompt + per-discipline prep/exclusion fragment
+- [ ] MCP: `kind` → `discipline`; `tourbo_disciplines` tool + `tourbo://disciplines` resource; `plan_tour` prompt arg
+- [ ] `DEMO_DISCIPLINES` env (default `musician`); discipline picker only when > 1 enabled
+- [ ] Probe DJs: club/lounge tags, 2 sample DJs, techno/house tag heatmaps
+- [ ] Probe dancers: theatre/dance_studio/performing_arts tags, kathak/contemporary tag heatmaps
+- [ ] Probe poets/theatre: theatre/cafe/bookstore tags, poetry/slam tags
+- [ ] Probe visual artists: art_gallery/museum tags in 3+ cities, street/contemporary art tags, famous painters as `person`
+- [ ] Probe authors: `book` heatmaps, author search, bookstore/library tags
+- [ ] Probe podcasters: `podcast` heatmaps for 2 shows, theatre tags
+- [ ] Demo: one painter run (act-less) via CLI/MCP to show it's agnostic
+
+## UX v2: stories-first (2026-10-29)
+- [x] `STORIES.md` (7 user stories + per-change checklist); CLAUDE.md north-star section
+- [x] Landing page: outcome-first, "who does what" (Qloo / Tourbo MCP / Claude)
+- [x] `/start` onboarding wizard: discipline → Qloo match ("is this you?" / sounds-like) → map area picker → dates/size/money → agent jobs
+- [x] Area (`TourParams.area`) → candidate cities (`citiesNear`), MCP `tourbo_score_cities.near`
+- [x] Agent jobs after the plan: show notes per night, venue email drafts
+- [x] Plan page: progress checklist while running, plain failure panel + retry, stats + map + simple night cards ("why?" details)
+- [x] Strict act resolution (no silent fuzzy matches); friendly error mapping
+- [x] Negotiation: `tourbo_assess_offer` + reply term extraction + counter draft in Venue emails
+- [x] `.mcp.json` (Claude Code picks up Tourbo in the repo); Connect page = 3 paths
+- [x] `npm run test:stories` (stories 1–7, live Qloo, no LLM; `STORY_LLM=1` full run)
+- [x] Ticket sales tab: check-ins → `tourbo_ticket_pace` advice; post-show results → draw calibration
+- [x] Copy buttons on Connect snippets; mobile pass (390px: home, wizard, plan, notes, emails)
+- [ ] Render deploy (owner sets keys; `render.yaml` ready)

@@ -9,3 +9,9 @@
 /.react-router/
 /build/
 .playwright-mcp/
+
+# workspaces
+node_modules/
+build/
+.react-router/
+*.tsbuildinfo

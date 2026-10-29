@@ -1,113 +1,113 @@
 # Tourbo
 
-> **Give it an artist. It plans the tour that sells out (cities, venues, openers) and emails the venues.**
+> **The tour manager small acts can't afford.** Tell it who you are and where you want to play. Its agent finds where your fans actually live, picks the rooms, runs the money for every night, writes what to say on stage and handles the venue emails.
 
-Qloo Agentic Hackathon 2026 entry. Live demo: _link added at deploy_ (Render free tier: the first request after idle can take ~1 min).
+Qloo Agentic Hackathon 2026 entry. Live demo: _link added at deploy_.
 
-Indie artists and their managers route tours by gut feel: last tour's cities, streaming counts, what a booking agent remembers. Streams show where someone listened once, not where people who'd buy a ticket cluster, which neighbourhood they're in, or which room fits them. A wrong city costs a half-empty room and a lost guarantee.
+Labels and promoters already route tours for big acts. A singer with a 300-person draw, or a comic playing bars, decides by gut: last tour's cities, streaming counts, a friend's advice. A wrong city is a half-empty room and a lost weekend's pay. Tourbo makes those calls with Qloo's taste and location data, explains each one, and then does the follow-up work.
 
-Tourbo is an agent that plans the tour from Qloo's taste graph and street-level fan heatmaps, shows its work live, and then books it.
+**Who does what**
 
-## What it does
+- **Qloo** knows taste: where an act's fans cluster (street-level heatmaps), which rooms and local acts those fans like, what each city loves, which local brands fit as sponsors.
+- **Tourbo MCP server** (`packages/mcp`) turns that into tour tools: score cities, find rooms, openers, show economics, routing, promo split, offer assessment, ticket pace, plan critic. No AI inside; every number is reproducible.
+- **Claude** is the agent. On the website it calls those tools in-process, weighs trade-offs, writes show notes and venue emails, and negotiates. In your own Claude Code or Claude Desktop, your Claude calls the same tools.
+- **You** approve. Nothing goes to a venue without a click; every money figure is labelled an estimate.
 
-1. **Input:** artist (autocomplete from Qloo), region (North America, Europe or India), home base, start date, number of shows, room size.
-2. **The agent works, with a live trace:**
-   - scores every seed city in the region from the artist's Qloo heatmap (fan footprint + over-indexing), and finds the fan hotspots in each
-   - plans the strongest cities in parallel: venues near the top hotspot (Qloo place insights, with a self-repairing search), a local opener (similar artists with heatmap presence in that city), and the city's culture
-   - a per-city worker picks a venue + backup, estimates capacity (labelled: Qloo has no capacity field) and writes a promo angle; every claim cites a Qloo item or number
-   - routes the tour (nearest neighbour + 2-opt, drive / fly days, days off)
-   - a deterministic critic checks evidence, thin data, capacity fit and long legs; the agent fixes what it can (max 2 rounds)
-3. **Output:** a map with the route, numbered stops and fan hotspots, plus a card per city: score, venue + backup, opener, promo angle and evidence chips.
-4. **Qloo on vs off:** the same model plans the same tour with no tools. Both plans are scored with the run's Qloo city scores, and cities only one plan picked are highlighted.
-5. **Outreach:** drafts a booking inquiry per venue (with the fan numbers), you review and approve, it sends (sandbox inbox only), classifies replies (interested / hold / pass) and on a pass promotes the backup venue and drafts a new inquiry. A pipeline board tracks it all; a "simulate reply" button drives the same handler as the real inbound webhook.
+## What a user gets (the stories in [`STORIES.md`](STORIES.md))
 
-Every plan has a shareable read-only link (`/plan/<id>`).
+1. **Plan:** a five-step onboarding (`/start`): what you do → "is this you?" on Qloo, or acts you sound like → click the map and size a circle → dates, number of shows, room size, optional money limits → the jobs you want done. Claude then plans while a progress list shows each step.
+2. **Tour:** a route on the map, and for each night the room, opener, deal, ticket price, expected tickets and profit. Nights that lose money are dropped or turned into support slots. A "why?" toggle shows the Qloo evidence.
+3. **Show notes:** for every night, an opening line, setlist nods to local acts or local bit premises, banter, a crowd moment, room setup and a sponsor ask. A critic rejects any local reference that isn't in that city's Qloo brief and Claude revises. A Qloo-off draft sits alongside for contrast.
+4. **Venue emails:** one inquiry per venue with the fan numbers. Replies are classified; a pass promotes the backup room. An offer is checked against your lowest fee and the planned show (deterministic), then Claude drafts an accept, a counter or a polite walk-away for you to send.
+5. **Ticket sales:** enter tickets sold; Tourbo says whether the show is on track and what to do (shift promo, lean on the opener, smaller room, raise the price). After the show, log attendance; the next plan calibrates your draw from it.
+6. **For venues** (`/explore`): a bar enters its name and gets acts its crowd likes, with local fans. Also "where do acts like me win?" across regions by comparable acts or genre (e.g. qawwali).
+7. **Your own Claude** (`/connect`): open Claude Code in this repo and Tourbo's tools are there (`.mcp.json`); or add the stdio server anywhere; or use the token-gated hosted endpoint.
 
 ## Why it fails without Qloo
 
-An LLM alone can name "big music cities". It can't tell you where *this* artist's fans cluster block by block, which rooms near them that crowd likes, or which local acts share the audience. The compare tab shows it: for Arijit Singh (6 shows, India) the LLM-only plan picked Delhi (score 43) and Chennai (34), while the Qloo plan found Ahmedabad (54) and Hyderabad (61) and every venue and opener is a real Qloo entity with affinity numbers. Mean city score 73 vs 66; 6 of 6 venues backed by Qloo data vs 0.
+An LLM alone names "big music cities". It can't say where *this* act's fans cluster block by block, which rooms near them that crowd likes, which local acts share the audience, or what the city's audience loves right now. The "With vs without Qloo" tab shows the same model planning blind; the show-notes page shows the generic draft next to the grounded one.
 
 ## How it uses Qloo
 
-All calls are GET to the hackathon API with `X-Api-Key`, through one client (`server/core/qloo/client.server.ts`) with retries, concurrency 8, a parameter whitelist per `filter.type` (Qloo silently ignores unknown params, so we reject them first) and a Postgres response cache.
+One client (`packages/core/src/qloo/client.server.ts`): GET with `X-Api-Key`, retries on 429/5xx, concurrency 8, a per-type parameter whitelist (Qloo silently ignores unknown params) and a Postgres response cache (memory fallback).
 
-| Step | Call |
+| Job | Qloo call |
 | --- | --- |
-| Resolve artist | `/search?types=urn:entity:artist` |
-| City scoring + fan hotspots | `/v2/insights` `filter.type=urn:heatmap`, `signal.interests.entities=<artist>`, `filter.location.query=<city>`, `output.heatmap.boundary=urn:geohash`. Affinity is percentile-normalised per request, so the score blends footprint (Σ affinity × popularity) with over-indexing (mean affinity rank) |
-| Venues | `filter.type=urn:entity:place`, `filter.location=POINT(lon lat)` + radius at the top hotspot, `filter.tags=urn:tag:category:place:{live_music_venue,concert_hall,night_club,bar}`, artist signal. Repair chain: 1.5 → 3 → 6 km → geohash-4 → city, each step in the trace |
-| Openers | `filter.type=urn:entity:artist` with the artist signal, filtered to acts no bigger than the headliner, ranked by heatmap presence in each city |
-| Promo angles | fan taste (tags / brands / TV with the artist signal), city culture (`signal.location.query`), local spots (places weighted by the artist's fans) |
+| Resolve act (strict name match; unknown acts plan from "sounds like" peers) | `/search` (`urn:entity:artist` / `urn:entity:person` for comedians) |
+| City scores + fan hotspots | `/v2/insights` `urn:heatmap`, act + peer signal, `filter.location.query`, geohash boundary |
+| Rooms | `urn:entity:place` near the top hotspot with place tags (live music, concert hall, club, bar, comedy club, theatre), act signal, widening search |
+| Openers | similar artists / people no bigger than the act, ranked by local heatmap presence |
+| City brief (show notes) | city culture via `signal.location.query` (TV, brands, people, podcasts), local artists, local spots weighted by the act's fans, fan tags |
+| Sponsors | city brands re-ranked by the act's fans (`filter.results.entities`) |
+| Markets for new acts | heatmaps from comparable acts or genre tags (`signal.interests.tags`) across regions |
+| Acts for a venue | artists/people with the venue as the signal, plus local heatmap presence |
+
+Plus the nine Qloo hackathon-harness workflows (recommend, rank, describe, where_popular, compare_audiences, entity_tags, audience_demographics, trends, find_tags), ported to TypeScript as `qloo_*` MCP tools.
 
 ## Architecture
 
 ```mermaid
 flowchart LR
-  UI[React Router UI<br/>home · plan · compare · outreach] -->|action| Run[startRun<br/>detached promise]
-  Run --> Orch[Orchestrator<br/>Claude Haiku 5.5 tool runner]
-  Run --> Base[Baseline<br/>same model, no tools]
-  Orch -->|tools| Tools[resolve_artist · score_cities · plan_city<br/>route_tour · critique_plan · finalize_plan]
-  Tools --> Engine[Engine<br/>score · venues · openers · angles · routing]
-  Tools --> Worker[City workers<br/>Haiku, structured output]
-  Tools --> Critic[Deterministic critic]
-  Engine --> Qloo[(Qloo API)]
-  Engine --> Cache[(Postgres<br/>qloo_cache)]
-  Orch --> Trace[Trace bus] --> DB[(Postgres<br/>runs · trace_events · outreach)]
-  Trace -->|SSE| UI
-  UI -->|approve| Outreach[Outreach<br/>draft · send · classify · promote backup]
-  Outreach --> Resend[Resend API]
-  Resend -->|email.received webhook| Outreach
+  subgraph web [apps/web]
+    UI[React Router UI<br/>start · plan · notes · emails · sales] --> Agent[Claude agent<br/>toolRunner + jobs]
+    Agent --> Client[In-process MCP client]
+    Remote["/mcp (token-gated HTTP)"]
+  end
+  subgraph mcp [packages/mcp]
+    Server[Tourbo MCP server<br/>tourbo_* + qloo_* tools]
+  end
+  subgraph core [packages/core]
+    Engine[Engine: score · venues · openers · brief<br/>economics · routing · negotiate · pace · critic]
+  end
+  Client --> Server
+  Remote --> Server
+  Stdio[stdio: Claude Code / Desktop] --> Server
+  Server --> Engine --> Qloo[(Qloo API)]
+  Engine --> PG[(Postgres: cache · runs · trace<br/>prep · outreach · checkins · results)]
+  Agent -->|trace SSE| UI
 ```
 
-- One TypeScript app: React Router v8 (framework mode, SSR) on a custom Express server; core logic in `server/core/`, UI in `app/`.
-- Agent: `@anthropic-ai/sdk` `toolRunner` with Zod tools, adaptive thinking (summaries go to the trace), prompt caching on a byte-stable system prompt, refusal / max_tokens checks. A full run costs about $0.015.
-- Trace: every tool call, Qloo call, repair, critic finding and decision is persisted and streamed over SSE (replay from `Last-Event-ID`), so a share link shows the full reasoning.
-- Map: MapLibre GL + OpenFreeMap tiles (no key).
-- Email: Resend (send API + `email.received` webhook, svix signature verified). Demo sends go only to a sandbox inbox.
+- npm workspaces: `packages/core` (no LLM), `packages/mcp` (no LLM, stateless), `apps/web` (all inference).
+- Agent: `@anthropic-ai/sdk` tool runner (Claude Haiku 5.5), adaptive thinking summaries in the trace, prompt caching, structured outputs for workers, show notes and email drafts. A full plan costs about $0.02; show notes about $0.004 per night.
+- MCP: `@modelcontextprotocol/server` v2; progress notifications carry trace events so the hosted UI streams tool internals.
+- Map: MapLibre GL + OpenFreeMap. Email: Resend (sandbox inbox only in the demo).
 
 ## Judging criteria
 
-- **Technological implementation:** heatmaps with geohash boundaries, place insights with WKT location + tags, artist and cross-domain insights, all through a validated, cached, rate-limited client; an agent that drives a deterministic engine, parallel city workers with structured output, a critic loop, self-repairing searches, a persisted live trace, and inbound email handling that re-plans.
-- **Design:** one flow from artist to booked holds: live trace next to the map, evidence chips on every pick, a compare tab and a pipeline board.
-- **Potential impact:** a real buyer (independent artists, managers, promoters) and real money (tickets, guarantees, travel), replacing gut-feel routing and manual booking emails.
-- **Quality of idea:** the plan is only possible with Qloo's taste + location data, and the Qloo-off comparison makes that visible.
+- **Technological implementation:** heatmaps, place/tag insights, cross-domain city taste, sponsor re-ranking and genre-tag markets through a validated, cached client; an MCP server reused by the hosted agent and by external agents; a tool-using agent with critic loops, deterministic economics, negotiation and pace models, and story tests against live Qloo.
+- **Design:** onboarding in five plain steps, live progress, one card per night with the reasoning folded away, plain-language errors with retry.
+- **Potential impact:** a real buyer (independent acts, small venues) and real money: which nights to play, what to charge, what to accept.
+- **Quality of idea:** each decision needs Qloo's taste + location data, and the Qloo-off comparisons make that visible.
 
 ## Run locally
 
-Requires Node 22+ and Docker.
+Node 22+ and Docker.
 
 ```bash
 npm install
-cp .env.example .env          # add QLOO_API_KEY and ANTHROPIC_API_KEY
-docker compose up -d          # Postgres on 127.0.0.1:5433
-npm run qloo:ping             # check the Qloo key
-npm run dev                   # http://localhost:3000
+cp .env.example .env     # set QLOO_API_KEY and ANTHROPIC_API_KEY
+npm run dev              # starts Postgres (docker compose) + http://localhost:3000
 ```
 
-Other commands: `npm run qloo:prewarm` (cache the demo artists), `npm run plan:demo -- "<artist>" [na|eu|in] [shows]` (engine only, no LLM), `npm run agent:demo -- "<artist>" [na|eu|in] [shows]` (full agent in the terminal), `npm run typecheck`, `npm run build && npm start`.
-
-### Environment
+- `npm run test:stories`: the user stories against live Qloo (no LLM); `STORY_LLM=1` adds a full Claude run (app must be running).
+- `npm run mcp`: the MCP server on stdio. `npm run test -w @tourbo/mcp`: MCP smoke test.
+- `npm run plan:demo -- "<artist>" [na|eu|in] [shows] [musician|comedian]`: engine only. `npm run agent:demo -- …`: full agent in the terminal.
+- Docker: `docker compose --profile app up -d --build web` runs the production image with Postgres.
 
 | Variable | Required | Notes |
 | --- | --- | --- |
 | `QLOO_API_KEY` | yes | |
-| `QLOO_BASE_URL` | no | default `https://hackathon.api.qloo.com` |
-| `ANTHROPIC_API_KEY` | yes | |
+| `ANTHROPIC_API_KEY` | yes (website agent) | not needed for the MCP server |
 | `DATABASE_URL` | no | default: the compose Postgres |
-| `RESEND_API_KEY` | no | without it, sends are simulated |
-| `RESEND_WEBHOOK_SECRET` | no | `whsec_…`, for `POST /webhooks/email` |
-| `OUTREACH_REPLY_DOMAIN` | no | Resend receiving domain; replies go to `reply+<token>@<domain>` |
-| `OUTREACH_FROM` / `OUTREACH_INBOX` | no | sender and sandbox inbox (default `delivered@resend.dev`) |
-
-### Deploy
-
-`render.yaml` defines one Docker web service (health check `/healthz`) and a free Postgres. Set the keys in the Render dashboard.
+| `MCP_TOKENS` | no | comma-separated bearer tokens; enables `/mcp` |
+| `PUBLIC_URL` | no | shown in the Connect page snippets |
+| `RESEND_API_KEY`, `RESEND_WEBHOOK_SECRET`, `OUTREACH_*` | no | email; sends are simulated without a key |
 
 ## Limits
 
-- Capacities are LLM estimates from the venue name and description (Qloo has no capacity field) and are always labelled.
-- Venue data is thinner in some cities (hotel banquet halls appear in India); the worker excludes obvious misfits and lists why.
-- Runs are in-process: a server restart mid-run shows "interrupted" with a retry button.
+- Qloo has no capacity, price or sales data: capacities, draw and profit are estimates (formula shown on each card), calibrated once you log past shows.
+- Demo disciplines: musicians and comedians. The model is designed to extend to dancers, poets, visual artists, authors and podcasters (PLAN §16).
+- Runs are in-process: a restart mid-run shows "interrupted" with a retry button.
 
 ## License
 

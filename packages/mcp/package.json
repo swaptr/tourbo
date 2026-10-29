@@ -1,0 +1,27 @@
+{
+  "name": "@tourbo/mcp",
+  "version": "0.1.0",
+  "type": "module",
+  "description": "Tourbo MCP server: Qloo-grounded tour planning tools (city scoring, venues, openers, local scene, routing, economics) plus Qloo workflow tools.",
+  "license": "MIT",
+  "exports": {
+    ".": "./src/index.ts",
+    "./*": "./src/*"
+  },
+  "bin": {
+    "tourbo-mcp": "./dist/bin/stdio.js"
+  },
+  "scripts": {
+    "start": "node --env-file-if-exists=../../.env src/bin/stdio.ts",
+    "typecheck": "tsc -p tsconfig.json",
+    "test": "node --env-file-if-exists=../../.env test/smoke.ts"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/server": "^2.4.0",
+    "@tourbo/core": "*",
+    "zod": "4.6.7"
+  },
+  "devDependencies": {
+    "@modelcontextprotocol/client": "^2.4.0"
+  }
+}
