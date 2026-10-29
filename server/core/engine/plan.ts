@@ -30,7 +30,7 @@ export async function buildPlan(params: TourParams, emit: Emit = noopEmit): Prom
   const route = routeTour(picks, params.startDate, home);
 
   const [openers, fans, venues] = await Promise.all([
-    openerCandidates(artist).then((c) => pickOpeners(c, picks, emit)),
+    openerCandidates(artist).then((c) => pickOpeners(artist, c, picks, emit)),
     fanTaste(artist.id),
     Promise.all(picks.map((city) => findVenues(artist.id, city, emit))),
   ]);

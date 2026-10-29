@@ -75,6 +75,8 @@ export const Opener = z.object({
   popularity: z.number().optional(),
   affinity: z.number().optional(),
   localCells: z.number(), // heatmap presence in the city
+  // local = the city's own favourite acts that share the headliner's audience; similar = global look-alikes
+  source: z.enum(["local", "similar"]).default("similar"),
 });
 export type Opener = z.infer<typeof Opener>;
 

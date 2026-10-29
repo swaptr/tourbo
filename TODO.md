@@ -115,9 +115,9 @@ Stages follow PLAN.md §11. Deadline **2026-10-30 11:45pm EDT**. Stage 4 = minim
 
 ## Local scene (from 20-city survey, PLAN §13)
 - [ ] Seed cities: `eu` region (UK + mainland), `latam`; add Texas mid-markets (San Antonio, Fort Worth, El Paso)
-- [ ] Openers v2: union of similar artists + city's local artists (`signal.location.query`), rank by audience overlap × local lift
-- [ ] "Local scene" panel per city: local artists, teams/brands, people, TV (podcasts are weakly local)
-- [ ] Filter noise: non-artists in artist results, duplicate names
+- [x] Openers v2: city's local acts (`signal.location.query`, kept only if in ≤ 1/3 of tour cities' lists, ≤ headliner popularity) scored against the headliner with `filter.results.entities`; wins if affinity ≥ similar-shortlist min − 0.05, else similar artist by heatmap lift. Verified: Hyderabad → Chinmayi, Bengaluru → Benny Dayal, Portland → Haley Heynderickx
+- [x] "Local scene" panel per city card (TV, brands & teams, people, fans' local spots) + "local favourite" opener badge
+- [x] Filter noise (`isMusician`: no instruments + non-performer description, "ambiguous artist name"; `dedupeArtists`: aliases + edit distance ≤ 1). Verified: drops BVG, Wolfgang Tillmans, Charlotte Roche; dedupes Marsimoto, Trae, Jassie Gill, 宇多田ヒカル
 - [ ] Thin-venue cities (Lagos, Delhi, Mexico City, Barcelona): widen venue tags
 
 ## Small-act direction (PLAN §14, proposed)

@@ -82,7 +82,8 @@ export function createTools(ctx: RunContext) {
           scores: Object.fromEntries(scores.map((c) => [c.city.name, c.score])),
         });
         const candidates = ctx.shortlist;
-        ctx.openers = openerCandidates(ctx.artist).then((c) => pickOpeners(c, candidates, emit));
+        const headliner = ctx.artist;
+        ctx.openers = openerCandidates(headliner).then((c) => pickOpeners(headliner, c, candidates, emit));
         return JSON.stringify(
           ctx.shortlist.map((c) => ({
             city: c.city.name,
@@ -144,7 +145,7 @@ export function createTools(ctx: RunContext) {
           backup: worker.backupVenue?.name,
           capacityEstimate: worker.capacity && `${worker.capacity.min}–${worker.capacity.max}`,
           venueFoundBy: worker.venue?.foundBy,
-          opener: opener && `${opener.name} (${opener.localCells} local cells)`,
+          opener: opener && `${opener.name} (${opener.source === "local" ? "local favourite" : "similar artist"}, ${opener.localCells} local cells)`,
           angle: worker.angle,
           evidence: worker.evidence.length,
           thin: score.thinData,

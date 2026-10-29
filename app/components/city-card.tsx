@@ -2,7 +2,7 @@ import { MapPin, Music, TriangleAlert } from "lucide-react";
 
 import { Badge } from "~/components/ui/badge";
 import { Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle } from "~/components/ui/card";
-import type { CityPlan, Venue } from "../../server/core/shared/types";
+import type { AngleFacts, CityPlan, Reference, Venue } from "../../server/core/shared/types";
 import { Chip, formatNumber } from "./trace";
 
 export function CityCard({ stop, index }: { stop: CityPlan; index: number }) {
@@ -44,10 +44,12 @@ export function CityCard({ stop, index }: { stop: CityPlan; index: number }) {
           <p className="flex flex-wrap items-center gap-1.5">
             <Music className="size-3.5 text-muted-foreground" />
             Opener: <span className="font-medium">{stop.opener.name}</span>
+            {stop.opener.source === "local" && <Badge variant="outline">local favourite</Badge>}
             <Chip>local cells {formatNumber(stop.opener.localCells)}</Chip>
           </p>
         )}
         {stop.angle && <p className="border-l-2 border-indigo-300 pl-2 italic">{stop.angle}</p>}
+        {stop.facts && <LocalScene facts={stop.facts} />}
         {stop.fit && <p className="text-xs text-muted-foreground">{stop.fit}</p>}
         {stop.evidence.length > 0 && (
           <div className="flex flex-wrap gap-1">
@@ -86,5 +88,33 @@ function VenueLine({ venue }: { venue: Venue }) {
         <Chip className="bg-muted text-muted-foreground">found: {venue.foundBy}</Chip>
       </div>
     </div>
+  );
+}
+
+const SCENE: { label: string; pick: (facts: AngleFacts) => Reference[] }[] = [
+  { label: "TV", pick: (f) => f.cityCulture.filter((r) => r.type === "tv_show") },
+  { label: "Brands & teams", pick: (f) => f.cityCulture.filter((r) => r.type === "brand") },
+  { label: "People", pick: (f) => f.cityCulture.filter((r) => r.type === "person") },
+  { label: "Fans' local spots", pick: (f) => f.localSpots },
+];
+
+// What this city loves (Qloo, location signal only) and where this artist's fans go there.
+function LocalScene({ facts }: { facts: AngleFacts }) {
+  const rows = SCENE.map((row) => ({ label: row.label, items: row.pick(facts).slice(0, 4) })).filter(
+    (row) => row.items.length,
+  );
+  if (!rows.length) return null;
+  return (
+    <details className="text-xs">
+      <summary className="cursor-pointer text-muted-foreground">Local scene</summary>
+      <dl className="mt-1.5 space-y-1">
+        {rows.map((row) => (
+          <div key={row.label} className="flex gap-2">
+            <dt className="w-24 shrink-0 text-muted-foreground">{row.label}</dt>
+            <dd>{row.items.map((r) => r.name).join(" · ")}</dd>
+          </div>
+        ))}
+      </dl>
+    </details>
   );
 }
