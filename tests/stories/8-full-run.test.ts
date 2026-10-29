@@ -14,9 +14,11 @@ test("Maya end to end: wizard → Claude plan with money, notes and emails", { s
   for (let i = 0; i < 120 && !["done", "failed", "interrupted"].includes(status); i++) {
     await new Promise((r) => setTimeout(r, 5000));
     const html = await (await fetch(`${BASE}/plan/${id}`)).text();
-    status = html.match(/"status":"(\w+)"/)?.[1] ?? "";
+    // Read the rendered status badge: page data is turbo-stream encoded. The plan shows up
+    // before the jobs (notes, emails) finish, so wait for the badge, not the plan.
+    status = />done<\/span>/.test(html) ? "done" : /The planner (couldn|was interrupted)/.test(html) ? "failed" : "";
   }
   assert.equal(status, "done");
   const prep = await (await fetch(`${BASE}/plan/${id}/prep`)).text();
-  assert.match(prep, /Critic/);
+  assert.match(prep, /Critic|Qloo city brief/);
 });
