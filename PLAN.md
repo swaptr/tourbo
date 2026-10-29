@@ -188,7 +188,7 @@ outreach(id, run_id, city, venue_id, venue_name, status, draft text, thread_toke
 - `render.yaml`:
   - one web service, `runtime: docker` (same `Dockerfile` as local), health check `/healthz`, listens on `$PORT`
   - one Postgres (free)
-- Env vars set in the Render dashboard: `QLOO_API_KEY`, `QLOO_BASE_URL`, `ANTHROPIC_API_KEY`, `DATABASE_URL`, `EMAIL_API_KEY`, `EMAIL_INBOUND_SECRET`, `OUTREACH_LIVE=false`.
+- Env vars set in the Render dashboard: `QLOO_API_KEY`, `QLOO_BASE_URL`, `ANTHROPIC_API_KEY`, `DATABASE_URL`, `RESEND_API_KEY`, `RESEND_WEBHOOK_SECRET`, `OUTREACH_REPLY_DOMAIN` (sends go only to `OUTREACH_INBOX`).
 - Free tier: sleeps after 15 min idle, takes ~1 min to wake. Keep it awake Nov 2–5 with an uptime ping on `/healthz` (~744 h < 750 free h/month), or upgrade for judging week. Free Postgres expires 30 days after creation, which is fine through judging.
 - Pre-warm the cache for 2–3 demo artists so judges get fast first runs.
 
@@ -215,7 +215,7 @@ outreach(id, run_id, city, venue_id, venue_name, status, draft text, thread_toke
 
 - [ ] Hackathon Qloo API key (requested 2026-10-23; check spam). Nothing in M1+ is verifiable until it arrives.
 - [ ] Anthropic API key / credits for the hosted demo.
-- [ ] Email provider choice (inbound webhook + free tier), verified against the current docs.
+- [x] Email provider: Resend (inbound via `email.received` webhook + `*.resend.app` domain), docs checked 2026-10-29.
 - [ ] Demo artists: pick 3 (big / mid / niche), based on the probe results.
 - [ ] Name check: `tourbo.onrender.com` for now; the domain comes later.
 

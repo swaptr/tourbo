@@ -10,8 +10,9 @@ import type { TraceEvent } from "../shared/types.ts";
 const bus = new EventEmitter();
 bus.setMaxListeners(0);
 
-export function createTrace(runId: string): Emit {
-  let seq = 0;
+// `startSeq` lets later steps (outreach) append to a finished run's trace.
+export function createTrace(runId: string, startSeq = 0): Emit {
+  let seq = startSeq;
   let pending = Promise.resolve();
   return (kind, message, data) => {
     const event: TraceEvent = {
@@ -56,6 +57,12 @@ export async function traceHistory(runId: string, afterSeq = 0): Promise<TraceEv
     data: row.payload.data ?? undefined,
     at: row.created_at.toISOString(),
   }));
+}
+
+export async function appendTrace(runId: string): Promise<Emit> {
+  const sql = await db();
+  const [row] = await sql<{ seq: number | null }[]>`select max(seq) as seq from trace_events where run_id = ${runId}`;
+  return createTrace(runId, row?.seq ?? 0);
 }
 
 export function subscribe(runId: string, listener: (event: TraceEvent) => void) {

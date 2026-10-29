@@ -6,6 +6,7 @@ export function RunTabs({ runId }: { runId: string }) {
   const tabs = [
     { to: `/plan/${runId}`, label: "Plan" },
     { to: `/plan/${runId}/compare`, label: "Qloo on vs off" },
+    { to: `/plan/${runId}/pipeline`, label: "Outreach" },
   ];
   return (
     <nav className="flex gap-1 border-b text-sm">

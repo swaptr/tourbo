@@ -7,6 +7,14 @@ const schema = z.object({
   DATABASE_URL: z
     .string()
     .default("postgres://tourbo:tourbo@localhost:5433/tourbo"),
+  // Outreach (Resend). Without RESEND_API_KEY, sends are simulated.
+  RESEND_API_KEY: z.string().optional(),
+  RESEND_WEBHOOK_SECRET: z.string().optional(), // whsec_… from the webhook details page
+  OUTREACH_FROM: z.string().default("Tourbo <onboarding@resend.dev>"),
+  // Demo: every email goes to this inbox, never to a real venue.
+  OUTREACH_INBOX: z.string().default("delivered@resend.dev"),
+  // Receiving domain (e.g. <id>.resend.app); replies go to reply+<token>@ this domain.
+  OUTREACH_REPLY_DOMAIN: z.string().optional(),
 });
 
 export type Env = z.infer<typeof schema>;

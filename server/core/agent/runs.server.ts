@@ -71,6 +71,11 @@ export async function getRun(id: string): Promise<Run | undefined> {
   };
 }
 
+export async function savePlan(id: string, plan: Plan) {
+  const sql = await db();
+  await sql`update runs set plan = ${sql.json(plan as postgres.JSONValue)} where id = ${id}`;
+}
+
 export async function setBaseline(id: string, baseline: Baseline) {
   const sql = await db();
   await sql`update runs set baseline = ${sql.json(baseline as postgres.JSONValue)} where id = ${id}`;

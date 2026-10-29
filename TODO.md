@@ -5,7 +5,8 @@ Stages follow PLAN.md §11. Deadline **2026-10-30 11:45pm EDT**. Stage 4 = minim
 ## Blockers
 - [x] Qloo API key in `.env` → `npm run qloo:ping` passes
 - [ ] Anthropic API key / credits
-- [ ] Email provider picked (inbound webhook + free tier, docs verified)
+- [x] Email provider: Resend (send `POST /emails`; inbound `email.received` webhook, svix-signed, body via `GET /emails/receiving/{id}`, `<id>.resend.app` receiving domain). Docs checked 2026-10-29
+- [ ] Resend account: `RESEND_API_KEY`, receiving domain → `OUTREACH_REPLY_DOMAIN`, webhook `/webhooks/email` → `RESEND_WEBHOOK_SECRET` (until then sends are simulated)
 
 ## Stage 0 — Skeleton
 - [x] React Router v8 SSR app on custom Express server
@@ -77,12 +78,12 @@ Stages follow PLAN.md §11. Deadline **2026-10-30 11:45pm EDT**. Stage 4 = minim
 - [x] Verified (2026-10-29): Arijit Singh IN → mean city score 73 (on) vs 66 (off); off picked Delhi 43 + Chennai 34
 
 ## Stage 6 — Outreach
-- [ ] Draft venue emails, approve flow
-- [ ] Send via provider HTTP API (sandbox only, `OUTREACH_LIVE=false`)
-- [ ] Inbound webhook `webhooks.email`: match reply token, Haiku classifies interested / hold / pass
-- [ ] Pass → promote backup venue → new draft → trace event
-- [ ] "Simulate venue reply" button
-- [ ] Pipeline board (Drafted → Sent → Replied → Hold → Confirmed)
+- [x] Draft venue emails (Haiku, cites Qloo numbers; template fallback), edit + approve flow
+- [x] Send via Resend HTTP API to `OUTREACH_INBOX` only (sandbox; `reply_to` = `reply+<token>@OUTREACH_REPLY_DOMAIN`); simulated without a key. Real send untested (no key yet)
+- [x] Inbound webhook `webhooks.email`: svix signature verified (tested valid / tampered / stale), reply token from `to`, quoted text stripped, Haiku classifies interested / hold / pass
+- [x] Pass → promote backup venue (plan updated) → new draft → trace event (appended after the run's last seq; SSE replay now covers events after "done")
+- [x] "Simulate venue reply" buttons (interested / hold / pass), same handler as the webhook
+- [x] Pipeline board `/plan/:id/pipeline` (Drafted → Sent → Interested / Hold / Passed → Confirmed); verified end to end on Arijit Singh run
 
 ## Stage 7 — Polish
 - [ ] Read-only share link `/plan/:id`

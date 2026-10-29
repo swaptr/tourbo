@@ -21,11 +21,13 @@ export async function loader({ params, request }: Route.LoaderArgs) {
     async start(controller) {
       let last = after;
       let closed = false;
+      let replaying = true;
       const send = (event: TraceEvent) => {
         if (closed || event.seq <= last) return;
         last = event.seq;
         controller.enqueue(encoder.encode(`id: ${event.seq}\ndata: ${JSON.stringify(event)}\n\n`));
-        if (event.data?.done) close();
+        // Replay covers finished runs in full (outreach appends after "done"); live streams end at done.
+        if (event.data?.done && !replaying) close();
       };
       const close = () => {
         if (closed) return;
@@ -38,7 +40,6 @@ export async function loader({ params, request }: Route.LoaderArgs) {
 
       // Subscribe before replaying so nothing emitted in between is lost.
       const buffered: TraceEvent[] = [];
-      let replaying = true;
       const unsubscribe = subscribe(run.id, (event) => (replaying ? buffered.push(event) : send(event)));
       const heartbeat = setInterval(() => {
         if (!closed) controller.enqueue(encoder.encode(": ping\n\n"));

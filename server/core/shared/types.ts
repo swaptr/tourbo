@@ -148,6 +148,24 @@ export const Baseline = z.object({
 });
 export type Baseline = z.infer<typeof Baseline>;
 
+export const OutreachStatus = z.enum(["drafted", "sent", "interested", "hold", "passed", "confirmed"]);
+export type OutreachStatus = z.infer<typeof OutreachStatus>;
+
+export type Outreach = {
+  id: string;
+  runId: string;
+  stopIndex: number;
+  city: string;
+  venueId: string;
+  venueName: string;
+  status: OutreachStatus;
+  subject: string;
+  draft: string;
+  lastReply: string | null;
+  replySummary: string | null;
+  updatedAt: string;
+};
+
 export const TraceKind = z.enum([
   "thinking_summary",
   "tool_call",

@@ -40,4 +40,8 @@ create table if not exists outreach (
   last_reply text,
   updated_at timestamptz not null default now()
 );
+alter table outreach add column if not exists stop_index integer;
+alter table outreach add column if not exists subject text;
+alter table outreach add column if not exists reply_summary text;
+alter table outreach add column if not exists created_at timestamptz not null default now();
 `;
