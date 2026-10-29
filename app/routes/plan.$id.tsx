@@ -4,6 +4,7 @@ import { Form, redirect, useNavigation, useRevalidator } from "react-router";
 
 import { CityCard } from "~/components/city-card";
 import { RunTabs } from "~/components/run-tabs";
+import { ShareButton } from "~/components/share-button";
 import { TourMap } from "~/components/tour-map";
 import { Trace, formatNumber } from "~/components/trace";
 import { Badge } from "~/components/ui/badge";
@@ -56,7 +57,7 @@ export default function PlanView({ loaderData }: Route.ComponentProps) {
     <main className="container mx-auto space-y-6 px-4 py-8">
       <div className="flex flex-wrap items-start gap-4">
         {plan?.artist.image && (
-          <img src={plan.artist.image} alt="" className="size-16 rounded-lg object-cover" />
+          <img src={plan.artist.image} alt="" className="hidden size-16 rounded-lg object-cover sm:block" />
         )}
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2">
@@ -80,6 +81,7 @@ export default function PlanView({ loaderData }: Route.ComponentProps) {
           </p>
           {plan?.summary && <p className="mt-2 max-w-3xl text-sm">{plan.summary}</p>}
         </div>
+        {plan && <ShareButton />}
       </div>
 
       <RunTabs runId={run.id} />
@@ -98,7 +100,7 @@ export default function PlanView({ loaderData }: Route.ComponentProps) {
         </div>
       )}
 
-      <div className="grid gap-4 lg:grid-cols-[minmax(0,2fr)_minmax(0,3fr)]">
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,2fr)_minmax(0,3fr)]">
         <section className="flex h-[32rem] flex-col rounded-xl ring-1 ring-foreground/10">
           <h2 className="border-b px-3 py-2 text-sm font-medium">
             Agent trace <span className="text-muted-foreground">· {events.length} events</span>

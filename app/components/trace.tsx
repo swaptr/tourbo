@@ -49,7 +49,7 @@ function TraceRow({ event }: { event: TraceEvent }) {
       <div className="min-w-0 flex-1">
         <p
           className={cn(
-            "break-words",
+            "[overflow-wrap:anywhere]",
             event.kind === "thinking_summary" && "line-clamp-4 text-muted-foreground italic",
             event.kind === "tool_call" && "font-mono text-xs",
           )}

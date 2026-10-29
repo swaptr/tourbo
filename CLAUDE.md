@@ -16,6 +16,7 @@ Plain React Router v8 (framework mode) app on a custom Express server (`server.j
 - `npm run typecheck`
 - `npm run qloo:ping` — check Qloo key + connectivity
 - `npm run qloo:probe` — probe Qloo capabilities (raw output in /tmp only)
+- `npm run qloo:prewarm` — fill the Qloo cache for the demo artists
 - `npm run plan:demo -- "<artist>" [na|in] [shows]` — run the deterministic engine, print plan JSON
 - `npm run agent:demo -- "<artist>" [na|in] [shows]` — full agent run (needs `ANTHROPIC_API_KEY`), trace to stderr
 - Scripts run with Node's built-in TS support: relative imports need `.ts` extensions; erasable syntax only (no enums/parameter properties)

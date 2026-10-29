@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Form, redirect, useFetcher, useNavigation } from "react-router";
+import { Form, Link, redirect, useFetcher, useNavigation } from "react-router";
 import { z } from "zod";
 
 import { Button } from "~/components/ui/button";
@@ -7,6 +7,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "~/com
 import { Input } from "~/components/ui/input";
 import { Label } from "~/components/ui/label";
 import { startRun } from "../../server/core/agent/orchestrator.server";
+import { recentRuns } from "../../server/core/agent/runs.server";
 import { seedCities } from "../../server/core/engine/cities";
 import { TourParams, type Region } from "../../server/core/shared/types";
 import type { Route } from "./+types/home";
@@ -33,10 +34,12 @@ type Room = keyof typeof ROOMS;
 const selectClass =
   "h-8 w-full rounded-lg border border-input bg-transparent px-2.5 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 dark:bg-input/30";
 
-export function loader() {
+export async function loader() {
   const start = new Date(Date.now() + 60 * 86_400_000).toISOString().slice(0, 10);
   const cities = (region: Region) => seedCities(region).map((c) => c.name).sort();
-  return { start, homeBases: { na: cities("na"), in: cities("in") } };
+  // The form still works if the DB is down; only the recent list is lost.
+  const recent = await recentRuns().catch(() => []);
+  return { start, homeBases: { na: cities("na"), in: cities("in") }, recent };
 }
 
 export async function action({ request }: Route.ActionArgs) {
@@ -165,6 +168,27 @@ export default function Home({ loaderData, actionData }: Route.ComponentProps) {
           </Form>
         </CardContent>
       </Card>
+
+      {loaderData.recent.length > 0 && (
+        <section className="mt-10">
+          <h2 className="text-sm font-medium text-muted-foreground">Recent tours</h2>
+          <ul className="mt-2 divide-y rounded-xl ring-1 ring-foreground/10">
+            {loaderData.recent.map((run) => (
+              <li key={run.id}>
+                <Link
+                  to={`/plan/${run.id}`}
+                  className="flex items-center justify-between gap-4 px-4 py-2.5 text-sm hover:bg-muted/50"
+                >
+                  <span className="font-medium">{run.artistName}</span>
+                  <span className="text-muted-foreground">
+                    {run.shows} shows · {run.region === "in" ? "India" : "North America"}
+                  </span>
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
     </main>
   );
 }

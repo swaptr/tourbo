@@ -86,10 +86,10 @@ Stages follow PLAN.md §11. Deadline **2026-10-30 11:45pm EDT**. Stage 4 = minim
 - [x] Pipeline board `/plan/:id/pipeline` (Drafted → Sent → Interested / Hold / Passed → Confirmed); verified end to end on Arijit Singh run
 
 ## Stage 7 — Polish
-- [ ] Read-only share link `/plan/:id`
-- [ ] Pre-warm cache for demo artists
-- [ ] Empty / error states
-- [ ] Mobile-acceptable layout
+- [x] Read-only share link `/plan/:id` (SSR, Share button copies URL); recent finished tours on home
+- [x] Pre-warm cache for demo artists: `npm run qloo:prewarm` (top 12 cities each, ~55 s cold). Cache TTL 7 days → rerun on Render before judging (Nov 2)
+- [x] Empty / error states: styled 404/error boundary, plan-not-ready states on compare + pipeline, interrupted/failed retry
+- [x] Mobile-acceptable layout (no horizontal overflow at 390 px on plan / compare / pipeline)
 
 ## Stage 8 — Submission
 - [ ] README: what, architecture diagram, why it fails without Qloo, judging criteria, local run, env vars

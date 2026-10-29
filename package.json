@@ -10,7 +10,8 @@
     "qloo:ping": "node --env-file-if-exists=.env scripts/ping.ts",
     "qloo:probe": "node --env-file-if-exists=.env scripts/probe.ts",
     "plan:demo": "node --env-file-if-exists=.env server/core/engine/demo.ts",
-    "agent:demo": "node --env-file-if-exists=.env server/core/agent/demo.ts"
+    "agent:demo": "node --env-file-if-exists=.env server/core/agent/demo.ts",
+    "qloo:prewarm": "node --env-file-if-exists=.env scripts/prewarm.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^1.3.0",

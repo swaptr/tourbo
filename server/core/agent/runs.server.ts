@@ -84,3 +84,21 @@ export async function setBaseline(id: string, baseline: Baseline) {
 export function markActive(id: string) {
   active.add(id);
 }
+
+export type RunSummary = { id: string; artistName: string; shows: number; region: string; createdAt: string };
+
+// Finished tours for the home page.
+export async function recentRuns(limit = 6): Promise<RunSummary[]> {
+  const sql = await db();
+  const rows = await sql<{ id: string; artist_name: string; params: TourParams; created_at: Date }[]>`
+    select id, coalesce(plan->'artist'->>'name', artist_name) as artist_name, params, created_at
+    from runs where status = 'done' order by created_at desc limit ${limit}
+  `;
+  return rows.map((r) => ({
+    id: r.id,
+    artistName: r.artist_name,
+    shows: r.params.shows,
+    region: r.params.region,
+    createdAt: r.created_at.toISOString(),
+  }));
+}
