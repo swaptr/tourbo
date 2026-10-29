@@ -244,3 +244,19 @@ Ideas:
 - **Venue coverage:** 50+ live-music venues in most US/EU/Tokyo/Sydney/São Paulo; thin in Lagos (2), Delhi (9), Mexico City (11), Barcelona (16) → widen tags (bar, night club, concert hall) there.
 - **Noise to filter:** non-artists in artist results (actors, "BVG" transit, models), duplicates (Jassie Gill / Jassi Gill, Utada / 宇多田ヒカル).
 - **Next regions:** add seed lists for `eu` (UK + mainland) and `latam`; Texas mid-markets (San Antonio, El Paso, Fort Worth) to the NA list.
+
+## 14. Small-act direction (proposed, 2026-10-29)
+
+Back to the `idea_final.md` primary user (indie acts, ~5k–500k listeners, no agency). Routing alone is what labels/promoters already do for big acts; the value for a small act is "is this city worth it, which room, what to charge, what to say on stage". Pitch: *the tour manager, booking agent and writers' room a small act can't afford.*
+
+Order: make the Qloo layer worthwhile first (items 1–5), then the rest.
+
+1. **Unknown / thin acts:** performer type (musician, comedian, DJ, podcaster); "sounds like X, Y, Z" blends comparable acts' heatmaps (labelled "estimated"); optional upload of own data (Spotify-for-Artists city export, past ticket sales) to calibrate.
+2. **Show economics per city:** costs (travel km from routing, lodging, venue fee, opener), deal types (door split, guarantee, ticketed vs free + bar), estimated draw from hotspot density, calibrated by past shows → break-even ticket price, room size, profit per night + tour total; verdict: headline / support slot / co-headline / skip. Qloo has no capacity/price/sales data → draw is an estimate, labelled.
+3. **Venue-type fit:** bar vs club vs concert hall vs hotel/event space from Qloo place tags + fan affinity, shown as options with trade-offs. Comedy rooms need a workaround (stand-up place/person tags returned nothing).
+4. **Per-city set prep (lead feature for judges):** local TV, brands, teams, people, local artists with Qloo scores (§13 survey) → comedians: bits/banter/callbacks citing them + sensitivity check; musicians: setlist order, local cover/shout-out, banter. Current local topics need a web-search tool (Qloo has no news). Qloo-off comparison: generic vs grounded material.
+5. **Show setup + promo:** opener from the local scene (overlap with headliner audience), co-promo with local brands/bars fans like, promo kit (poster copy, captions, hotspot neighbourhoods for flyers/geo-ads), weekday choice + clash check (needs an events API).
+6. **Booking action:** outreach with an evidence pack (§6).
+7. **Post-show loop:** log attendance, takings, what landed → recalibrate draw model and material for the next tour.
+8. **Reverse mode:** venues/bars ask "which local acts fill my room on a Tuesday?" (second buyer).
+9. **Getting there (after the Qloo layer is worthwhile):** in a city with several candidate venues, factor distance from the airport, train/bus stations and public transport (stops, late-night service), plus load-in/parking for the act. Feeds venue choice, the travel cost in item 2, and fan reach (transit-reachable from the hotspots). Needs a geo/transit source (e.g. OSM/GTFS); not in Qloo.

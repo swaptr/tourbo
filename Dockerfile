@@ -19,6 +19,9 @@ ENV NODE_ENV=production
 COPY ./package.json package-lock.json server.js /app/
 COPY --from=production-dependencies-env /app/node_modules /app/node_modules
 COPY --from=build-env /app/build /app/build
+# Source for maintenance scripts (e.g. `npm run qloo:prewarm` from the Render shell).
+COPY ./scripts /app/scripts
+COPY ./server /app/server
 WORKDIR /app
 EXPOSE 3000
 CMD ["node", "server.js"]

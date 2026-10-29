@@ -92,11 +92,13 @@ Stages follow PLAN.md §11. Deadline **2026-10-30 11:45pm EDT**. Stage 4 = minim
 - [x] Mobile-acceptable layout (no horizontal overflow at 390 px on plan / compare / pipeline)
 
 ## Stage 8 — Submission
-- [ ] README: what, architecture diagram, why it fails without Qloo, judging criteria, local run, env vars
-- [ ] ~2 min video
-- [ ] Devpost text
-- [ ] Repo public + MIT `LICENSE` (**required**, file visible in repo About)
+- [x] README: what, architecture diagram, why it fails without Qloo, judging criteria, local run, env vars (live URL added at deploy)
+- [ ] ~2 min video (script in `SUBMISSION.md`)
+- [x] Devpost text (`SUBMISSION.md`)
+- [x] MIT `LICENSE` + `license` in package.json
+- [ ] Repo public (user)
 - [ ] Render awake Nov 2–5 (uptime ping on `/healthz`)
+- [x] Docker image ships `scripts/` + `server/` so `npm run qloo:prewarm` runs from the Render shell (tested in container)
 
 ## Stretch
 - [ ] Comedians (`urn:entity:person`)
@@ -117,3 +119,13 @@ Stages follow PLAN.md §11. Deadline **2026-10-30 11:45pm EDT**. Stage 4 = minim
 - [ ] "Local scene" panel per city: local artists, teams/brands, people, TV (podcasts are weakly local)
 - [ ] Filter noise: non-artists in artist results, duplicate names
 - [ ] Thin-venue cities (Lagos, Delhi, Mexico City, Barcelona): widen venue tags
+
+## Small-act direction (PLAN §14, proposed)
+- [ ] Performer type + "sounds like" blend for unknown/thin acts; optional own-data upload
+- [ ] Show economics per city: costs, deal types, estimated draw, break-even price, profit, verdict
+- [ ] Venue-type fit (bar / club / hall / hotel) with trade-offs; comedy-room workaround
+- [ ] Per-city set prep (bits, banter, setlist, local cover) citing Qloo refs + web-search topics; Qloo-off contrast
+- [ ] Show setup + promo kit (local opener, co-promo, flyer/geo-ad neighbourhoods, date clash check)
+- [ ] Post-show loop (attendance, takings, what landed → recalibrate)
+- [ ] Reverse mode for venues/bars
+- [ ] After the Qloo layer: venue access (airport, train/bus, public transport, load-in/parking) via OSM/GTFS
