@@ -10,7 +10,7 @@ Full product spec: `../jarwise/idea_final.md`. Qloo docs (offline copy): `../jar
 - a hosted live demo (Render)
 - a public repo (hackathon asks for an OSS license; add one at submission, M8)
 - a Devpost description
-- a ~2 min video
+- a ~2 min video is **not required** (Devpost: "we're requiring something judges can actually use"); the live demo is what counts
 
 ---
 
@@ -206,7 +206,7 @@ outreach(id, run_id, city, venue_id, venue_name, status, draft text, thread_toke
 8. **M7 Polish:** share link, pre-warmed demo artists, empty/error states, mobile-acceptable layout.
 9. **M8 Submission:**
    - README: what it does, architecture diagram, "why it fails without Qloo", how each judging criterion is met, local run instructions, env vars
-   - a 2-min video (script in `idea_final.md`)
+   - optional 2-min video (not required; script in `SUBMISSION.md`)
    - the Devpost text
    - make the repo public; add an OSS `LICENSE` (MIT) if the rules still require it
 10. **Stretch:** comedians (`urn:entity:person`) as a second demo; an MCP server exposing `plan_tour`; book tours (`urn:entity:book`).
@@ -247,16 +247,110 @@ Ideas:
 
 ## 14. Small-act direction (proposed, 2026-10-29)
 
-Back to the `idea_final.md` primary user (indie acts, ~5k–500k listeners, no agency). Routing alone is what labels/promoters already do for big acts; the value for a small act is "is this city worth it, which room, what to charge, what to say on stage". Pitch: *the tour manager, booking agent and writers' room a small act can't afford.*
+**Pitch:** *the tour manager, booking agent and writers' room a small act can't afford.* Back to the `idea_final.md` primary user (indie, comedy and foreign acts, ~5k–500k listeners, no agency). Routing alone is what labels and promoters already do for big acts. A small act asks: is this city worth it, which room, what to charge, what to say on stage.
 
-Order: make the Qloo layer worthwhile first (items 1–5), then the rest.
+**Design rule (agentic first):** every feature feeds a decision the agent makes, explains and acts on. A brief, calculator or content pack on its own doesn't count.
 
-1. **Unknown / thin acts:** performer type (musician, comedian, DJ, podcaster); "sounds like X, Y, Z" blends comparable acts' heatmaps (labelled "estimated"); optional upload of own data (Spotify-for-Artists city export, past ticket sales) to calibrate.
-2. **Show economics per city:** costs (travel km from routing, lodging, venue fee, opener), deal types (door split, guarantee, ticketed vs free + bar), estimated draw from hotspot density, calibrated by past shows → break-even ticket price, room size, profit per night + tour total; verdict: headline / support slot / co-headline / skip. Qloo has no capacity/price/sales data → draw is an estimate, labelled.
-3. **Venue-type fit:** bar vs club vs concert hall vs hotel/event space from Qloo place tags + fan affinity, shown as options with trade-offs. Comedy rooms need a workaround (stand-up place/person tags returned nothing).
-4. **Per-city set prep (lead feature for judges):** local TV, brands, teams, people, local artists with Qloo scores (§13 survey) → comedians: bits/banter/callbacks citing them + sensitivity check; musicians: setlist order, local cover/shout-out, banter. Current local topics need a web-search tool (Qloo has no news). Qloo-off comparison: generic vs grounded material.
-5. **Show setup + promo:** opener from the local scene (overlap with headliner audience), co-promo with local brands/bars fans like, promo kit (poster copy, captions, hotspot neighbourhoods for flyers/geo-ads), weekday choice + clash check (needs an events API).
-6. **Booking action:** outreach with an evidence pack (§6).
-7. **Post-show loop:** log attendance, takings, what landed → recalibrate draw model and material for the next tour.
-8. **Reverse mode:** venues/bars ask "which local acts fill my room on a Tuesday?" (second buyer).
-9. **Getting there (after the Qloo layer is worthwhile):** in a city with several candidate venues, factor distance from the airport, train/bus stations and public transport (stops, late-night service), plus load-in/parking for the act. Feeds venue choice, the travel cost in item 2, and fan reach (transit-reachable from the hotspots). Needs a geo/transit source (e.g. OSM/GTFS); not in Qloo.
+### Grounding (jarwise research + 2025 gallery, 2026-10-29)
+- Qloo's framing for this hackathon (scout.db, 2026-09-30): *"agents can reason, plan & execute. The next frontier is judgment: what to choose, and why… genuinely useful, personalized decisions."* Calacanis: *"maybe your next company."*
+- 2025 Qloo LLM Hackathon (287 projects, `qloo-hackathon.devpost.com`): ~70% were consumer recommenders/travel planners; none won. 3 of 4 winners replaced a costly gut-feel decision for a business buyer (GeoTaste: SMB sites; Alloy: M&A culture fit, ReAct + web search; Resonance AI: per-location political messaging); Zesty won on one sharp concept. All had shallow agent loops.
+- Closest prior entry, **Espionage** (not a winner): reference artist + city → heatmap hotspots + demographics → AI-written geo-targeted ad campaigns. Single pass, content only; "one-click launch" was future work. Lesson: the music idea alone isn't enough; decide, act and loop.
+- 2026 agentic bar: own identity acting in the world, keeps working while you're away, plan → act → observe → critique.
+- Judges: Live Nation (touring), Cedric the Entertainer (comedy) (§13).
+
+### Features, by agentic value
+1. **Profit-seeking loop.** Goal: maximise tour profit within the act's risk limit. The agent tries alternatives (swap a city, room type, ticket price, deal type: door split / guarantee / ticketed vs free + bar, support slot vs headline vs skip), re-scores, stops when gains flatten, and explains each choice with Qloo evidence + estimates. Inputs: costs (travel km from routing, lodging, venue fee, opener), estimated draw from hotspot density, promo spend and sponsor revenue (items 2, 4). Venue-type fit (bar / club / concert hall / hotel or event space) from Qloo place tags + fan affinity is one of the levers; comedy rooms need a workaround (stand-up place/person tags returned nothing). Qloo has no capacity/price/sales data → draw and profit are labelled estimates, calibrated by the act's past shows where uploaded.
+2. **Promo spend as a decision** (from Espionage, made agentic). Split a promo budget across cities and hotspot neighbourhoods by expected ticket gain; draft geo-targeted ads + poster copy; after approval, re-allocate on ticket pace.
+3. **Outreach + negotiation with its own identity.** Builds on Stage 6: evidence-pack inquiries, read replies, counter on guarantee vs door split within user-set limits, accept/decline, re-plan the leg on a pass.
+4. **Local sponsor matching** (from CollabScope / AudienceIQ). Local brands and bars the act's fans in that city like → drafted sponsorship / co-promo / after-party asks; accepted deals count as revenue in item 1.
+5. **Material prep as a critic loop** (lead demo feature; Resonance-shaped but decision-led). Per-city brief from Qloo city taste (local TV, brands, teams, people, local artists with scores, §13 survey) + web search for current topics (Qloo has no news) → drafts: comedians get bits/banter/callbacks + sensitivity check; musicians get setlist order, local cover/shout-out, banter → grounding critic rejects any reference without a Qloo value → revise. Optional rehearsal panel: persona agents built from that city's Qloo audience react to the set (simulation idea from `jarwise/idea.md`), labelled a rehearsal, not a prediction. Qloo-off contrast: generic vs grounded material. Songs: Qloo works at artist/album/genre level, not tracks → song picks inferred, labelled.
+6. **"Tour where acts like you already win"** (market finder; Espionage's playbook clone). Performer type (musician, comedian, DJ, podcaster); unknown/thin acts blend 2–3 comparable acts' heatmaps ("estimated"); optional own-data upload (Spotify-for-Artists city export, past ticket sales). Genre-tag heatmaps across cities pick markets for foreign acts (e.g. Mumbai/Bengaluru vs qawwali in tier-2 cities; verify with a probe before pitching). One act × city fit score (fans, genre fit, culture match) the agent reasons over (Alloy-style).
+7. **Keeps working after the plan.** Before each stop: refresh the city's notes and trending shifts, watch ticket pace (user-entered), then act: push promo, suggest a smaller room, swap the opener.
+8. **MCP server** exposing `plan_tour` / `prep_city` ("wire Qloo into an agent you already have"; matches Qloo's harness/MCP push).
+9. **Post-show learning loop.** Log attendance, takings and what landed → recalibrate the draw model and material per act.
+
+### Lower priority (inputs to item 1, not features of their own)
+- Show setup: opener from the local scene (overlap with headliner audience), weekday choice + clash check (needs an events API).
+- Reverse mode: venues/bars ask "which local acts fill my room on a Tuesday?" (second buyer).
+- **Getting there (only after the Qloo layer is worthwhile):** with several candidate venues in a city, factor distance from the airport, train/bus stations and public transport (stops, late-night service), plus load-in/parking. Feeds venue choice, travel cost and fan reach (transit-reachable from hotspots). Needs OSM/GTFS; not in Qloo.
+
+## 15. Architecture v2: MCP server + hosted web app (proposed, 2026-10-29)
+
+Goal: one Qloo-grounded **MCP server** that any agent can plug into (Claude Desktop, other MCP clients), and the **web app** as hosted inference: its agent is just another MCP client. Replaces the "no workspace" rule in `CLAUDE.md` once adopted (update it in step A).
+
+### Principles
+- **MCP server = no inference.** Deterministic, Qloo-grounded data and calculations only: Qloo workflows, city scoring, venues, openers, local scene, routing, critic, later economics and market finder. No `ANTHROPIC_API_KEY` needed, so stdio users run it with their own model.
+- **Web app = inference.** Orchestrator, per-city workers, baseline, material drafting, outreach and negotiation: everything that calls Claude. It reaches tools only through MCP.
+- **Stateless tools.** Each call carries its inputs (artist id, city, params); repeated work is cheap because of the Qloo cache. No per-run server state, so the same tools work from Claude Desktop and the hosted agent. Run state (runs, trace, outreach) stays in the web app's DB.
+- **One Qloo path.** All Qloo calls still go through `qlooGet()` (whitelist, retries, concurrency, cache).
+
+### Workspace layout (npm workspaces)
+```
+tourbo/
+  package.json                 # "workspaces": ["packages/*", "apps/*"]; root scripts delegate with -w
+  packages/
+    core/                      # @tourbo/core  (today's server/core minus agent/ and run DB)
+      src/qloo/                # client, params whitelist, cache (Postgres if DATABASE_URL, else in-memory)
+      src/engine/              # resolve, score, venues, openers, angles, routing, plan, compare
+      src/critic/              # deterministic critic (moved from agent/)
+      src/shared/              # zod types
+      src/env.ts               # getEnv(): only QLOO_* required here
+    mcp/                       # @tourbo/mcp  (publishable: npx @tourbo/mcp)
+      src/server.ts            # createTourboMcpServer({ toolsets }) -> McpServer
+      src/toolsets/qloo/       # TS port of the 9 harness workflows (see below)
+      src/toolsets/tourbo/     # domain tools over @tourbo/core
+      src/bin/stdio.ts         # StdioServerTransport; reads the user's own QLOO_API_KEY
+  apps/
+    web/                       # today's app/ + server.js + server/app.ts
+      app/                     # React Router UI (unchanged rules: UI only)
+      server/agent/            # orchestrator, worker, baseline, usage, trace, runs (MCP client)
+      server/outreach/
+      server/db/               # runs, trace_events, outreach (+ qloo_cache schema)
+      server/mcp-http.ts       # mounts Streamable HTTP /mcp on the Express server
+  vendor/                      # qloo-harness (MIT, reference for the port), qloo-hackathon-kit (submodule)
+```
+- Packages export TS source in-repo (`"exports": {".": "./src/index.ts"}`): Vite compiles it for the web app; Node's type stripping runs scripts (workspace symlinks resolve outside `node_modules`; verify). Keep erasable syntax only.
+- `@tourbo/mcp` gets a `tsc` build to `dist/` + `publishConfig.exports` for npm; `@tourbo/core` is bundled into it or published alongside.
+- `*.server.ts` naming stays inside `apps/web`; packages are server-only by construction (never imported by `app/` client code).
+
+### Toolsets
+1. **`qloo_*` — TS port of `@qloo/qloo-harness@0.1.26` workflows** (MIT; keep the copyright notice in the ported files). Same names and input shapes so prompts and docs carry over: `qloo_capabilities`, `qloo_recommend`, `qloo_rank`, `qloo_describe`, `qloo_where_popular`, `qloo_compare_audiences`, `qloo_entity_tags`, `qloo_audience_demographics`, `qloo_trends`, `qloo_find_tags`. Schemas rewritten in zod v4 (harness uses typebox); executed via `qlooGet()` instead of the harness's own client; no `@earendil-works/pi-coding-agent` dependency. Source of truth for schemas/behaviour: `vendor/qloo-harness/dist/chunks/chunk-MCLV3P4I.js` + `dist/qloo-tools.js`.
+2. **`tourbo_*` — domain tools over `@tourbo/core`:** `tourbo_resolve_artist`, `tourbo_score_cities`, `tourbo_city_detail` (venue candidates, openers, angles, local scene for one city), `tourbo_route`, `tourbo_critique`, `tourbo_compare_plans`; later (§14) `tourbo_city_economics`, `tourbo_market_finder`, `tourbo_city_brief` (data for material prep), `tourbo_sponsors`.
+- Tool results: compact `structuredContent` (zod `outputSchema`) + short text summary; every number keeps its Qloo source field so the critic and UI evidence chips still work.
+- MCP prompts/resources (optional): `plan_tour` prompt for Claude Desktop users; `tourbo://cities/{region}` seed-city resource.
+
+### Transports
+| Mode | Transport | Credential | Who |
+|---|---|---|---|
+| Local | stdio (`npx @tourbo/mcp`) | user's own `QLOO_API_KEY` env | Claude Desktop / any MCP client |
+| Hosted agent | in-process `InMemoryTransport` client ↔ server | server's key, never leaves the process | web app runs |
+| Remote | Streamable HTTP `/mcp` on the web service (`NodeStreamableHTTPServerTransport`, stateless) | bearer token required; or caller's own Qloo key in a header | judges / other agents |
+
+- Kit rules (`vendor/qloo-hackathon-kit/docs/API_ACCESS.md`): never put a credential in a public MCP config or share it. So `/mcp` is **never open**: tokens from `MCP_TOKENS` env (or BYO Qloo key), per-token rate limit, host/origin validation. Default off until configured.
+- Public MCP (stdio) users bring their own Qloo key; the README says so.
+
+### Hosted inference (web app)
+- Orchestrator keeps `client.beta.messages.toolRunner()`; tools come from MCP: `mcpTools(tools, mcpClient)` (`@anthropic-ai/sdk/helpers/beta/mcp`, present in the pinned 1.3.0). Filter the tool list per role: orchestrator gets `tourbo_*`; city workers get `tourbo_city_detail` + selected `qloo_*` (e.g. `qloo_recommend` with location for material prep).
+- Workers stay in the web app (they're inference). The orchestrator's `plan_city` becomes a local runner tool that spawns a worker which itself calls MCP tools.
+- **Trace:** `tool_call` events are recorded client-side when the runner invokes an MCP tool; `qloo_call` / `repair` events come from the server as MCP logging/progress notifications tied to the request, forwarded into `trace_events`. Verify the v2 notification API before building.
+- Keep prompt caching: stable tool list order and descriptions (sorted, no volatile text).
+- Alternative considered: the Messages API MCP connector (Claude calls a remote `/mcp` URL directly). Rejected for the hosted path: loses the live trace, per-call control and in-process key isolation. Fine for third parties.
+
+### Versions (checked 2026-10-29; re-verify at implementation)
+- `@modelcontextprotocol/server` 2.4.0 (v2 stable, MCP spec 2026-07-28; `McpServer.registerTool` with zod v4 schemas, `StdioServerTransport`, `InMemoryTransport`), `@modelcontextprotocol/client` 2.4.0, `@modelcontextprotocol/node` 2.1.2 (`NodeStreamableHTTPServerTransport`), `@modelcontextprotocol/express` 2.0.2 (`createMcpExpressApp`, `hostHeaderValidation`, `requireBearerAuth`). The v1 `@modelcontextprotocol/sdk` 1.32.x (used by the kit's starter) is the old line.
+- MCP v2 needs zod ^4.2 (we pin 4.6.7). TS ≥6 needs `"types": ["node"]` (we're on 5.9).
+- `@anthropic-ai/sdk` 1.3.0: `mcpTool` / `mcpTools` / `mcpResourceToContent` helpers.
+
+### Migration (each step leaves the app working)
+- **A. Workspace move.** `git mv server/core` → `packages/core` (agent + run DB → `apps/web/server`), `app/` + `server.js` + `server/app.ts` → `apps/web`. Update imports (`@tourbo/core/...`), scripts (root delegates with `-w`), `Dockerfile` (`npm ci` at root, build `-w apps/web`), `render.yaml`, `compose.yaml` paths, `CLAUDE.md` layout + rules. Check: typecheck, `plan:demo`, `agent:demo`, Docker build + smoke.
+- **B. Qloo toolset port.** 9 workflows + capabilities in `packages/mcp`. Contract test: same inputs through the vendored harness (`qloo mcp`, run from a temp dir with its deps) and ours → same result shape and comparable entities.
+- **C. Domain toolset.** Wrap engine + critic as `tourbo_*`; stateless inputs; compact outputs.
+- **D. Transports.** stdio bin; in-memory pair; `/mcp` HTTP behind tokens. Test with MCP Inspector and Claude Desktop.
+- **E. Agent switch.** Orchestrator and workers use `mcpTools` via the in-memory client; delete `betaZodTool` wrappers in `agent/tools.ts`; trace via notifications. Parity check vs today: Japanese Breakfast NA 6 shows and Arijit Singh IN (cost, critic issues, plan quality).
+- **F. Publish.** `@tourbo/mcp` on npm, README section with a Claude Desktop config (own key), MCP Inspector screenshot.
+- **G. §14 features** land as new `tourbo_*` tools (data) + web-app agent loops (decisions).
+
+### Open questions
+- Publish `@tourbo/core` separately or bundle it into `@tourbo/mcp`? (Bundling keeps one public package.)
+- Cache backend for stdio users: in-memory by default, optional `DATABASE_URL`/SQLite?
+- Whether to keep harness-identical `qloo_*` names or prefix them (`tourbo_qloo_*`) to avoid clashing when a client also runs `qloo mcp`.

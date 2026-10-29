@@ -94,7 +94,7 @@ Stages follow PLAN.md §11. Deadline **2026-10-30 11:45pm EDT**. Stage 4 = minim
 
 ## Stage 8 — Submission
 - [x] README: what, architecture diagram, why it fails without Qloo, judging criteria, local run, env vars (live URL added at deploy)
-- [ ] ~2 min video (script in `SUBMISSION.md`). Raw silent footage recorded 2026-10-29 (`~/Videos/tourbo-demo-raw.webm`, 2:27, 1440×900, via `scripts/record-demo.cjs`); needs voice-over + trim
+- [ ] Optional (not required by Devpost): ~2 min video (script in `SUBMISSION.md`). Raw silent footage recorded 2026-10-29 (`~/Videos/tourbo-demo-raw.webm`, 2:27, 1440×900, via `scripts/record-demo.cjs`); needs voice-over + trim
 - [x] Devpost text (`SUBMISSION.md`)
 - [x] MIT `LICENSE` + `license` in package.json
 - [ ] Repo public (user)
@@ -122,12 +122,22 @@ Stages follow PLAN.md §11. Deadline **2026-10-30 11:45pm EDT**. Stage 4 = minim
 - [x] Filter noise (`isMusician`: no instruments + non-performer description, "ambiguous artist name"; `dedupeArtists`: aliases + edit distance ≤ 1). Verified: drops BVG, Wolfgang Tillmans, Charlotte Roche; dedupes Marsimoto, Trae, Jassie Gill, 宇多田ヒカル
 - [ ] Thin-venue cities (Lagos, Delhi, Mexico City, Barcelona): widen venue tags
 
-## Small-act direction (PLAN §14, proposed)
-- [ ] Performer type + "sounds like" blend for unknown/thin acts; optional own-data upload
-- [ ] Show economics per city: costs, deal types, estimated draw, break-even price, profit, verdict
-- [ ] Venue-type fit (bar / club / hall / hotel) with trade-offs; comedy-room workaround
-- [ ] Per-city set prep (bits, banter, setlist, local cover) citing Qloo refs + web-search topics; Qloo-off contrast
-- [ ] Show setup + promo kit (local opener, co-promo, flyer/geo-ad neighbourhoods, date clash check)
-- [ ] Post-show loop (attendance, takings, what landed → recalibrate)
-- [ ] Reverse mode for venues/bars
-- [ ] After the Qloo layer: venue access (airport, train/bus, public transport, load-in/parking) via OSM/GTFS
+## Small-act direction (PLAN §14, proposed; agentic first)
+- [ ] Profit-seeking loop: alternatives (city, room type, price, deal, support/headline/skip), re-score, stop on flat gains, explain; venue-type fit lever; comedy-room workaround
+- [ ] Promo spend decision: budget split by hotspot, geo-ad drafts, re-allocate on ticket pace
+- [ ] Outreach negotiation: counter guarantee vs door split within limits, accept/decline, re-plan on pass
+- [ ] Local sponsor matching → asks; accepted deals as revenue
+- [ ] Material prep critic loop (Qloo city brief + web search → drafts → grounding critic → revise); optional rehearsal panel; Qloo-off contrast
+- [ ] "Acts like you" market finder: performer type, comparable-act blend, own-data upload, genre-tag heatmaps (verify qawwali tier-2), act × city fit score
+- [ ] Keeps working after the plan: pre-stop refresh, ticket pace → actions
+- [ ] MCP server: `plan_tour`, `prep_city`
+- [ ] Post-show learning loop
+- [ ] Lower: show setup (local opener, date clash), reverse mode; after the Qloo layer: venue access (airport, train/bus, transit, load-in) via OSM/GTFS
+
+## Architecture v2: MCP server + hosted web app (PLAN §15, proposed)
+- [ ] A. npm workspaces: `packages/core`, `packages/mcp`, `apps/web`; imports, scripts, Dockerfile, render.yaml, CLAUDE.md
+- [ ] B. TS port of the 9 harness Qloo workflows (+ capabilities) on `qlooGet()`; contract test vs vendored harness
+- [ ] C. `tourbo_*` domain tools over core (stateless, compact structured output)
+- [ ] D. Transports: stdio bin, in-memory (hosted), Streamable HTTP `/mcp` behind tokens; MCP Inspector + Claude Desktop test
+- [ ] E. Agent on `mcpTools()` via in-memory client; trace via MCP notifications; parity check
+- [ ] F. Publish `@tourbo/mcp`; README Claude Desktop config
