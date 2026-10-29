@@ -63,18 +63,30 @@ let client: Anthropic | undefined;
 
 export async function planCityWithWorker(input: WorkerInput, emit: Emit): Promise<WorkerResult> {
   client ??= new Anthropic();
-  const response = await client.messages.parse({
-    model: WORKER_MODEL,
-    max_tokens: 4000,
-    output_config: { effort: "low", format: zodOutputFormat(WorkerOutput) },
-    system: SYSTEM,
-    messages: [{ role: "user", content: JSON.stringify(compact(input)) }],
-  });
+  const request = () =>
+    client!.messages.parse({
+      model: WORKER_MODEL,
+      max_tokens: 8000,
+      output_config: { effort: "low", format: zodOutputFormat(WorkerOutput) },
+      system: SYSTEM,
+      messages: [{ role: "user", content: JSON.stringify(compact(input)) }],
+    });
+  // parse() throws when the output doesn't match the schema (e.g. truncated JSON); retry once,
+  // then fall back to the top-ranked venues so the city still makes the tour.
+  const response = await request()
+    .catch(() => {
+      emit("repair", `${input.city}: worker output didn't parse; retrying`, { city: input.city });
+      return request();
+    })
+    .catch((error: Error) => {
+      emit("repair", `${input.city}: worker failed (${error.message.slice(0, 120)})`, { city: input.city });
+      return undefined;
+    });
 
-  recordUsage(WORKER_MODEL, response.usage);
+  if (response) recordUsage(WORKER_MODEL, response.usage);
 
-  if (response.stop_reason === "refusal" || !response.parsed_output) {
-    emit("repair", `${input.city}: worker returned no plan (${response.stop_reason}); using top-ranked venues`, {
+  if (!response || response.stop_reason === "refusal" || !response.parsed_output) {
+    emit("repair", `${input.city}: worker returned no plan (${response?.stop_reason ?? "error"}); using top-ranked venues`, {
       city: input.city,
     });
     return { venue: input.venues[0], backupVenue: input.venues[1], evidence: [], excluded: [] };

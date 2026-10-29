@@ -60,6 +60,7 @@ Stages follow PLAN.md §11. Deadline **2026-10-30 11:45pm EDT**. Stage 4 = minim
 - [x] `npm run agent:demo -- "<artist>" [na|in] [shows]`; fails cleanly without credentials
 - [x] Live runs (2026-10-29): Japanese Breakfast NA 6 shows → critic 2 issues, all backups, $0.017, 78 s; Arijit Singh IN 5 shows → no issues, $0.013, 38 s; prompt cache reads > 0. (Opus orchestrator was $0.18/run → switched to Haiku 5.5.)
 - [x] Fixed: critic ref matching ("Name (type)"), ambiguous seed cities (`query`: Washington → D.C., New York → NYC, Richmond → Virginia; Shillong dropped; all 68 verified within ~1 km), venue pool (all 4 tags per step, 12 candidates, parallel)
+- [x] Fixed: worker `messages.parse` threw on unparseable output (seen as SF/Chicago/Portland dropped); now max_tokens 8000, one retry, then top-ranked venue fallback
 - [ ] Known quality gaps: India venues include hotel banquet halls (thin venue data); LLM copy occasionally embellishes ("comes home to Capitol Hill"); room size now set in the UI (club / theater / amphitheater / arena presets)
 - [x] Wire `startRun()` into the home action (Stage 4)
 
@@ -93,11 +94,11 @@ Stages follow PLAN.md §11. Deadline **2026-10-30 11:45pm EDT**. Stage 4 = minim
 
 ## Stage 8 — Submission
 - [x] README: what, architecture diagram, why it fails without Qloo, judging criteria, local run, env vars (live URL added at deploy)
-- [ ] ~2 min video (script in `SUBMISSION.md`)
+- [ ] ~2 min video (script in `SUBMISSION.md`). Raw silent footage recorded 2026-10-29 (`~/Videos/tourbo-demo-raw.webm`, 2:27, 1440×900, via `scripts/record-demo.cjs`); needs voice-over + trim
 - [x] Devpost text (`SUBMISSION.md`)
 - [x] MIT `LICENSE` + `license` in package.json
 - [ ] Repo public (user)
-- [ ] Render awake Nov 2–5 (uptime ping on `/healthz`)
+- [ ] Render awake Nov 2–5: `.github/workflows/keepalive.yml` pings `/healthz` every 10 min Nov 1–6 once repo variable `TOURBO_URL` is set
 - [x] Docker image ships `scripts/` + `server/` so `npm run qloo:prewarm` runs from the Render shell (tested in container)
 
 ## Stretch

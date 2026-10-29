@@ -57,6 +57,6 @@ Comedians and podcasters (heatmaps already work for `urn:entity:person`), per-ci
 
 - [ ] Deploy on Render; put the live URL in README + Devpost
 - [ ] `npm run qloo:prewarm` on Render before judging (cache TTL 7 days)
-- [ ] Uptime ping on `/healthz` Nov 2–5
-- [ ] Record the video, upload, link on Devpost
+- [ ] Set repo variable `TOURBO_URL` so `.github/workflows/keepalive.yml` pings `/healthz` Nov 1–6
+- [ ] Voice-over + trim the raw footage (`~/Videos/tourbo-demo-raw.webm`, or re-record against the live URL with `scripts/record-demo.cjs`), upload, link on Devpost
 - [ ] Make the repo public (MIT `LICENSE` is in the root)
