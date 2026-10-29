@@ -60,15 +60,16 @@ Stages follow PLAN.md §11. Deadline **2026-10-30 11:45pm EDT**. Stage 4 = minim
 - [x] Live runs (2026-10-29): Japanese Breakfast NA 6 shows → critic 2 issues, all backups, $0.017, 78 s; Arijit Singh IN 5 shows → no issues, $0.013, 38 s; prompt cache reads > 0. (Opus orchestrator was $0.18/run → switched to Haiku 5.5.)
 - [x] Fixed: critic ref matching ("Name (type)"), ambiguous seed cities (`query`: Washington → D.C., New York → NYC, Richmond → Virginia; Shillong dropped; all 68 verified within ~1 km), venue pool (all 4 tags per step, 12 candidates, parallel)
 - [ ] Known quality gaps: India venues include hotel banquet halls (thin venue data); LLM copy occasionally embellishes ("comes home to Capitol Hill"); default room size 200–800 is wrong for arena-level artists (UI should set it)
-- [ ] Wire `startRun()` into the home action (Stage 4)
+- [x] Wire `startRun()` into the home action (Stage 4)
 
 ## Stage 4 — UI (minimum to submit)
-- [ ] Home form: artist autocomplete (`api.search`), home base, dates, #shows, room size, "Try" button
-- [ ] Home action starts run → redirect to `/plan/:id`
-- [ ] Run view: live trace (Qloo numbers as chips)
-- [ ] Map (MapLibre + OpenFreeMap, client-only): heatmap, route line, numbered stops
-- [ ] City cards: score, venue + backup, opener, angle, evidence chips
-- [ ] "Run interrupted — retry" state
+- [x] Home form: artist autocomplete (`api.search`), home base, dates, #shows, room size presets, "Try" buttons
+- [x] Home action starts run → redirect to `/plan/:id`
+- [x] Run view: live trace (SSR history + SSE `?after=`; Qloo numbers as chips), revalidates on end
+- [x] Map (MapLibre 6 + OpenFreeMap positron, lazy import, worker via `setWorkerUrl`): hotspot heatmap, route line, numbered stops
+- [x] City cards: score, venue + backup, opener, angle, evidence chips
+- [x] "Run interrupted / failed — retry" state (same params, new run)
+- [x] Verified live (2026-10-29): Arijit Singh IN 6 shows end to end in browser, 236 trace events
 
 ## Stage 5 — Compare
 - [ ] Baseline: same model without Qloo tools

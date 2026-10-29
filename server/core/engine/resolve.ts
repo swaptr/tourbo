@@ -22,3 +22,9 @@ export async function resolveArtist(query: string): Promise<Artist | undefined> 
     tags,
   };
 }
+
+// Autocomplete for the home form.
+export async function searchArtists(query: string, take = 6) {
+  const results = await searchEntities(query, { types: ["urn:entity:artist"], take });
+  return results.map((entity) => ({ id: entity.entity_id, name: entity.name }));
+}

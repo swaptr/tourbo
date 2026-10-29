@@ -200,6 +200,7 @@ export function createTools(ctx: RunContext) {
           stops,
           legs: ctx.route.legs,
           totalKm: ctx.route.totalKm,
+          summary: input.summary,
         };
         emit("decision", input.summary);
         return "Saved.";

@@ -24,6 +24,7 @@
     "express": "^5.2.1",
     "isbot": "^5.1.36",
     "lucide-react": "^1.63.0",
+    "maplibre-gl": "^6.16.0",
     "morgan": "^1.10.1",
     "p-limit": "7.3.3",
     "postgres": "^3.4.9",

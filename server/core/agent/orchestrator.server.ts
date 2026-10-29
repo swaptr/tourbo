@@ -71,8 +71,9 @@ export async function startRun(input: unknown): Promise<string> {
       await setRunStatus(id, "done", plan);
       emit("decision", "Plan ready", { done: true });
     } catch (error) {
-      emit("decision", `Run failed: ${(error as Error).message}`, { error: true, done: true });
+      // Status first, so a client reloading on the final event sees "failed".
       await setRunStatus(id, "failed").catch(() => {});
+      emit("decision", `Run failed: ${(error as Error).message}`, { error: true, done: true });
     }
   })();
   return id;

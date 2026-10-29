@@ -8,3 +8,4 @@
 # React Router
 /.react-router/
 /build/
+.playwright-mcp/

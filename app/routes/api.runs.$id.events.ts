@@ -12,7 +12,9 @@ export async function loader({ params, request }: Route.LoaderArgs) {
   const run = await getRun(params.id);
   if (!run) throw new Response("Not found", { status: 404 });
 
-  const after = Number(request.headers.get("Last-Event-ID") ?? 0) || 0;
+  // EventSource sends Last-Event-ID on reconnect; `?after=` covers the first connect.
+  const resume = request.headers.get("Last-Event-ID") ?? new URL(request.url).searchParams.get("after");
+  const after = Number(resume ?? 0) || 0;
   const encoder = new TextEncoder();
 
   const stream = new ReadableStream<Uint8Array>({

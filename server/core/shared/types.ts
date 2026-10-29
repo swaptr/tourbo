@@ -130,6 +130,7 @@ export const Plan = z.object({
   stops: z.array(CityPlan),
   legs: z.array(Leg),
   totalKm: z.number(),
+  summary: z.string().optional(),
 });
 export type Plan = z.infer<typeof Plan>;
 
