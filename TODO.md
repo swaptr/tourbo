@@ -22,7 +22,7 @@ Stages follow PLAN.md §11. Deadline **2026-10-30 11:45pm EDT**. Stage 4 = minim
 - [x] `qlooGet()`: GET, `X-Api-Key`, retries 429/5xx, p-limit 8, call count
 - [x] `params.ts`: per-`filter.type` param whitelist (generated from docs), unknown params rejected; `allowUnlisted` escape hatch
 - [x] `api.server.ts`: `searchEntities`, `searchTags`, `insights`, `heatmap`
-- [ ] `api.server.ts`: `compare`, `trending` (if needed)
+- [x] ~~`api.server.ts`: `compare`, `trending`~~ not needed (compare tab uses the run's own scores)
 - [x] Postgres client + schema (runs, trace_events, qloo_cache, outreach); dev Postgres via `compose.yaml` on :5433
 - [x] Cache: sha256(sorted query) → `qloo_cache`, 7-day TTL, best-effort (probe rerun 17 s → 2.5 s)
 - [x] `scripts/probe.ts` (`npm run qloo:probe`). Findings (Chicago):
@@ -60,7 +60,7 @@ Stages follow PLAN.md §11. Deadline **2026-10-30 11:45pm EDT**. Stage 4 = minim
 - [x] `npm run agent:demo -- "<artist>" [na|in] [shows]`; fails cleanly without credentials
 - [x] Live runs (2026-10-29): Japanese Breakfast NA 6 shows → critic 2 issues, all backups, $0.017, 78 s; Arijit Singh IN 5 shows → no issues, $0.013, 38 s; prompt cache reads > 0. (Opus orchestrator was $0.18/run → switched to Haiku 5.5.)
 - [x] Fixed: critic ref matching ("Name (type)"), ambiguous seed cities (`query`: Washington → D.C., New York → NYC, Richmond → Virginia; Shillong dropped; all 68 verified within ~1 km), venue pool (all 4 tags per step, 12 candidates, parallel)
-- [ ] Known quality gaps: India venues include hotel banquet halls (thin venue data); LLM copy occasionally embellishes ("comes home to Capitol Hill"); default room size 200–800 is wrong for arena-level artists (UI should set it)
+- [ ] Known quality gaps: India venues include hotel banquet halls (thin venue data); LLM copy occasionally embellishes ("comes home to Capitol Hill"); room size now set in the UI (club / theater / amphitheater / arena presets)
 - [x] Wire `startRun()` into the home action (Stage 4)
 
 ## Stage 4 — UI (minimum to submit)
