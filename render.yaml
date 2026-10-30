@@ -5,6 +5,8 @@ services:
     dockerfilePath: ./Dockerfile
     healthCheckPath: /healthz
     plan: free
+    # Next to the Supabase database (eu-west-3, Paris); every page makes several DB round trips.
+    region: frankfurt
     # Deploy a push to main only after every GitHub check on it passes (.github/workflows/ci.yml).
     autoDeployTrigger: checksPass
     envVars:
