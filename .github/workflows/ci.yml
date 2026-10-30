@@ -6,7 +6,8 @@
 # - "Run workflow" with "seed cities" ticked: load GeoNames cities into DATABASE_URL (one-time).
 # Required secrets: RENDER_API_KEY, RENDER_SERVICE_ID, DATABASE_URL, QLOO_API_KEY, ANTHROPIC_API_KEY.
 # Optional secrets: MCP_TOKENS, RESEND_API_KEY, RESEND_WEBHOOK_SECRET, OUTREACH_REPLY_DOMAIN.
-# Variable: TOURBO_URL (https://<service>.onrender.com), used as PUBLIC_URL and by keepalive.yml.
+# Variables: TOURBO_URL (https://<service>.onrender.com), used as PUBLIC_URL and by keepalive.yml;
+# QLOO_BASE_URL (optional, defaults to https://hackathon.api.qloo.com).
 name: ci
 
 on:
@@ -69,7 +70,7 @@ jobs:
       # Everything the app reads in production. Empty values are left out.
       APP_DATABASE_URL: ${{ secrets.DATABASE_URL }}
       APP_QLOO_API_KEY: ${{ secrets.QLOO_API_KEY }}
-      APP_QLOO_BASE_URL: https://hackathon.api.qloo.com
+      APP_QLOO_BASE_URL: ${{ vars.QLOO_BASE_URL || 'https://hackathon.api.qloo.com' }}
       APP_ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
       APP_PUBLIC_URL: ${{ vars.TOURBO_URL }}
       APP_DEMO_DISCIPLINES: all
