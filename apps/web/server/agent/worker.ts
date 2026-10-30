@@ -7,6 +7,7 @@ import type { AngleFacts, Artist, Evidence, Opener, Reference, Venue } from "@to
 import { discipline, type Discipline } from "@tourbo/core/disciplines/index.ts";
 import { WORKER_MODEL } from "./models.ts";
 import { recordUsage } from "./usage.ts";
+import { friendlyError, logError } from "./errors.ts";
 
 const WorkerOutput = z.object({
   venueId: z.string().describe("entity id of the chosen venue, from the candidates"),
@@ -107,7 +108,8 @@ export async function planCityWithWorker(input: WorkerInput, emit: Emit): Promis
       return request();
     })
     .catch((error: Error) => {
-      emit("repair", `${input.city}: worker failed (${error.message.slice(0, 120)})`, { city: input.city });
+      logError(`worker ${input.city}`, error);
+      emit("repair", `${input.city}: worker failed (${friendlyError(error)})`, { city: input.city });
       return undefined;
     });
 

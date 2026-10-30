@@ -1,0 +1,39 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-10-30T14:00:00Z",
+  "title": "Design System: Tourbo",
+  "extensions": {
+    "colorMeta": {
+      "tomato": { "role": "primary", "displayName": "Tomato", "canonical": "oklch(0.55 0.17 35)", "tonalRamp": ["oklch(0.25 0.1 35)","oklch(0.35 0.13 35)","oklch(0.45 0.16 35)","oklch(0.55 0.17 35)","oklch(0.65 0.15 35)","oklch(0.75 0.11 35)","oklch(0.85 0.07 35)","oklch(0.95 0.03 35)"] },
+      "cobalt": { "role": "secondary", "displayName": "Cobalt", "canonical": "oklch(0.45 0.13 262)", "tonalRamp": ["oklch(0.2 0.08 262)","oklch(0.3 0.11 262)","oklch(0.4 0.13 262)","oklch(0.5 0.13 262)","oklch(0.6 0.12 262)","oklch(0.7 0.1 262)","oklch(0.82 0.06 262)","oklch(0.94 0.02 262)"] },
+      "paper": { "role": "neutral", "displayName": "Programme Paper", "canonical": "oklch(0.954 0.013 82.4)" },
+      "ink": { "role": "neutral", "displayName": "Programme Ink", "canonical": "oklch(0.288 0.05 265.9)" }
+    },
+    "typographyMeta": {
+      "display": { "displayName": "Bill serif", "purpose": "Hero and plan titles; regular weight only." },
+      "body": { "displayName": "Working sans", "purpose": "Everything operated." }
+    },
+    "shadows": [
+      { "name": "sticker", "value": "0 1px 0 0 var(--border), 0 8px 24px -12px color-mix(in oklch, var(--foreground) 25%, transparent)", "purpose": "Hover lift on cards that open something." }
+    ],
+    "motion": [
+      { "name": "state", "value": "150-250ms ease-out", "purpose": "State transitions only; reduced motion disables." }
+    ],
+    "breakpoints": [ { "name": "sm", "value": "640px" }, { "name": "lg", "value": "1024px" } ]
+  },
+  "components": [
+    { "name": "Primary Button", "kind": "button", "refersTo": "button-primary", "description": "The one action per screen.", "html": "<button class=\"ds-btn\">Plan a tour</button>", "css": ".ds-btn{height:2rem;padding:0 10px;border-radius:var(--radius);background:var(--primary);color:var(--primary-foreground);font:500 14px var(--font-sans);border:0}.ds-btn:hover{background:color-mix(in oklch,var(--primary) 80%,transparent)}.ds-btn:focus-visible{outline:3px solid color-mix(in oklch,var(--ring) 50%,transparent)}" },
+    { "name": "Fact Chip", "kind": "chip", "refersTo": "fact-chip", "description": "Inline fan-data evidence with meter.", "html": "<span class=\"ds-chip\"><span class=\"ds-m\"><span></span></span>fans over-index 3.2x</span>", "css": ".ds-chip{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--border);background:color-mix(in oklch,var(--muted) 50%,transparent);border-radius:9999px;padding:2px 8px;font:500 12px var(--font-sans)}.ds-m{width:32px;height:6px;border-radius:9999px;background:var(--muted);overflow:hidden}.ds-m span{display:block;height:100%;width:70%;background:var(--score-3)}" },
+    { "name": "Why trigger", "kind": "custom", "refersTo": "why-trigger", "description": "Opens the numbers behind a suggestion.", "html": "<button class=\"ds-why\">why?</button>", "css": ".ds-why{height:20px;padding:0 8px;border:1px solid var(--border);border-radius:9999px;background:none;color:var(--muted-foreground);font:12px var(--font-sans)}.ds-why:hover{background:var(--muted);color:var(--foreground)}" }
+  ],
+  "narrative": {
+    "northStar": "The Printed Programme",
+    "keyCharacteristics": ["Warm paper / ink, one tomato accent, cobalt second", "Two faces only", "Tabular numerals", "One control height scale", "Evidence inline, details behind why?"],
+    "rules": [
+      { "name": "The One Voice Rule", "body": "Tomato marks the single primary action and the single most important figure on a screen.", "section": "colors" },
+      { "name": "The Ramp Is Fans Rule", "body": "The straw-to-oxblood ramp always means fan strength.", "section": "colors" },
+      { "name": "The Serif Is Regular Rule", "body": "Headings use font-heading font-normal; never bold Instrument Serif.", "section": "typography" },
+      { "name": "The Flat-At-Rest Rule", "body": "Nothing casts a shadow at rest except floating layers.", "section": "elevation" }
+    ]
+  }
+}

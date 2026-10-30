@@ -9,6 +9,9 @@ export type { Compare, CompareCity };
 const RAMP = ["bg-score-1", "bg-score-2", "bg-score-3", "bg-score-4"] as const;
 export const rampClass = (value: number) => RAMP[Math.min(3, Math.max(0, Math.floor(value / 25)))];
 
+// A near-empty comparison city turns the "×" ratio silly (63.0×, 436.0×): above 10× just say so.
+const tameRatio = (line: string) => line.replace(/(\d+(?:\.\d+)?)× the fan pull/g, (m, n: string) => (Number(n) > 10 ? "over 10× the fan pull" : m));
+
 const money = (n: number, currency: string) => new Intl.NumberFormat("en", { style: "currency", currency, maximumFractionDigits: 0 }).format(n);
 const km = (n: number) => `${new Intl.NumberFormat("en").format(Math.round(n))} km`;
 
@@ -37,7 +40,7 @@ export function WhyCompare({ compare, checkedAt, className }: { compare: Compare
       ),
       better: (a, b) => a.fanStrength > b.fanStrength,
     },
-    { label: "Leans to the act", cell: (c) => <span className="num">{c.lean.toFixed(1)}×</span>, better: (a, b) => a.lean > b.lean },
+    { label: "Leans to the act", cell: (c) => <span className="num">{c.lean > 10 ? ">10" : c.lean.toFixed(1)}×</span>, better: (a, b) => a.lean > b.lean },
     { label: "Room fit", cell: (c) => <Explain why={`Expected crowd ~${new Intl.NumberFormat("en").format(c.tickets)}. A room a bit smaller than demand sells out; a much bigger one looks empty and costs more.`}>{c.roomFit}</Explain> },
     {
       label: "Night profit",
@@ -57,7 +60,7 @@ export function WhyCompare({ compare, checkedAt, className }: { compare: Compare
 
   return (
     <div className={cn("grid gap-3 text-sm", className)} data-testid="why-compare">
-      <p>{compare.line}</p>
+      <p>{tameRatio(compare.line)}</p>
       {compare.reason && (
         <p className="text-xs">
           <span className="text-muted-foreground">Why {skipped.name} was skipped: </span>
@@ -73,10 +76,10 @@ export function WhyCompare({ compare, checkedAt, className }: { compare: Compare
             <th className="w-[34%] pb-1.5 font-normal text-muted-foreground" scope="col">
               <span className="sr-only">Measure</span>
             </th>
-            <th className="pb-1.5 font-heading text-base font-normal" scope="col">
-              {chosen.name} <span className="text-[10px] tracking-widest text-primary uppercase">picked</span>
+            <th className="pb-1.5 text-sm font-medium" scope="col">
+              {chosen.name} <span className="text-xs tracking-wide text-primary uppercase">picked</span>
             </th>
-            <th className="pb-1.5 font-heading text-base font-normal text-muted-foreground" scope="col">
+            <th className="pb-1.5 text-sm font-medium text-muted-foreground" scope="col">
               {skipped.name}
             </th>
           </tr>

@@ -8,7 +8,7 @@ import raw from "./data/cities.json" with { type: "json" };
 const SEEDS = City.array().parse(raw);
 let WORLD: WorldCity[] = [];
 
-export type WorldCity = City & { country: string; population: number };
+export type WorldCity = City & { country: string; population: number; timezone?: string };
 
 export function setWorld(cities: WorldCity[]) {
   // Seed entries carry verified Qloo queries ("New York City", "Richmond, Virginia"): keep them.
@@ -19,6 +19,19 @@ export function setWorld(cities: WorldCity[]) {
   });
 }
 export const worldLoaded = () => WORLD.length > 0;
+
+// IANA time zone (GeoNames tz column) of the nearest world city within 150 km; undefined without
+// the world table. Used for calendar exports (tourbo_export_ics).
+export function timezoneAt(lat: number, lon: number): string | undefined {
+  let best: WorldCity | undefined;
+  let bestKm = 150;
+  for (const c of WORLD) {
+    if (!c.timezone || Math.abs(c.lat - lat) > 2) continue;
+    const km = distanceKm({ lat, lon }, c);
+    if (km < bestKm) [best, bestKm] = [c, km];
+  }
+  return best?.timezone;
+}
 
 export function seedCities(region: Region): City[] {
   const seeds = SEEDS.filter((city) => city.region === region);
@@ -70,3 +83,23 @@ export const allSeedCities = () => SEEDS;
 
 // Largest world cities (for maps); seeds when the world table isn't loaded.
 export const topCities = (n: number): City[] => (WORLD.length ? WORLD.slice(0, n) : SEEDS);
+
+// Any town by name (home base, "start near"): prefix matches first, then word / substring
+// matches, biggest towns first. Local data only (world table, else the seed list); no fan data.
+export function searchTowns(q: string, limit = 8): (City & { country?: string })[] {
+  const norm = (s: string) => s.normalize("NFKD").replace(/[̀-ͯ]/g, "").toLowerCase();
+  const t = norm(q.trim());
+  if (t.length < 2) return [];
+  const pool: (City & { country?: string; population?: number })[] = WORLD.length ? WORLD : SEEDS;
+  const scored: { c: (typeof pool)[number]; s: number }[] = [];
+  for (const c of pool) {
+    const n = norm(c.name);
+    const s = n === t ? 0 : n.startsWith(t) ? 1 : n.split(/[\s-]+/).some((w) => w.startsWith(t)) ? 2 : n.includes(t) ? 3 : -1;
+    if (s >= 0) scored.push({ c, s });
+  }
+  // WORLD is already sorted by population (largest first), so a stable sort keeps size order.
+  return scored
+    .sort((a, b) => a.s - b.s)
+    .slice(0, limit)
+    .map(({ c }) => ({ name: c.name, lat: c.lat, lon: c.lon, region: c.region, country: c.country }) as City & { country?: string });
+}

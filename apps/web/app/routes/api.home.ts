@@ -1,4 +1,5 @@
 import { devActDensity, devExamples, devTowns, devWorld } from "../../server/home.server";
+import { apiError } from "../../server/agent/errors";
 import type { Route } from "./+types/api.home";
 
 // Dev only: the landing export's shapes served live from Postgres, for the globe review page and
@@ -22,7 +23,7 @@ export async function loader({ request }: Route.LoaderArgs) {
       default:
         return new Response("Unknown part.", { status: 400 });
     }
-  } catch {
-    return new Response("Data unavailable.", { status: 503 });
+  } catch (error) {
+    return Response.json(apiError(error, "api.home", "The globe data didn't load. Try again in a moment."), { status: 503 });
   }
 }

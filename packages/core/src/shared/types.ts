@@ -17,7 +17,10 @@ export const REGION_NAMES: Record<Region, string> = {
 };
 
 // Discipline keys; profiles (entity types, spaces, prices, prep) live in disciplines/index.ts.
-export const PerformerKind = z.enum(["musician", "comedian", "dj", "dancer", "poet", "visual_artist", "author", "podcaster"]);
+export const PerformerKind = z.enum([
+  "musician", "comedian", "dj", "dancer", "poet", "visual_artist", "author", "podcaster",
+  "speaker", "magician", "theatre", "photographer", "maker", "busker", "circus", "chef", "filmmaker", "teacher",
+]);
 export type PerformerKind = z.infer<typeof PerformerKind>;
 
 const list = z.preprocess(
@@ -43,16 +46,25 @@ export const Area = z.object({
 });
 export type Area = z.infer<typeof Area>;
 
+// What a plan's fan signal comes from: the act itself, acts it sounds like, a style, or just the area.
+export const Basis = z.enum(["act", "peers", "styles", "city"]);
+export type Basis = z.infer<typeof Basis>;
+
 export const TourParams = z.object({
   artist: z.string().min(1),
   kind: PerformerKind.default("musician"),
   // "Sounds like": comparable acts blended into the fan signal (unknown or thin acts).
   peers: list,
   notInQloo: z.preprocess((v) => v === true || v === "true" || v === "on", z.boolean()).default(false), // "Not me" in onboarding
+  // Unlisted acts: genre/scene names or urn:tag ids ("My style is…"), and what the plan is built from.
+  styles: list.optional(),
+  basis: z.preprocess((v) => (v === "" ? undefined : v), Basis.optional()),
   region: Region.default("na"),
   homeBase: z.string().optional(),
   area: Area.optional(),
-  shows: z.coerce.number().int().min(2).max(20).default(8),
+  // A one-off event (PLAN Q21) is one night; a tour is two or more.
+  shows: z.coerce.number().int().min(1).max(20).default(8),
+  mode: z.enum(["tour", "event"]).optional(),
   startDate: z.iso.date(),
   endDate: z.iso.date().optional(),
   roomMin: z.coerce.number().int().positive().default(200),
@@ -75,6 +87,8 @@ export const Artist = z.object({
   popularity: z.number().optional(),
   image: z.string().optional(),
   tags: z.array(z.object({ id: z.string(), name: z.string() })).default([]),
+  basis: Basis.optional(),
+  styles: z.array(z.object({ id: z.string(), name: z.string() })).optional(), // style tags behind basis "styles"
 });
 export type Artist = z.infer<typeof Artist>;
 
@@ -183,9 +197,29 @@ export const ShowMoney = z.object({
   draw: z.number(),
   basis: z.string(),
   reason: z.string().optional(), // the agent's note when it overrides the model's pick
+  // Place features moved the reference ticket (PLAN §18 Q18): factor × the region's usual ticket,
+  // note = "price nudged −10% for local incomes".
+  priceNudge: z.object({ factor: z.number(), elasticity: z.number().optional(), note: z.string() }).optional(),
   estimate: z.literal(true).default(true),
 });
 export type ShowMoney = z.infer<typeof ShowMoney>;
+
+// Place features for one night (PLAN §18 Q18, packages/core/src/places/): open-data facts that
+// sharpen fan-data suggestions. Only `surfaced` ones change a suggestion; `facts` feed "why?".
+// dateRisk is the night card's warning chip (holiday / usual weather on the show date).
+export const PlaceNotes = z.object({
+  surfaced: z.array(z.string()).default([]),
+  changes: z.record(z.string(), z.string()).default({}),
+  facts: z.array(z.object({ id: z.string(), text: z.string(), refs: z.array(z.string()), strength: z.enum(["strong", "weak"]), source: z.string() })).default([]),
+  priceNudge: z.object({ factor: z.number(), elasticity: z.number(), incomeRatio: z.number(), anchor: z.string().optional() }).optional(),
+  youngerCrowd: z.object({ score: z.number(), skew: z.enum(["younger", "older", "even"]), fromFanData: z.boolean() }).optional(),
+  tone: z.object({ points: z.number(), strictness: z.enum(["standard", "careful", "strict"]), addTopics: z.array(z.enum(["religion", "politics", "head_of_state"])), advice: z.array(z.string()) }).optional(),
+  dateRisk: z
+    .object({ level: z.enum(["low", "medium", "high"]), reasons: z.array(z.string()), holidays: z.array(z.object({ date: z.string(), name: z.string(), national: z.boolean() })) })
+    .optional(),
+  spendHeadroom: z.object({ share: z.number(), relative: z.number(), level: z.enum(["tight", "ok", "roomy"]), spendUsd: z.number(), monthlyIncomeUsd: z.number() }).optional(),
+});
+export type PlaceNotes = z.infer<typeof PlaceNotes>;
 
 export const Access = z.object({
   nearestStation: z.object({ name: z.string(), km: z.number(), kind: z.string() }).optional(),
@@ -221,6 +255,14 @@ export const CityPlan = z.object({
   localArtists: z.array(Reference).optional(),
   access: Access.optional(), // venue access (OpenStreetMap)
   promo: z.object({ spend: z.number(), targets: z.array(PromoTarget), why: z.string() }).optional(),
+  place: PlaceNotes.optional(), // open-data place features for this city and date (PLAN §18 Q18)
+  // "Your pick" (PLAN Q19): the act changed this night; Tourbo's own suggestion stays for reference.
+  yours: z
+    .object({
+      changed: z.array(z.enum(["city", "venue", "date", "order", "added", "price", "room"])),
+      suggested: z.object({ city: z.string(), venue: z.string().optional(), profit: z.number().optional() }).optional(),
+    })
+    .optional(),
 });
 export type CityPlan = z.infer<typeof CityPlan>;
 
@@ -239,6 +281,8 @@ export const Plan = z.object({
     .object({ currency: z.string(), gross: z.number(), artistTake: z.number(), costs: z.number(), profit: z.number(), promoBudget: z.number().optional() })
     .optional(),
   medianFanIndex: z.number().optional(),
+  basis: Basis.optional(),
+  edited: z.number().optional(), // PLAN Q19: version of the act's edits applied on top of Tourbo's plan
 });
 export type Plan = z.infer<typeof Plan>;
 

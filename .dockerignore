@@ -6,3 +6,5 @@ README.md
 .env.*
 compose.yaml
 .data
+packages/mcp/dist
+mock/

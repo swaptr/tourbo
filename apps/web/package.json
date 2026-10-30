@@ -16,6 +16,8 @@
     "examples:prewarm": "node --env-file-if-exists=../../.env scripts/prewarm-examples.ts",
     "examples:fanmap": "node --env-file-if-exists=../../.env scripts/fanmap.ts",
     "examples:export": "node --env-file-if-exists=../../.env scripts/export-examples.ts",
+    "material:migrate": "node --env-file-if-exists=../../.env scripts/migrate-material.ts",
+    "pool:backfill": "node --env-file-if-exists=../../.env scripts/backfill-pool.ts",
     "landing:load": "node scripts/load-landing.ts"
   },
   "dependencies": {
@@ -26,8 +28,10 @@
     "@modelcontextprotocol/client": "^2.4.0",
     "@modelcontextprotocol/express": "^2.0.2",
     "@modelcontextprotocol/node": "^2.1.2",
+    "@modelcontextprotocol/server": "^2.4.0",
     "@react-router/express": "^8.5.1",
     "@react-router/node": "^8.5.1",
+    "@tanstack/react-virtual": "^3.14.24",
     "@tourbo/core": "*",
     "@tourbo/mcp": "*",
     "class-variance-authority": "^0.7.1",

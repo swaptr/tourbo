@@ -19,11 +19,16 @@ export type Run = {
 // doesn't own was cut off by a restart.
 const active = new Set<string>();
 
-export async function createRun(params: TourParams): Promise<string> {
+// ids are gen_random_uuid() (122 random bits): unguessable capability links. ownerHash is the
+// sha256 of the creator's owner key (owner.server.ts); ownerFrom copies another run's (Adjust).
+// profileId files the run under the act's profile (Q21 workspace); Adjust copies the parent's.
+export async function createRun(params: TourParams, owner: { ownerHash?: string; ownerFrom?: string; profileId?: string } = {}): Promise<string> {
   const sql = await db();
   const [row] = await sql<{ id: string }[]>`
-    insert into runs (artist_name, params, status)
-    values (${params.artist}, ${sql.json(params as postgres.JSONValue)}, 'pending')
+    insert into runs (artist_name, params, status, owner_hash, profile_id)
+    values (${params.artist}, ${sql.json(params as postgres.JSONValue)}, 'pending',
+      coalesce(${owner.ownerHash ?? null}, (select owner_hash from runs where id = ${owner.ownerFrom ?? null}::uuid)),
+      coalesce(${owner.profileId ?? null}::uuid, (select profile_id from runs where id = ${owner.ownerFrom ?? null}::uuid)))
     returning id
   `;
   return row.id;
@@ -85,20 +90,18 @@ export function markActive(id: string) {
   active.add(id);
 }
 
-export type RunSummary = { id: string; artistName: string; shows: number; region: string; createdAt: string };
+export const isActive = (id: string) => active.has(id);
 
-// Finished tours for the home page.
-export async function recentRuns(limit = 6): Promise<RunSummary[]> {
+// Finished AI outputs inside a run (run_steps), reused when a failed or interrupted run resumes.
+export async function getSteps<T>(runId: string, step: string): Promise<Map<string, T>> {
   const sql = await db();
-  const rows = await sql<{ id: string; artist_name: string; params: TourParams; created_at: Date }[]>`
-    select id, coalesce(plan->'artist'->>'name', artist_name) as artist_name, params, created_at
-    from runs where status = 'done' order by created_at desc limit ${limit}
-  `;
-  return rows.map((r) => ({
-    id: r.id,
-    artistName: r.artist_name,
-    shows: r.params.shows,
-    region: r.params.region,
-    createdAt: r.created_at.toISOString(),
-  }));
+  const rows = await sql<{ key: string; output: T }[]>`select key, output from run_steps where run_id = ${runId} and step = ${step}`;
+  return new Map(rows.map((r) => [r.key, r.output]));
+}
+
+export async function saveStep(runId: string, step: string, key: string, output: unknown) {
+  const sql = await db();
+  await sql`
+    insert into run_steps (run_id, step, key, output) values (${runId}, ${step}, ${key}, ${sql.json(output as postgres.JSONValue)})
+    on conflict (run_id, step, key) do update set output = excluded.output, created_at = now()`;
 }

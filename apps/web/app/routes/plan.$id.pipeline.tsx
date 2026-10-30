@@ -1,6 +1,9 @@
-import { Form, Link, useNavigation } from "react-router";
+import { ErrorLine } from "~/components/state";
+import { Hint } from "~/components/hint";
+import { Form, Link, useNavigation, useSubmit } from "react-router";
+import { MoreMenu } from "~/components/more-menu";
 
-import { RunTabs } from "~/components/run-tabs";
+import { keepOnViewChange } from "~/lib/plan-nav";
 import { Badge } from "~/components/ui/badge";
 import { Button } from "~/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "~/components/ui/card";
@@ -8,6 +11,7 @@ import { Input } from "~/components/ui/input";
 import { Textarea } from "~/components/ui/textarea";
 import { getRun } from "../../server/agent/runs.server";
 import { outreachMode } from "../../server/outreach/email.server";
+import { apiError } from "../../server/agent/errors";
 import {
   confirm,
   draftAll,
@@ -20,18 +24,12 @@ import {
   updateDraft,
 } from "../../server/outreach/outreach.server";
 import type { Outreach, OutreachStatus } from "@tourbo/core/shared/types.ts";
+import { LABELS } from "~/lib/labels";
 import type { Route } from "./+types/plan.$id.pipeline";
 
 const UUID = /^[0-9a-f-]{36}$/i;
 
-const COLUMNS: { status: OutreachStatus; label: string }[] = [
-  { status: "drafted", label: "Drafted" },
-  { status: "sent", label: "Sent" },
-  { status: "interested", label: "Interested" },
-  { status: "hold", label: "Hold" },
-  { status: "passed", label: "Passed" },
-  { status: "confirmed", label: "Confirmed" },
-];
+const COLUMNS: { status: OutreachStatus; label: string }[] = (["drafted", "sent", "interested", "hold", "passed", "confirmed"] as const).map((status) => ({ status, label: LABELS.booking[status] }));
 
 export function meta({ loaderData }: Route.MetaArgs) {
   return [{ title: loaderData ? `${loaderData.artistName}: outreach — Tourbo` : "Tourbo" }];
@@ -89,51 +87,59 @@ export async function action({ params, request }: Route.ActionArgs) {
         break;
     }
   } catch (error) {
-    return { error: (error as Error).message };
+    return apiError(error, "pipeline");
   }
   return null;
 }
+
+export const shouldRevalidate = keepOnViewChange;
 
 export default function Pipeline({ loaderData, actionData }: Route.ComponentProps) {
   const { outreach, mode } = loaderData;
   const busy = useNavigation().state !== "idle";
   const drafted = outreach.filter((o) => o.status === "drafted").length;
+  const submit = useSubmit();
 
   return (
-    <main className="container mx-auto space-y-6 px-4 py-8">
+    <div className="space-y-6">
       <div>
-        <h1 className="font-heading text-2xl tracking-tight">{loaderData.artistName}: venue emails</h1>
-        <p className="mt-1 max-w-3xl text-sm text-muted-foreground">
-          Tourbo drafts one email per venue; you approve before anything is sent. When a venue replies with an offer, Tourbo
-          checks it against your lowest fee and drafts an accept, a counter or a polite no.{" "}
-          <span className="text-xs">
-            Demo sandbox: emails go to <span className="font-medium">{mode.inbox}</span>
-            {mode.sending === "simulated" && " (simulated, no email key)"}, never to a real venue.
-          </span>
+        <h2 className="font-heading text-lg tracking-tight">Venue emails</h2>
+        <p className="mt-1 text-sm text-muted-foreground">One email per venue. Nothing is sent until you approve it.</p>
+        <p className="mt-1 flex items-center gap-1.5 text-xs text-muted-foreground">
+          <span>Emails are in practice mode; nothing is sent.</span>
+          <Hint label="About practice mode">
+            {mode.sending === "simulated" ? "Sending is simulated on this site. " : ""}No email reaches a real venue. When a venue replies with an offer,
+            Tourbo checks it against your lowest fee and drafts an accept, a counter or a polite no.
+          </Hint>
         </p>
       </div>
-      <RunTabs runId={loaderData.id} />
 
       {!loaderData.hasPlan ? (
         <p className="text-sm text-muted-foreground">
-          Outreach starts once the plan is ready. <Link to={`/plan/${loaderData.id}`} className="underline">Back to the plan</Link>
+          Emails start once the plan is ready. <Link to={`/plan/${loaderData.id}`} className="underline">Back to the plan</Link> ·{" "}
+          <Link to="/help" className="underline">Need help?</Link>
         </p>
       ) : (
         <>
-          <Form method="post" className="flex flex-wrap gap-2">
-            <Button type="submit" name="intent" value="draft-all" variant="outline" disabled={busy}>
-              {outreach.length ? "Draft missing inquiries" : "Draft venue inquiries"}
-            </Button>
-            {drafted > 0 && (
-              <Button type="submit" name="intent" value="send-all" disabled={busy}>
+          <Form method="post" className="flex flex-wrap items-center gap-2">
+            {drafted > 0 ? (
+              <Button type="submit" name="intent" value="send-all" data-primary disabled={busy}>
                 Approve & send all ({drafted})
               </Button>
+            ) : (
+              <Button type="submit" name="intent" value="draft-all" data-primary disabled={busy}>
+                {outreach.length ? "Draft missing emails" : "Draft venue emails"}
+              </Button>
             )}
-            {busy && <span className="self-center text-sm text-muted-foreground">Working…</span>}
+            {drafted > 0 && (
+              <MoreMenu size="default" items={[{ label: "Draft missing emails", disabled: busy, onSelect: () => submit({ intent: "draft-all" }, { method: "post" }) }]} />
+            )}
+            {busy && <span className="text-sm text-muted-foreground">Working…</span>}
           </Form>
-          {actionData?.error && <p className="text-sm text-destructive">{actionData.error}</p>}
+          {!outreach.length && <p className="text-sm text-muted-foreground">No emails yet. Draft them, read them, then approve.</p>}
+          {actionData?.error && !busy && <ErrorLine message={actionData.error} />}
 
-          <div className="grid gap-3 md:grid-cols-3 xl:grid-cols-6">
+          <div className="grid gap-3 @xl:grid-cols-3 @4xl:grid-cols-6">
             {COLUMNS.map((column) => {
               const items = outreach.filter((o) => o.status === column.status);
               return (
@@ -151,7 +157,7 @@ export default function Pipeline({ loaderData, actionData }: Route.ComponentProp
           </div>
         </>
       )}
-    </main>
+    </div>
   );
 }
 
@@ -200,7 +206,7 @@ function OutreachCard({ item, busy }: { item: Outreach; busy: boolean }) {
         {(item.status === "interested" || item.status === "hold") && (
           <Form method="post">
             <input type="hidden" name="id" value={item.id} />
-            <Button type="submit" name="intent" value="confirm" size="xs" disabled={busy}>
+            <Button type="submit" name="intent" value="confirm" size="xs" variant="outline" disabled={busy}>
               Mark confirmed
             </Button>
           </Form>
@@ -255,7 +261,7 @@ function OfferBlock({ id, offer, busy }: { id: string; offer: OfferState; busy: 
           </ul>
         </>
       )}
-      {offer.error && <p className="text-destructive">{offer.error}</p>}
+      <ErrorLine message={offer.error} />
       {offer.reply && (
         <details>
           <summary className="cursor-pointer text-muted-foreground">{offer.sent ? "Reply sent" : "Review reply"}</summary>

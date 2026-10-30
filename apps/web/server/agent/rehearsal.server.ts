@@ -5,6 +5,7 @@ import { z } from "zod";
 import { db } from "@tourbo/core/db/client.server.ts";
 import { discipline } from "@tourbo/core/disciplines/index.ts";
 import { groundReactions, personas, tally, type Persona, type Reaction } from "@tourbo/core/engine/rehearsal.ts";
+import { stopKey } from "@tourbo/core/engine/edit.ts";
 import { PlainError } from "./errors.ts";
 import { WORKER_MODEL } from "./models.ts";
 import { getPreps, type ShowPrep } from "./prep.server.ts";
@@ -61,7 +62,7 @@ export async function rehearse(runId: string, stopIndex: number): Promise<Rehear
   const prep: ShowPrep | undefined = preps[stopIndex];
   if (!run?.plan || !prep) throw new PlainError("Write the show notes for this night first, then rehearse them.");
   const panel = personas(prep.brief, prep.city);
-  if (!panel.length) throw new PlainError("Qloo has too little taste data for this city to build a panel. Rehearse another night.");
+  if (!panel.length) throw new PlainError("The fan data has too little taste data for this city to build a panel. Rehearse another night.");
   const set = prep.final.items.map((it, item) => ({ item, section: it.section, text: it.text }));
   const noun = discipline(run.plan.artist.kind).noun;
   const results = await Promise.all(
@@ -74,6 +75,6 @@ export async function rehearse(runId: string, stopIndex: number): Promise<Rehear
   const sql = await db();
   await sql`
     update show_prep set prep = jsonb_set(prep, '{rehearsal}', ${sql.json(rehearsal as never)}), updated_at = now()
-    where run_id = ${runId} and stop_index = ${stopIndex}`;
+    where run_id = ${runId} and (stop_key = ${stopKey(run.plan.stops[stopIndex])} or (stop_key is null and stop_index = ${stopIndex}))`;
   return rehearsal;
 }

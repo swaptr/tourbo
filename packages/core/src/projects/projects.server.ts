@@ -20,13 +20,18 @@ const toProject = (r: ProjectRow): Project => ({
   createdAt: r.created_at.toISOString(),
 });
 
-export async function createProject(input: { title: string; artist?: string; kind?: string }): Promise<Project> {
+// ownerHash: sha256 of the creator's owner key (website); MCP-made projects have none.
+export async function createProject(input: { title: string; artist?: string; kind?: string; ownerHash?: string }): Promise<Project> {
   const sql = await db();
   const [row] = await sql<ProjectRow[]>`
-    insert into projects (title, artist, kind) values (${input.title.trim()}, ${input.artist?.trim() || null}, ${input.kind ?? null})
+    insert into projects (title, artist, kind, owner_hash) values (${input.title.trim()}, ${input.artist?.trim() || null}, ${input.kind ?? null}, ${input.ownerHash ?? null})
     returning id, title, artist, kind, created_at`;
   return toProject(row);
 }
+
+// Story-test fixtures ("Story test spring tour", "… Fakeband") stay in the database but never show
+// in lists or on a plan's header; a direct /projects/:id link still opens them.
+export const TEST_TITLE = "^story test\\M|fakeband";
 
 export async function listProjects(limit = 30): Promise<(Project & { items: number; runs: number })[]> {
   const sql = await db();
@@ -34,7 +39,7 @@ export async function listProjects(limit = 30): Promise<(Project & { items: numb
     select p.id, p.title, p.artist, p.kind, p.created_at,
       (select count(*)::int from project_items i where i.project_id = p.id) as items,
       (select count(*)::int from runs r where r.project_id = p.id) as runs
-    from projects p order by p.created_at desc limit ${limit}`;
+    from projects p where p.title !~* ${TEST_TITLE} order by p.created_at desc limit ${limit}`;
   return rows.map((r) => ({ ...toProject(r), items: r.items, runs: r.runs }));
 }
 
@@ -115,6 +120,6 @@ export async function projectOfRun(runId: string): Promise<Project | undefined> 
   if (!UUID.test(runId)) return undefined;
   const sql = await db();
   const [row] = await sql<ProjectRow[]>`
-    select p.id, p.title, p.artist, p.kind, p.created_at from runs r join projects p on p.id = r.project_id where r.id = ${runId}`;
+    select p.id, p.title, p.artist, p.kind, p.created_at from runs r join projects p on p.id = r.project_id where r.id = ${runId} and p.title !~* ${TEST_TITLE}`;
   return row && toProject(row);
 }

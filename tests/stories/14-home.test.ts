@@ -4,6 +4,7 @@
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import { test } from "node:test";
+import { pathToFileURL } from "node:url";
 import type { Page } from "playwright-core";
 
 import { exampleProblem } from "../../packages/core/src/examples/check.ts";
@@ -11,7 +12,8 @@ import type { HomeExample } from "../../packages/core/src/examples/types.ts";
 import { appUp, BASE } from "./_mcp.ts";
 import { browser, chromiumPath } from "./_browser.ts";
 
-const DIR = new URL("../../apps/web/public/landing/", import.meta.url);
+// STORY_LANDING_DIR checks another export (e.g. examples:export -- --out /tmp/landing) before it replaces the committed one.
+const DIR = process.env.STORY_LANDING_DIR ? pathToFileURL(process.env.STORY_LANDING_DIR.replace(/\/?$/, "/")) : new URL("../../apps/web/public/landing/", import.meta.url);
 const manifest = await readFile(new URL("manifest.json", DIR), "utf8").then(JSON.parse).catch(() => undefined);
 const noExport = !manifest && "no static export yet (npm run examples:export)";
 // "warming": the export gate failed, so only the world layer and towns were written.
@@ -34,6 +36,24 @@ test("home data: ≥ 50 examples on ≥ 6 continents, complete and honest", { sk
     assert.doesNotMatch(text, /[$€£₹]-|-\$|Qloo|Claude|Anthropic|fanIndex|heatmap/i, ex.id);
     assert.equal((ex as { fanPoints?: unknown }).fanPoints, undefined, `${ex.id}: no fan points in the examples file`);
   }
+});
+
+test("home data: night counts come from the data (3–8 nights, no count on > 50% of examples)", { skip: noExamples }, async () => {
+  const examples: HomeExample[] = await readJson(manifest.files.examples);
+  const counts = new Map<number, number>();
+  for (const ex of examples) {
+    const n = ex.route.length;
+    assert.ok(n >= 3 && n <= 8, `${ex.id}: ${n} nights`);
+    counts.set(n, (counts.get(n) ?? 0) + 1);
+    const shown = new Set(ex.cities.map((c) => c.name));
+    for (const r of ex.route) assert.ok(shown.has(r.name), `${ex.id}: night in ${r.name} is one of the example's cities`);
+    assert.ok(ex.tourProfit.nights <= n, `${ex.id}: ${ex.tourProfit.nights} paying nights of ${n}`);
+    const said = ex.feature === "route" && ex.decision.headline.match(/^(\d+) nights/);
+    if (said) assert.equal(Number(said[1]), n, `${ex.id}: headline says ${said[1]} nights, route has ${n}`);
+  }
+  const spread = [...counts].sort((a, b) => a[0] - b[0]).map(([n, k]) => `${n} ×${k}`).join(", ");
+  assert.ok(counts.size >= 3, `nights per example: ${spread}`);
+  for (const [n, k] of counts) assert.ok(k <= examples.length / 2, `${n} nights on ${k} of ${examples.length} examples (${spread})`);
 });
 
 test("home data: the globe is never empty (world layer + ≥ 1,000 city lights, without any example)", { skip: noExport }, async () => {
@@ -72,12 +92,12 @@ async function markers(page: Page) {
   return all.filter((_, k) => reachable[k]);
 }
 const DIALOG = "[data-testid=info-panel]";
-const FRONT_H2 = `${DIALOG} .ec-layer[data-front] h2`;
+const FRONT_H2 = `${DIALOG} .ec-layer[data-front] .ec-headline`;
 const headline = (page: Page) => page.locator(FRONT_H2).textContent();
 const inspecting = async (page: Page) => (await page.locator(DIALOG).getAttribute("data-active")) != null;
 // The story's example id (the globe publishes it); the card shows "12 / 339", no dots.
 const storyDot = (page: Page) => page.locator("[data-testid=globe-canvas]").getAttribute("data-story");
-const NEXT = { name: /next example/i }, PREV = { name: /previous example/i };
+const NEXT = { name: /next example/i }, PREV = { name: /prev(ious)? example/i };
 const view = async (page: Page) => ((await page.locator("[data-testid=globe-canvas]").getAttribute("data-view")) ?? "0,0,0").split(",").map(Number);
 // Hold the showcase still with the pause control, so markers stay put while the test aims.
 async function holdStill(page: Page) {
@@ -264,7 +284,6 @@ test("home UI: hovering pauses the next example; leaving resumes it; rotation on
   try {
     const page = await b.newPage({ viewport: { width: 1440, height: 900 } });
     await openHome(page);
-    const story = await storyDot(page);
     let m = lonely(await markers(page));
     assert.ok(m, "a marker is visible");
     // The globe keeps turning, so follow the marker until the hover takes (it needs a short rest).
@@ -276,7 +295,11 @@ test("home UI: hovering pauses the next example; leaving resumes it; rotation on
     }
     await page.waitForFunction((sel) => document.querySelector(sel)?.hasAttribute("data-active"), DIALOG, { timeout: 3000 });
     assert.equal(await page.getByTestId("play-control").getAttribute("data-state"), "paused-by-interaction");
+    // The story may advance once while the pointer is still travelling; from the hover on, it holds.
+    const story = await storyDot(page);
     for (let k = 0; k < 6; k++) {
+      // Stay on the marker as the globe turns (on the large lg globe it drifts past the hover zone).
+      m = (await markers(page)).find((o) => o.i === m!.i) ?? m;
       await page.mouse.move(m.x + (k % 2), m.y);
       await page.waitForTimeout(1000);
     }
@@ -589,12 +612,12 @@ test("home UI: every control works", { skip: noUi, timeout: 180_000 }, async () 
     await page.waitForTimeout(400);
     assert.equal(await inspecting(page), false, "Esc closes");
     // Try it with your act → /start?artist=…
-    await page.getByPlaceholder("Try it with any act").fill("Phoebe Bridgers");
-    await page.getByPlaceholder("Try it with any act").press("Enter");
-    await page.waitForURL(/\/start\?artist=Phoebe/, { timeout: 10_000 });
-    // Plan my tour → /start.
+    await page.getByLabel("Try it with any act").fill("Phoebe Bridgers");
+    await page.getByLabel("Try it with any act").press("Enter");
+    await page.waitForURL(/\/start\?next=tour&artist=Phoebe/, { timeout: 10_000 });
+    // Plan a tour → the profile (first time), then straight into the new tour (PLAN Q21).
     await page.goto(`${BASE}/`);
-    await page.locator("a[href=\"/start\"]", { hasText: "Plan my tour" }).click();
+    await page.locator("a[href=\"/start?next=tour\"]", { hasText: "Plan a tour" }).click();
     await page.waitForURL(/\/start/, { timeout: 10_000 });
   } finally {
     await b.close();
@@ -794,7 +817,7 @@ test("home UI: nearby examples draw as flat secondary surfaces; hovering one sho
     assert.ok(m, "a neighbour's marker is reachable");
     await page.mouse.move(m!.x - 30, m!.y - 30);
     await page.mouse.move(m!.x, m!.y, { steps: 8 });
-    await page.waitForFunction((h) => document.querySelector("[data-testid=info-panel] .ec-layer[data-front] h2")?.textContent !== h, before, { timeout: 4000 });
+    await page.waitForFunction((h) => document.querySelector("[data-testid=info-panel] .ec-layer[data-front] .ec-headline")?.textContent !== h, before, { timeout: 4000 });
     assert.match((await headline(page)) ?? "", /\S/, "the neighbour's headline shows");
   } finally {
     await b.close();

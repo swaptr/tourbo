@@ -1,9 +1,10 @@
 // Story 17 (PLAN Q5): the product speaks as Tourbo. No vendor names in visible text outside
 // /connect, and /connect treats every AI assistant equally. Needs the app running.
-// The plan/prep pages use STORY_RUN_ID, else the first plan linked from a project; skipped if none.
+// The plan/prep pages use STORY_RUN_ID, else the newest finished plan in the DB; skipped if none.
 import assert from "node:assert/strict";
 import { test } from "node:test";
 
+import { closeDb, db } from "@tourbo/core/db/client.server.ts";
 import { appUp, BASE } from "./_mcp.ts";
 
 const up = await appUp();
@@ -34,18 +35,29 @@ function vendorHits(path: string, html: string) {
 
 async function findRun(): Promise<string | undefined> {
   if (process.env.STORY_RUN_ID) return process.env.STORY_RUN_ID;
-  const projects = [...new Set((await page("/projects")).match(/\/projects\/[0-9a-f-]{36}/g) ?? [])];
-  for (const p of projects.slice(0, 10)) {
-    const id = (await page(p)).match(/\/plan\/([0-9a-f-]{36})/)?.[1];
-    if (id) return id;
+  // Projects are retired (PLAN Q21): the newest finished plan in the app's database (read-only).
+  try {
+    const sql = await db();
+    const [row] = await sql<{ id: string }[]>`select id from runs where status = 'done' and plan is not null order by created_at desc limit 1`;
+    return row?.id;
+  } catch {
+    return undefined;
+  } finally {
+    await closeDb().catch(() => {});
   }
 }
 const runId = up ? await findRun() : undefined;
 
-test("neutral copy: home, wizard and projects never name the vendors", { skip: noApp }, async () => {
+test("neutral copy: home, profile, tour form and workspace never name the vendors", { skip: noApp }, async () => {
   const hits: string[] = [];
-  for (const path of ["/", "/start", "/projects"]) hits.push(...vendorHits(path, await page(path)));
+  for (const path of ["/", "/start", "/new", "/work", "/material"]) hits.push(...vendorHits(path, await page(path)));
   assert.deepEqual(hits, []);
+});
+
+test("neutral copy: wizard kind tiles are one plain word each", { skip: noApp }, async () => {
+  const text = visibleText(await page("/start"));
+  for (const word of ["Musician", "Comedian", "DJ", "Poet"]) assert.ok(text.includes(word), `/start shows ${word}`);
+  for (const old of ["Singer / band", "spoken word", "DJ / producer", "Poet /"]) assert.ok(!text.includes(old), `/start no longer says "${old}"`);
 });
 
 test("neutral copy: plan and show-notes pages never name the vendors", { skip: noApp || (!runId && "no run found (set STORY_RUN_ID)") }, async () => {

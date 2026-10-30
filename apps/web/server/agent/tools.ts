@@ -4,6 +4,7 @@ import { z } from "zod";
 import { findCity } from "@tourbo/core/engine/cities.ts";
 import type { Recommendation } from "@tourbo/core/engine/economics.ts";
 import type { Emit } from "@tourbo/core/engine/trace.ts";
+import { placeNotes, priceAdjust, staticPlace, toPlaceNotes } from "@tourbo/core/places/hooks.server.ts";
 import {
   type Access,
   type AngleFacts,
@@ -21,7 +22,8 @@ import {
 } from "@tourbo/core/shared/types.ts";
 
 import type { McpSession } from "../mcp.server.ts";
-import { planCityWithWorker } from "./worker.ts";
+import { planCityWithWorker, type WorkerResult } from "./worker.ts";
+import { friendlyError, logError } from "./errors.ts";
 
 const MAX_CRITIQUES = 2;
 
@@ -48,6 +50,11 @@ export type RunContext = {
   critiques: number;
   promoDone?: boolean;
   plan?: Plan;
+  // Per-city worker picks already made for this run (resume reuses them instead of re-asking).
+  workers?: { get(city: string): WorkerResult | undefined; put(city: string, result: WorkerResult): void };
+  // Keeps what the run found (scored cities, room candidates, openers) so the act can swap nights
+  // later without new fan-data calls (PLAN Q19, run_steps "pool" / "pool_venues").
+  keep?: (step: "pool" | "pool_venues", key: string, value: unknown) => void;
 };
 
 export function createContext(params: TourParams, emit: Emit, mcp: McpSession, pastShows: RunContext["pastShows"] = []): RunContext {
@@ -95,6 +102,7 @@ export function toMoney(rec: Recommendation & { best: Recommendation["best"] & {
     draw: rec.demand.draw,
     basis: rec.demand.basis,
     reason,
+    ...(rec.priceNudge ? { priceNudge: rec.priceNudge } : {}),
     estimate: true,
   };
 }
@@ -119,6 +127,8 @@ export function createTools(ctx: RunContext) {
       [stop.venue, stop.backupVenue]
         .filter((v): v is Venue => !!v)
         .map((v, i) => ({ name: v.name, capacity: i === 0 && stop.capacity ? Math.round((stop.capacity.min + stop.capacity.max) / 2) : estimateCapacity(v) }));
+    // Place features (open data): a surfaced price nudge moves the reference ticket for this city.
+    const adj = priceAdjust(stop.place);
     return ctx.mcp.call<Recommendation & { best: Recommendation["best"] & { room?: string } }>("tourbo_show_economics", {
       region: params.region,
       kind,
@@ -136,6 +146,7 @@ export function createTools(ctx: RunContext) {
       sponsor: opts.sponsor ?? 0,
       min_guarantee: money.minGuarantee,
       past_shows: ctx.pastShows,
+      ...(adj.priceFactor !== undefined ? { price_factor: adj.priceFactor, elasticity: adj.elasticity } : {}),
     });
   };
   const legInto = (city: string) => ctx.legs?.find((l) => l.to === city)?.km ?? 0;
@@ -168,19 +179,25 @@ export function createTools(ctx: RunContext) {
         const res = await ctx.mcp.call<{ medianFanIndex: number; shortlist: string[]; cities: ScoreRow[] }>("tourbo_score_cities", {
           ...actArgs(),
           shows: params.shows,
+          detail: true, // hotspots for every city: the map shows the whole pool
           ...(params.area && { near: { lat: params.area.lat, lon: params.area.lon, radius_km: params.area.radiusKm } }),
         });
         ctx.scores = new Map(res.cities.map((c) => [c.city, c]));
         ctx.shortlist = res.shortlist;
         ctx.medianFanIndex = res.medianFanIndex;
+        ctx.keep?.("pool", "cities", { medianFanIndex: res.medianFanIndex, cities: res.cities });
         emit("decision", `Shortlist: ${res.shortlist.map((c) => `${c} ${ctx.scores!.get(c)?.score}`).join(", ")}`, {
           scores: Object.fromEntries(res.cities.map((c) => [c.city, c.score])),
         });
         ctx.openers = ctx.mcp
           .call<{ openers: Record<string, Opener> }>("tourbo_openers", { ...actArgs(), cities: res.shortlist })
-          .then((r) => r.openers)
+          .then((r) => {
+            ctx.keep?.("pool", "openers", { openers: r.openers });
+            return r.openers;
+          })
           .catch((error: Error) => {
-            emit("repair", `Openers failed: ${error.message}`);
+            logError("openers", error);
+            emit("repair", `Openers failed: ${friendlyError(error)}`);
             return {};
           });
         return JSON.stringify(res.shortlist.map((c) => {
@@ -202,17 +219,23 @@ export function createTools(ctx: RunContext) {
         if (!ctx.artist || !row || !city) return `"${input.city}" is not on the shortlist. Call score_cities first and use its city names.`;
         const artist = ctx.artist;
         const [detail, brief, openers] = await Promise.all([
-          ctx.mcp.call<{ venues: DetailVenue[]; fanIndex?: number }>("tourbo_city_detail", { ...actArgs(), city: row.city }),
+          ctx.mcp.call<{ venues: DetailVenue[]; fanIndex?: number }>("tourbo_city_detail", { ...actArgs(), city: row.city, detail: true }),
           ctx.mcp.call<Brief>("tourbo_city_brief", { ...actArgs(), city: row.city }),
           ctx.openers!,
         ]);
         const venues = detail.venues.map(toVenue);
+        ctx.keep?.("pool_venues", row.city, detail.venues);
         const facts: AngleFacts = { fanTaste: brief.fanTaste, cityCulture: brief.cityCulture, localSpots: brief.localSpots };
         const opener = openers[row.city];
-        const worker = await planCityWithWorker(
-          { artist, city: row.city, roomMin: params.roomMin, roomMax: params.roomMax, heatmapCells: row.heatmapCells, venues, facts, opener, sponsors: brief.sponsors, localArtists: brief.localArtists },
-          emit,
-        );
+        const reused = ctx.workers?.get(row.city);
+        if (reused) emit("decision", `${row.city}: reusing the venue pick from before`, { city: row.city, reused: true });
+        const worker =
+          reused ??
+          (await planCityWithWorker(
+            { artist, city: row.city, roomMin: params.roomMin, roomMax: params.roomMax, heatmapCells: row.heatmapCells, venues, facts, opener, sponsors: brief.sponsors, localArtists: brief.localArtists },
+            emit,
+          ));
+        if (!reused && worker.fit) ctx.workers?.put(row.city, worker);
         const plan: CityPlan = {
           city,
           score: row.score,
@@ -230,8 +253,11 @@ export function createTools(ctx: RunContext) {
           sponsors: brief.sponsors,
           localArtists: brief.localArtists,
         };
+        const place = await staticPlace(city, { kind });
+        if (place) plan.place = toPlaceNotes(place);
         const rec = await economics(plan).catch((error: Error) => {
-          emit("repair", `${row.city}: economics failed (${error.message})`);
+          logError("economics", error);
+          emit("repair", `${row.city}: economics failed (${friendlyError(error)})`);
           return undefined;
         });
         if (rec) plan.money = toMoney(rec);
@@ -244,7 +270,8 @@ export function createTools(ctx: RunContext) {
           capacityEstimate: worker.capacity && `${worker.capacity.min}–${worker.capacity.max}`,
           opener: opener && `${opener.name} (${opener.source === "local" ? "local favourite" : "similar act"}, ${opener.localCells} local cells)`,
           angle: worker.angle,
-          money: plan.money && { verdict: plan.money.verdict, deal: plan.money.deal, price: plan.money.price, tickets: plan.money.tickets, capacity: plan.money.capacity, profit: plan.money.profit, currency: plan.money.currency, why: plan.money.why },
+          money: plan.money && { verdict: plan.money.verdict, deal: plan.money.deal, price: plan.money.price, tickets: plan.money.tickets, capacity: plan.money.capacity, profit: plan.money.profit, currency: plan.money.currency, why: plan.money.why, priceNudge: plan.money.priceNudge?.note },
+          place: plan.place && Object.values(plan.place.changes).length ? Object.values(plan.place.changes) : undefined,
           sponsors: brief.sponsors.slice(0, 3).map((s) => s.name),
           thin: row.thinData,
         });
@@ -320,6 +347,14 @@ export function createTools(ctx: RunContext) {
         ctx.legs = route.legs;
         ctx.totalKm = route.totalKm;
         ctx.dates = new Map(route.stops.map((s) => [s.city, s.date]));
+        // Place features on the show dates (holidays, usual weather; short timeouts, never throws).
+        await Promise.all(
+          route.stops.map(async ({ city, date }) => {
+            const stop = ctx.cities.get(city)!;
+            const notes = await placeNotes(stop.city, [date], { kind });
+            if (notes) stop.place = notes;
+          }),
+        );
         // Re-cost with real legs, keeping the agent's verdicts and fixed choices.
         await Promise.all(
           route.stops.map(async ({ city }) => {

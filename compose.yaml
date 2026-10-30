@@ -37,5 +37,21 @@ services:
       timeout: 3s
       retries: 5
 
+  # Self-hosted MCP server (Streamable HTTP, needs QLOO_API_KEY + MCP_TOKENS in .env).
+  # Start: docker compose --profile mcp up -d --build mcp  → http://127.0.0.1:8787/mcp
+  mcp:
+    build:
+      context: .
+      dockerfile: packages/mcp/Dockerfile
+    image: tourbo-mcp:local
+    profiles: [mcp]
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      NODE_ENV: production
+    ports:
+      - "127.0.0.1:8787:8787"
+
 volumes:
   pgdata:

@@ -1,7 +1,9 @@
-// Usage: npm run examples:prewarm [-- <act-filter>] [--missing] [--fan-only]
+// Usage: npm run examples:prewarm [-- <act-filter>] [--missing] [--fan-only] [--rebuild | --recompute]
 // --missing skips acts already stored; --fan-only rebuilds only the worldwide fan density;
 // --only=<feature> rebuilds just that decision type; --rebuild redoes every example from the
-// cache (stored density and AI-written lines kept, so ~0 spend); --dry-run estimates Qloo calls first.
+// cache (stored density and AI-written lines kept, so ~0 spend); --recompute is --rebuild with the
+// network off (no fan-data or AI calls): an act any of whose calls misses the cache keeps its stored
+// rows; --dry-run estimates Qloo calls first.
 // Every run ends with a usage line (Qloo calls, cache hits, AI tokens and $).
 // Builds the home-page examples (≥ 50 acts people know, six continents) through the Tourbo
 // engine and stores them in Postgres (home_examples). Each example leads with one decision
@@ -25,7 +27,7 @@ import { scoreCities } from "@tourbo/core/engine/score.ts";
 import { findVenues, roomType } from "@tourbo/core/engine/venues.ts";
 import { ensureWorld } from "@tourbo/core/engine/world.server.ts";
 import type { Compare, CompareCity, Continent, ScoreWhy, ExampleFeature, FanDensity, FanPoint, HomeExample } from "@tourbo/core/examples/types.ts";
-import { exampleProblem } from "@tourbo/core/examples/check.ts";
+import { exampleProblem, reconcileExample } from "@tourbo/core/examples/check.ts";
 import { distanceKm } from "@tourbo/core/shared/geo.ts";
 import { heatmap } from "@tourbo/core/qloo/api.server.ts";
 import { cacheKey, readCache } from "@tourbo/core/qloo/cache.server.ts";
@@ -221,7 +223,21 @@ const slug = (s: string) => s.normalize("NFKD").replace(/[^\w\s-]/g, "").trim().
 // Money as a plain amount; callers say "loses"/"less" for negatives, but a stray sign renders as "−$5", never "$-5".
 const fmt = (n: number, cur: string) => `${n < 0 ? "−" : ""}${cur === "USD" ? "$" : cur === "AUD" ? "A$" : cur === "EUR" ? "€" : cur === "INR" ? "₹" : `${cur} `}${Math.abs(Math.round(n)).toLocaleString("en-US")}`;
 const nets = (n: number, cur: string) => (n < 0 ? `loses ~${fmt(-n, cur)}` : `nets ~${fmt(n, cur)}`);
-const client = process.env.ANTHROPIC_API_KEY ? new Anthropic() : undefined;
+const RECOMPUTE = process.argv.includes("--recompute");
+const client = process.env.ANTHROPIC_API_KEY && !RECOMPUTE ? new Anthropic() : undefined;
+// --recompute: any fan-data request that misses the cache fails here instead of going out; the
+// count tells the loop which acts were rebuilt purely from cache.
+let offlineMisses = 0;
+if (RECOMPUTE) {
+  const qloo = new URL(getEnv().QLOO_BASE_URL).host;
+  const real = globalThis.fetch;
+  globalThis.fetch = ((input: Parameters<typeof fetch>[0], init?: RequestInit) => {
+    const url = new URL(input instanceof Request ? input.url : String(input));
+    if (url.host !== qloo) return real(input, init);
+    offlineMisses++;
+    return Promise.reject(new Error(`--recompute: ${url.pathname} not cached`));
+  }) as typeof fetch;
+}
 
 // Worldwide fan density: one heatmap per country (a global call needs a location; continents
 // don't resolve), gridded at 0.25° where Qloo has > 500 cells and 0.5° elsewhere. Each country
@@ -364,6 +380,19 @@ async function rehearsalLines(lines: string[], brief: Awaited<ReturnType<typeof 
   return out;
 }
 
+// Night count comes from the data (PLAN Q11): a bar of 65 gave 3–8 nights with no count over
+// ~25% across the stored acts (60 → 31% at 8, 70 → 37% at 3).
+const NIGHT_BAR = 65;
+const MIN_NIGHTS = 3;
+const MAX_NIGHTS = 8;
+function tourNights(scores: CityScore[], radiusKm: number): CityScore[] {
+  const km = (s: CityScore) => Number((s.city as { km?: number }).km ?? 0);
+  const cap = Math.max(MIN_NIGHTS, Math.min(MAX_NIGHTS, scores.length - 1));
+  const picked = scores.filter((s) => km(s) <= radiusKm && s.score >= NIGHT_BAR).slice(0, cap);
+  for (const s of scores) if (picked.length < MIN_NIGHTS && !picked.includes(s)) picked.push(s);
+  return picked.sort((a, b) => b.score - a.score);
+}
+
 type Ctx = Awaited<ReturnType<typeof prepare>> & {};
 
 // Everything an act's examples share: resolve, score the cities around home, rooms, money, briefs,
@@ -409,19 +438,30 @@ async function prepare(seed: Seed) {
   const demand = estimateDemand({ fanIndex: best.fanIndex ?? 0, medianFanIndex: med, roomMin: 800, roomMax: 3000 });
   const cur = rec.currency;
 
-  const briefOf = (s: CityScore) => cityBrief({ signal, city: locationQuery(s.city), kind }).catch(() => undefined);
+  // --recompute: a brief with uncached calls counts as no brief (it only adds the optional "fans
+  // also go to …" lines), so those misses don't block the act; the stored line is reused below.
+  const briefOf = async (s: CityScore) => {
+    const before = offlineMisses;
+    const b = await cityBrief({ signal, city: locationQuery(s.city), kind }).catch(() => undefined);
+    if (offlineMisses === before) return b;
+    offlineMisses = before;
+    return undefined;
+  };
   const tasteLine = (city: string, b: Awaited<ReturnType<typeof briefOf>>) =>
     b && (b.localSpots[0] || b.cityCulture[0]) ? `Fans in ${city} also go to ${b.localSpots[0]?.name ?? "local spots"}${b.cityCulture[0] ? ` and love ${b.cityCulture[0].name}` : ""}.` : undefined;
   const brief = await briefOf(best);
-  const localTaste = tasteLine(best.city.name, brief);
+  const localTaste = tasteLine(best.city.name, brief) ?? (RECOMPUTE ? [...storedRows.values()].find((e) => e.fanKey === slug(seed.act) && e.localTaste?.city === best.city.name)?.localTaste?.line : undefined);
 
   // Surprise: a top-5 city out-scoring a much bigger one.
   const biggest = [...scores].sort((a, b) => pop(b) - pop(a))[0];
   const sIdx = top.findIndex((s) => s !== biggest && pop(s) > 0 && pop(s) < pop(biggest) / 2 && s.score > biggest.score);
   const surprise = sIdx >= 0 ? { city: top[sIdx].city.name, line: `${top[sIdx].city.name} out-scores ${biggest.city.name}, a city ${Math.round(pop(biggest) / pop(top[sIdx]))}× its size.` } : undefined;
 
-  // The tour's nights, and the big city it leaves out ("skip Perth, play Gold Coast").
-  const nights = top.slice(0, 4);
+  // The tour's nights, from the data: cities inside the circle with fan strength ≥ NIGHT_BAR,
+  // clamped to MIN_NIGHTS–MAX_NIGHTS (topped up with the next-best cities when too few clear it),
+  // leaving at least one candidate out for the chosen-vs-skipped comparison.
+  const nights = tourNights(scores, seed.km ?? 900);
+  const shown = [...top, ...nights.filter((s) => !top.includes(s))];
   // Chosen vs skipped: a tour night against a bigger city the tour leaves out. The pair must be
   // honest: either the chosen night earns at least as much, or the skipped city has a reason the
   // engine itself used (too far off the route, or too little fan data to bet on). Otherwise try the
@@ -460,7 +500,7 @@ async function prepare(seed: Seed) {
     const chosen = side(played, played === best ? brief : await briefOf(played));
     const skippedSide = side(out, outBrief);
     const ratio = skippedSide.lean > 0 ? chosen.lean / skippedSide.lean : 0;
-    const pull = ratio >= 1.15 ? `${ratio.toFixed(1)}× the fan pull for its size` : `fan strength ${chosen.fanStrength} vs ${skippedSide.fanStrength}`;
+    const pull = ratio > 10 ? "over 10× the fan pull for its size" : ratio >= 1.15 ? `${ratio.toFixed(1)}× the fan pull for its size` : `fan strength ${chosen.fanStrength} vs ${skippedSide.fanStrength}`;
     const delta = chosen.profit - skippedSide.profit;
     const moneyLine = skippedSide.profit < 0 ? `a night in ${out.city.name} loses ~${fmt(-skippedSide.profit, cur)}` : reason ? reason : `~${fmt(Math.abs(delta), cur)} more per night`;
     compare = { line: `${played.city.name} over ${out.city.name}: ${pull}; ${moneyLine}.`, currency: cur, chosen, skipped: skippedSide, reason: reason || undefined };
@@ -471,7 +511,7 @@ async function prepare(seed: Seed) {
   const routeOut = route.stops.map((s, i) => ({ name: s.city.city.name, lat: s.city.city.lat, lon: s.city.city.lon, date: s.date, profit: Math.round(stopMoney[i].best.profit) }));
   const profitable = routeOut.filter((r) => r.profit > 0);
   const tourProfit = { amount: profitable.reduce((n, r) => n + r.profit, 0), currency: cur, nights: profitable.length };
-  const worst = scores.slice(0, 8).map((s) => ({ s, profit: Math.round(night(s, Math.round(distanceKm(seed, s.city))).best.profit) })).sort((a, b) => a.profit - b.profit)[0];
+  const worst = [...new Set([...nights, ...scores.slice(0, 8)])].map((s) => ({ s, profit: Math.round(night(s, Math.round(distanceKm(seed, s.city))).best.profit) })).sort((a, b) => a.profit - b.profit)[0];
   const stop = worst && routeOut.find((r) => r.name === worst.s.city.name);
   const day = stop && new Date(`${stop.date}T12:00:00Z`).toLocaleDateString("en-US", { weekday: "long", timeZone: "UTC" });
   // The weakest candidate night: usually one that loses money; for big acts every nearby night
@@ -485,7 +525,7 @@ async function prepare(seed: Seed) {
       ? stop ? `${worst.s.city.name} on a ${day} loses ~${fmt(-worst.profit, cur)}: move it to a weekend or a smaller room.` : `${worst.s.city.name} would lose ~${fmt(-worst.profit, cur)}, so it's left out.`
       : `Every nearby night pays; the thinnest is ${worst.s.city.name} at ~${fmt(worst.profit, cur)}.`,
   };
-  return { comparable, seed, kind, artist, signal, area, scores, med, top, best, lean, pop, why, room, ranked, capacity, night, rec, demand, cur, brief, localTaste, surprise, nights, out, played, compare, route, stopMoney, routeOut, tourProfit, losingNight };
+  return { comparable, seed, kind, artist, signal, area, scores, med, top, shown, best, lean, pop, why, room, ranked, capacity, night, rec, demand, cur, brief, localTaste, surprise, nights, out, played, compare, route, stopMoney, routeOut, tourProfit, losingNight };
 }
 
 async function decide(ctx: NonNullable<Ctx>, feature: ExampleFeature, reuse?: HomeExample["decision"]): Promise<HomeExample | undefined> {
@@ -553,7 +593,7 @@ async function decide(ctx: NonNullable<Ctx>, feature: ExampleFeature, reuse?: Ho
     decision,
     act: { name: artist.name, kind, image: ctx.comparable ? undefined : artist.image, ...(ctx.comparable ? { comparable: ctx.comparable } : {}) },
     home: { city: seed.city, country: seed.country, continent: seed.continent, lat: seed.lat, lon: seed.lon },
-    cities: top.map((s) => ({ name: s.city.name, country: (s.city as { country?: string }).country ?? seed.country, lat: s.city.lat, lon: s.city.lon, fanStrength: s.score, lean: ctx.lean(s), why: ctx.why(s) })),
+    cities: ctx.shown.map((s) => ({ name: s.city.name, country: (s.city as { country?: string }).country ?? seed.country, lat: s.city.lat, lon: s.city.lon, fanStrength: s.score, lean: ctx.lean(s), why: ctx.why(s) })),
     medianFanStrength: Math.round(median(scores.map((s) => s.score))),
     surprise: ctx.surprise,
     skipped,
@@ -610,7 +650,7 @@ const storedIds = new Set((await sql<{ id: string }[]>`select id from home_examp
 const storedFans = new Set((await sql<{ fan_key: string }[]>`select fan_key from home_fan_density`).map((r) => r.fan_key));
 const missing = process.argv.includes("--missing");
 // --rebuild: rebuild every example from the cache; keeps stored density and AI-written lines.
-const rebuild = process.argv.includes("--rebuild");
+const rebuild = RECOMPUTE || process.argv.includes("--rebuild");
 const storedRows = new Map(rebuild ? (await sql<{ id: string; example: HomeExample }[]>`select id, example from home_examples`).map((r) => [r.id, r.example]) : []);
 for (const [i, seed] of SEEDS.entries()) {
   if (filter && !seed.act.toLowerCase().includes(filter)) continue;
@@ -622,28 +662,51 @@ for (const [i, seed] of SEEDS.entries()) {
   const ids = features.map((f) => `${key}-${slug(seed.city)}-${f}`);
   if (missing && storedFans.has(key) && ids.every((id) => storedIds.has(id))) continue;
   const started = Date.now();
+  const missesBefore = offlineMisses;
   try {
+    if (RECOMPUTE && !storedFans.has(key)) {
+      console.error(`keep ${seed.act}: no stored fan density`);
+      continue;
+    }
     const ctx = await prepare(seed);
-    if (!ctx) continue;
+    if (!ctx) {
+      if (RECOMPUTE && offlineMisses > missesBefore) console.error(`keep ${seed.act}: ${offlineMisses - missesBefore} fan-data calls not cached`);
+      continue;
+    }
     const density = (missing || rebuild) && storedFans.has(key) ? undefined : await saveDensity(key, ctx.signal);
     if (fanOnly) {
       console.log(`${key}: ${density?.fanPoints.length ?? "kept"} fan points`);
       continue;
     }
+    const built: HomeExample[] = [];
     for (const f of features) {
       const prior = storedRows.get(`${key}-${slug(seed.city)}-${f}`);
       // --fresh-ai: redo the AI-written lines too (a few cents; needed when the brief filters change).
       const reuse = rebuild && !process.argv.includes("--fresh-ai") && prior && (f === "prep" || f === "rehearsal") ? prior.decision : undefined;
-      const ex = await decide(ctx, f, reuse);
-      if (!ex) continue;
+      const raw = await decide(ctx, f, reuse);
+      if (!raw) continue;
+      const ex = reconcileExample(raw);
       const bad = exampleProblem(ex);
       if (bad) {
         console.error(`reject ${ex.id}: ${bad}`);
         continue;
       }
+      built.push(ex);
+    }
+    if (RECOMPUTE && offlineMisses > missesBefore) {
+      console.error(`keep ${seed.act}: ${offlineMisses - missesBefore} fan-data calls not cached`);
+      continue;
+    }
+    for (const ex of built) {
       await sql`insert into home_examples (id, example) values (${ex.id}, ${sql.json(ex as never)}) on conflict (id) do update set example = excluded.example, updated_at = now()`;
       ok++;
-      console.log(`${ex.id}: ${ex.decision.headline}`);
+      console.log(`${ex.id}: ${ex.decision.headline} (${ex.route?.length ?? 0} nights)`);
+    }
+    // Recomputed purely from cache: this act's rows that no longer pass go (full rebuilds prune below).
+    if (RECOMPUTE && !only) {
+      const keep = built.map((e) => e.id);
+      const gone = await sql`delete from home_examples where id = any(${ids}) and not (id = any(${keep.length ? keep : [""]})) returning id`;
+      if (gone.length) console.log(`  dropped ${gone.map((r) => r.id).join(", ")}`);
     }
     console.log(`  ${seed.act}: ${density ? `${density.fanPoints.length} fan points, ${Object.keys(density.coverage).length} countries` : "density kept"} · ${Math.round((Date.now() - started) / 1000)} s`);
   } catch (e) {
@@ -651,7 +714,8 @@ for (const [i, seed] of SEEDS.entries()) {
   }
 }
 // Only a FULL --rebuild (no act filter, no --only) replaces the set: rows it didn't regenerate go.
-if (rebuild && !filter && !process.argv.some((a) => a.startsWith("--only="))) {
+// --recompute never prunes globally: acts it couldn't rebuild from cache keep their rows.
+if (rebuild && !RECOMPUTE && !filter && !process.argv.some((a) => a.startsWith("--only="))) {
   const gone = await sql`delete from home_examples where updated_at < ${new Date(runStarted)} returning id`;
   console.log(`pruned ${gone.length} stale examples`);
 }
@@ -671,6 +735,8 @@ if (worldPoints.length) await sql`insert into home_fan_density (fan_key, density
 console.log(`world layer: ${worldPoints.length} points`);
 const [{ n, continents, acts }] = await sql<{ n: number; continents: number; acts: number }[]>`
   select count(*)::int as n, count(distinct example->'home'->>'continent')::int as continents, count(distinct example->>'fanKey')::int as acts from home_examples`;
+const spread = await sql<{ nights: number; n: number }[]>`select jsonb_array_length(example->'route') as nights, count(*)::int as n from home_examples group by 1 order by 1`;
+console.log(`nights per example: ${spread.map((r) => `${r.nights} ×${r.n}`).join(", ")}`);
 console.log(`${ok} built this run; ${n} examples, ${acts} acts, ${continents} continents in Postgres`);
 const ai = usageSummary();
 console.log(`usage: ${qlooCallCount().toLocaleString("en-US")} Qloo calls, ${qlooCacheHits().toLocaleString("en-US")} cache hits; ${ai.map((u) => `${u.model} ${u.calls} calls, ${u.input + u.output} tokens, $${u.cost}`).join("; ") || "no AI calls"}; cache ${JSON.stringify(cacheSummary())}`);

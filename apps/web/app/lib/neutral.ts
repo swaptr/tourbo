@@ -1,6 +1,9 @@
 // Display-time copy rule (PLAN Q5): engine and agent text may name the data vendor or the model;
 // the UI speaks as Tourbo. Applied only where that text is rendered, never to stored data.
 const RULES: [RegExp, string][] = [
+  // Error sentences stored before errors.ts went vendor-neutral (old runs still show them).
+  [/The AI planner isn't set up on this server \(Anthropic key missing or invalid\)\./g, "The AI assistant isn't set up on this server. Ask whoever runs this Tourbo to add the AI key, then retry."],
+  [/\bQloo didn't answer in time\./g, "Fan data is busy or slow right now."],
   [/\bQloo[- ]off\b/gi, "without fan data"],
   [/\bQloo[- ]on\b/gi, "with fan data"],
   [/\b(?:no|without) Qloo\b/gi, "without fan data"],

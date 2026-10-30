@@ -60,6 +60,7 @@ export function AreaPicker({ cities, value, onChange }: { cities: SeedCity[]; va
           style: STYLE,
           center: [value.lon, value.lat],
           zoom: 4,
+          locale: { "Map.Title": "Area map" },
           attributionControl: { compact: true },
         });
         mapRef.current = map;

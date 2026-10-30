@@ -1,0 +1,47 @@
+# @tourbo/mcp release check: bundle, smoke over stdio and HTTP, package contents and size.
+# Publishing stays manual (owner: npm publish -w @tourbo/mcp, docker push).
+name: mcp
+
+on:
+  push:
+    branches: [main]
+    paths: ["packages/mcp/**", "packages/core/**", "tests/stories/5-dev-claude-code.test.ts", "tests/stories/22-self-host.test.ts", "package-lock.json", ".github/workflows/mcp.yml"]
+  pull_request:
+    paths: ["packages/mcp/**", "packages/core/**", "tests/stories/5-dev-claude-code.test.ts", "tests/stories/22-self-host.test.ts", "package-lock.json", ".github/workflows/mcp.yml"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run typecheck -w @tourbo/mcp
+      - run: npm run mcp:build
+      - name: CLI flags
+        run: |
+          node packages/mcp/dist/bin/tourbo-mcp.js --version
+          node packages/mcp/dist/bin/tourbo-mcp.js --help
+      # No fan-data key in CI: covers tool listing, the plain no-key sentences, HTTP auth (401),
+      # the 429 limiter, the no-database project sentence and the pack contents + size budget.
+      - name: Smoke (stdio + HTTP) and package checks
+        run: node --test --test-concurrency=1 tests/stories/5-dev-claude-code.test.ts tests/stories/22-self-host.test.ts
+      - name: Pack (dry run)
+        working-directory: packages/mcp
+        run: |
+          npm pack --dry-run --json > /tmp/pack.json
+          node -e 'const [p]=require("/tmp/pack.json"); const bad=p.files.filter(f=>!/^(dist\/|README\.md$|LICENSE$|package\.json$)/.test(f.path)); console.log(p.files.map(f=>f.path).join("\n"), "\npacked", p.size, "bytes"); if (bad.length || p.size > 600000) process.exit(1)'
+      - name: Docker image builds and answers /healthz
+        run: |
+          docker build -f packages/mcp/Dockerfile -t tourbo-mcp:ci .
+          docker run -d --name mcp -p 8787:8787 -e MCP_TOKENS=ci-token tourbo-mcp:ci
+          for i in $(seq 1 20); do curl -fsS http://127.0.0.1:8787/healthz && break; sleep 1; done
+          test "$(curl -s -o /dev/null -w '%{http_code}' -X POST http://127.0.0.1:8787/mcp -d '{}')" = 401

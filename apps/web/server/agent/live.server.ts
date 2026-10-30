@@ -1,6 +1,8 @@
 import { db } from "@tourbo/core/db/client.server.ts";
 import type { Pace } from "@tourbo/core/engine/pace.ts";
 import { connectMcp } from "../mcp.server.ts";
+import { stopKey } from "@tourbo/core/engine/edit.ts";
+import { nightOf } from "./edits.server.ts";
 import { getRun } from "./runs.server.ts";
 import { appendTrace } from "./trace.server.ts";
 
@@ -36,7 +38,7 @@ export async function recordCheckin(runId: string, stopIndex: number, sold: numb
     await mcp.close().catch(() => {});
   }
   const sql = await db();
-  await sql`insert into checkins (run_id, stop_index, sold) values (${runId}, ${stopIndex}, ${sold})`;
+  await sql`insert into checkins (run_id, stop_index, stop_key, sold) values (${runId}, ${stopIndex}, ${stopKey(stop)}, ${sold})`;
   emit("decision", `${stop.city.name}: ${sold} sold, ${days} days out → ${pace.status}. ${pace.actions[0] ?? ""}`, { city: stop.city.name, pace: pace.status });
   return pace;
 }
@@ -57,12 +59,17 @@ export async function recordResult(runId: string, r: ShowResult) {
 
 export async function liveState(runId: string) {
   const sql = await db();
-  const [checkins, results] = await Promise.all([
-    sql<{ stop_index: number; sold: number; created_at: Date }[]>`
-      select distinct on (stop_index) stop_index, sold, created_at from checkins where run_id = ${runId} order by stop_index, created_at desc`,
+  const [rows, results, run] = await Promise.all([
+    sql<{ stop_index: number; stop_key: string | null; sold: number; created_at: Date }[]>`
+      select distinct on (coalesce(stop_key, stop_index::text)) stop_index, stop_key, sold, created_at from checkins where run_id = ${runId}
+      order by coalesce(stop_key, stop_index::text), created_at desc`,
     sql<{ city: string; attendance: number; gross: string | null; notes: string | null }[]>`
       select city, attendance, gross, notes from show_results where run_id = ${runId}`,
+    getRun(runId),
   ]);
+  // Check-ins follow their night when the act moves nights; a changed night starts fresh.
+  const at = nightOf(run?.plan);
+  const checkins = rows.map((c) => ({ ...c, stop_index: at(c) })).filter((c) => c.stop_index >= 0);
   return {
     checkins: Object.fromEntries(checkins.map((c) => [c.stop_index, { sold: c.sold, at: c.created_at.toISOString() }])),
     results: Object.fromEntries(results.map((r) => [r.city, { attendance: r.attendance, gross: r.gross ? Number(r.gross) : undefined, notes: r.notes ?? undefined }])),

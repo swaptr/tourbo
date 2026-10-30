@@ -1,3 +1,4 @@
+import { Hint } from "~/components/hint";
 import { rampClass } from "~/components/why-compare";
 import { cn } from "~/lib/utils";
 
@@ -14,9 +15,8 @@ export function Why({ city, others, median, checkedAt, className }: { city: WhyC
       : `${city.name} has a solid fan base for this act${leans ? " and leans toward it more than most cities" : ""}, though not the biggest.`;
   const date = checkedAt ? new Date(checkedAt).toLocaleDateString("en", { day: "numeric", month: "short", year: "numeric" }) : undefined;
   return (
-    <details className={cn("group text-sm", className)}>
-      <summary className="cursor-pointer text-muted-foreground select-none hover:text-foreground">why?</summary>
-      <div className="mt-2 grid gap-3 rounded-lg border bg-card p-3">
+    <Hint text="why?" label={`Why ${city.name}`} className={className}>
+      <div className="grid gap-3">
         <p>{sentence}</p>
         <div>
           <p className="text-xs text-muted-foreground">Fan strength (0–100)</p>
@@ -34,7 +34,7 @@ export function Why({ city, others, median, checkedAt, className }: { city: WhyC
         )}
         <p className="text-xs text-muted-foreground">Fan data{date ? ` · checked ${date}` : ""}</p>
       </div>
-    </details>
+    </Hint>
   );
 }
 

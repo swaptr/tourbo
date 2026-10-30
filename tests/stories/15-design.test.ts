@@ -102,7 +102,8 @@ test("theme: no glow or neon, two font families, no monospace", async () => {
     // Comments may name what's banned; only code counts.
     const text = (await readFile(file, "utf8")).replace(/\/\*[\s\S]*?\*\/|^\s*\/\/.*$/gm, "");
     const rel = relative(WEB, file);
-    assert.doesNotMatch(text, /\bfont-mono\b|monospace/, `${rel}: no monospace`);
+    // DESIGN.md exception: code and config blocks on /connect use the system monospace stack.
+    if (rel !== "routes/connect.tsx") assert.doesNotMatch(text, /\bfont-mono\b|monospace/, `${rel}: no monospace`);
     if (!rel.startsWith("components/ui/")) assert.doesNotMatch(text, /text-shadow|drop-shadow-|bg-gradient|linear-gradient|neon/i, `${rel}: no glow or gradient`);
   }
 });

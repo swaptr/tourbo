@@ -1,7 +1,9 @@
+import { Hint } from "~/components/hint";
 import { Link } from "react-router";
 import { neutral } from "~/lib/neutral";
 
-import { RunTabs } from "~/components/run-tabs";
+import { keepOnViewChange } from "~/lib/plan-nav";
+import { firstLine } from "~/components/city-card";
 import { Chip, formatNumber } from "~/components/trace";
 import { Badge } from "~/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "~/components/ui/card";
@@ -31,18 +33,16 @@ export async function loader({ params }: Route.LoaderArgs) {
   };
 }
 
+export const shouldRevalidate = keepOnViewChange;
+
 export default function Compare({ loaderData }: Route.ComponentProps) {
   const { comparison: c } = loaderData;
   return (
-    <main className="container mx-auto space-y-6 px-4 py-8">
+    <div className="space-y-6">
       <div>
-        <h1 className="font-heading text-2xl tracking-tight">{loaderData.artistName}</h1>
-        <p className="mt-1 text-sm text-muted-foreground">
-          The same request planned twice: once with fan data, once as an AI guess. Both are measured against this
-          run's fan data.
-        </p>
+        <h2 className="font-heading text-lg tracking-tight">With vs without fan data</h2>
+        <p className="mt-1 text-sm text-muted-foreground">Same tour, planned with fan data and as an AI guess.</p>
       </div>
-      <RunTabs runId={loaderData.id} />
 
       {!c ? (
         <p className="text-sm text-muted-foreground">
@@ -52,7 +52,9 @@ export default function Compare({ loaderData }: Route.ComponentProps) {
               come back.
             </>
           ) : (
-            "No comparison for this run yet. Plan the tour again to get one."
+            <>
+              No comparison for this run yet. Plan the tour again to get one. <Link to="/help" className="underline">Need help?</Link>
+            </>
           )}
         </p>
       ) : (
@@ -73,22 +75,22 @@ export default function Compare({ loaderData }: Route.ComponentProps) {
               value={`${c.qloo.filter((s) => s.venue).length} vs 0`}
             />
           </div>
-          <div className="grid gap-4 lg:grid-cols-2">
+          <div className="grid gap-4 @3xl:grid-cols-2">
             <Column
               title="With fan data"
-              description="Cities ranked by where your fans are; rooms, openers and copy from fan data."
+              description="Cities ranked by where your fans are."
               stops={c.qloo}
             />
             <Column
               title="AI guess"
-              description={neutral(loaderData.baselineSummary) ?? "What an AI assistant guesses without fan data."}
+              description={firstLine(neutral(loaderData.baselineSummary) ?? "What an AI assistant guesses without fan data.")}
               stops={c.baseline}
               off
             />
           </div>
         </>
       )}
-    </main>
+    </div>
   );
 }
 
@@ -127,23 +129,25 @@ function Column({
           {stops.map((stop, i) => (
             <li key={i} className={cn("rounded-lg p-2", stop.onlyHere && "bg-warning/10")}>
               <div className="flex flex-wrap items-center gap-2">
-                <span className="font-medium">
+                <span className="font-semibold">
                   {i + 1}. {stop.city}
                 </span>
                 {stop.onlyHere && <Badge variant="outline">only {off ? "in the guess" : "with fan data"}</Badge>}
-                {stop.score !== null && <Chip>fan score {stop.score}</Chip>}
-                {stop.cells === null ? (
-                  <Chip className="bg-muted text-muted-foreground">not scored</Chip>
-                ) : (
-                  <Chip>fan areas {formatNumber(stop.cells)}</Chip>
-                )}
+                <Hint text="why?" label={`Fan data for ${stop.city}`}>
+                  {stop.cells === null ? "Not scored with fan data." : `Fan score ${stop.score ?? "n/a"} · fan areas ${formatNumber(stop.cells)} (fan data)`}
+                </Hint>
               </div>
               <p className="mt-1 text-muted-foreground">
-                {stop.venue ?? "no venue"}
-                {stop.opener && ` · opener ${stop.opener}`}
+                {stop.venue ? <span className="font-semibold text-foreground">{stop.venue}</span> : "no venue"}
+                {stop.opener && (
+                  <>
+                    {" · opener "}
+                    <span className="font-semibold text-foreground">{stop.opener}</span>
+                  </>
+                )}
                 {off && <span className="italic"> · unverified</span>}
               </p>
-              {stop.note && <p className="mt-0.5 text-xs text-muted-foreground">{neutral(stop.note)}</p>}
+              {stop.note && <p className="mt-0.5 text-xs text-muted-foreground">{firstLine(neutral(stop.note))}</p>}
             </li>
           ))}
         </ol>

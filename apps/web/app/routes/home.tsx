@@ -1,6 +1,7 @@
 import { ArrowRight, Pause, Play, Search } from "lucide-react";
 import { lazy, Suspense, useEffect, useMemo, useRef, useState } from "react";
-import { Form, Link } from "react-router";
+import { Form, Link, useNavigate } from "react-router";
+import { loadProfile } from "~/lib/profile";
 
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
@@ -24,6 +25,7 @@ const Globe = lazy(() => import("~/components/globe").then((m) => ({ default: m.
 const TITLE = "Tourbo: your fans already picked your tour";
 const DESCRIPTION = "Tour planning for acts without a booking agent: where your fans live, which rooms fit, which nights make money, and what to say on stage.";
 const EXAMPLE_MS = 7500;
+
 
 export function meta({}: Route.MetaArgs) {
   return [
@@ -164,7 +166,7 @@ function ContrastSection({ contrast }: { contrast: Contrast }) {
     <section className="container mx-auto max-w-6xl px-4 py-16">
       <h2 className="text-4xl">Planned with fan data, or an AI's guess</h2>
       <p className="mt-2 max-w-2xl text-muted-foreground">
-        The same request for {contrast.act}, planned twice: once from where the fans actually live, once from a general-purpose guess.
+        The same tour for {contrast.act}, planned twice.
       </p>
       <ul className="mt-8 divide-y border-y">
         {contrast.rows.map((r) => (
@@ -177,7 +179,7 @@ function ContrastSection({ contrast }: { contrast: Contrast }) {
           </li>
         ))}
       </ul>
-      <Link to={`/plan/${contrast.runId}/compare`} className="mt-4 inline-block text-sm underline underline-offset-4">
+      <Link to={`/plan/${contrast.runId}/compare`} className="mt-4 inline-flex min-h-8 items-center text-sm underline underline-offset-4 hover:no-underline">
         See the full comparison
       </Link>
     </section>
@@ -209,40 +211,57 @@ export default function Home({ loaderData }: Route.ComponentProps) {
   });
   const [reduced, setReduced] = useState(false);
   useEffect(() => setReduced(prefersReducedMotion()), []);
+  // Returning users (a profile in this browser) land on their workspace when they open the site;
+  // clicking the logo from inside the app still shows this page.
+  const navigate = useNavigate();
+  useEffect(() => {
+    if ((window.history.state as { idx?: number } | null)?.idx === 0 && loadProfile()) navigate("/work", { replace: true });
+  }, []);
   useEffect(() => (data.examples.length ? prewarmViews(data.examples) : undefined), [data.examples]);
 
   return (
     <main>
       <section className="relative overflow-hidden border-b">
-        <div className="container mx-auto max-w-6xl px-4 pt-12 sm:pt-16">
-          <p className="text-xs font-medium tracking-[0.18em] text-primary uppercase">Tour planning for acts without an agent</p>
-          <h1 className="mt-4 max-w-3xl text-5xl leading-[1.02] text-balance sm:text-7xl">
+        {/* lg: two columns. Left: the pitch with the example card under it; right: the globe, full height. */}
+        <div className="container mx-auto max-w-6xl lg:grid lg:min-h-[min(54rem,calc(100dvh-3.5rem))] lg:grid-cols-[28rem_minmax(0,1fr)] lg:grid-rows-[auto_1fr] lg:gap-x-6 lg:px-4">
+        <div className="px-4 pt-12 sm:pt-16 lg:col-start-1 lg:row-start-1 lg:px-0 lg:pt-12">
+          <h1 className="max-w-3xl text-5xl leading-[1.02] text-balance sm:text-7xl lg:text-6xl">
             Your fans already picked <em className="text-primary">your tour.</em>
           </h1>
           <p className="mt-5 max-w-xl text-lg text-muted-foreground">
-            Tourbo reads the map: where your fans live, which rooms fit, which nights make money and what to say on stage.
+            Where your fans live, which rooms fit and which nights pay.
           </p>
-          <div className="mt-8 flex flex-wrap items-center gap-x-6 gap-y-4">
-            <Button size="lg" className="h-12 px-6 text-base" nativeButton={false} render={<Link to="/start" />}>
-              Plan my tour <ArrowRight />
+          <div className="mt-8 flex flex-wrap items-end gap-x-6 gap-y-4">
+            <Button size="xl" className="px-6 text-base max-sm:h-11" data-primary nativeButton={false} render={<Link to="/start?next=tour" />}>
+              Plan a tour <ArrowRight />
             </Button>
-            <Form action="/start" method="get" className="flex items-center gap-2" role="search">
-              <label htmlFor="try-act" className="sr-only">
+            <Form action="/start" method="get" className="flex flex-col items-start gap-1.5 max-sm:w-full" role="search">
+              <input type="hidden" name="next" value="tour" />
+              <label htmlFor="try-act" className="text-xs text-muted-foreground">
                 Try it with any act
               </label>
-              <div className="relative">
+              <div className="relative max-sm:w-full">
                 <Search className="pointer-events-none absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-muted-foreground" />
-                <Input id="try-act" name="artist" placeholder="Try it with any act" className="h-10 w-56 bg-card pl-8" autoComplete="off" />
+                <Input id="try-act" name="artist" placeholder="e.g. Japanese Breakfast" size="xl" className="w-56 bg-card pl-8 max-sm:h-11 max-sm:w-full" autoComplete="off" />
               </div>
             </Form>
           </div>
-          <p className="mt-6 text-sm text-muted-foreground">See it on acts you know. Built for acts nobody's heard of yet.</p>
+          <p className="mt-6 text-sm text-muted-foreground">
+            Not listed anywhere?{" "}
+            <Link to="/help" className="text-foreground underline underline-offset-4">
+              Start here
+            </Link>
+          </p>
         </div>
 
         <HomeStoreProvider store={store}>
-          <div className="relative mt-6 flex flex-col lg:block lg:min-h-[680px]">
+          {/* The globe's marker buttons are a long keyboard run; this lets keyboard users jump past it. */}
+          <a href="#how-it-works" className="sr-only rounded-lg bg-background px-3 py-2 text-sm ring-3 ring-ring/50 focus:not-sr-only focus:absolute focus:z-30 focus:mt-2 focus:ml-4">
+            Skip the example globe
+          </a>
+          <div className="relative mt-6 flex flex-col lg:contents">
             {/* The globe is always there: base layers even with no examples; examples stream in. */}
-            <div className="relative order-2 aspect-square w-full lg:absolute lg:inset-0 lg:aspect-auto">
+            <div className="relative order-0 aspect-square w-full max-lg:max-h-[44svh] lg:order-2 lg:w-auto lg:border-l lg:col-start-2 lg:row-span-2 lg:row-start-1 lg:mr-[calc(min(0px,(72rem-100vw)/2)-1rem)] lg:aspect-auto lg:min-h-[40rem]">
               {mounted ? (
                 <Suspense fallback={<GlobePlaceholder />}>
                   <Globe examples={all} source={data.source} store={store} avoidRefs={avoid} />
@@ -256,19 +275,20 @@ export default function Home({ loaderData }: Route.ComponentProps) {
                 </div>
               )}
             </div>
-            <HomeDialog reduced={reduced} empty={data.status === "loading" ? "Loading examples…" : "Live examples are warming up. Plan your own tour in the meantime."} />
+            <HomeDialog reduced={reduced} empty={data.status === "loading" ? "Loading examples…" : "Examples are on their way. Plan your own tour meanwhile."} />
           </div>
         </HomeStoreProvider>
+        </div>
       </section>
 
       {data.contrast && <ContrastSection contrast={data.contrast} />}
 
-      <section className="border-y bg-card">
+      <section id="how-it-works" tabIndex={-1} className="border-y bg-card outline-none">
         <div className="container mx-auto grid max-w-6xl gap-8 px-4 py-14 sm:grid-cols-3">
           {[
             ["Find the cities", "Where your fans live and which cities lean toward you."],
             ["Check the money", "Rooms that fit, ticket prices and the nights to skip."],
-            ["Get on stage", "Show notes, venue emails and counter-offers. You approve every send."],
+            ["Get on stage", "Show notes and venue emails. You approve every send."],
           ].map(([t, b]) => (
             <div key={t}>
               <h3 className="text-2xl">{t}</h3>
@@ -279,7 +299,7 @@ export default function Home({ loaderData }: Route.ComponentProps) {
       </section>
 
       <section className="container mx-auto max-w-6xl px-4 py-12 text-sm text-muted-foreground">
-        Works with any AI assistant that supports MCP.{" "}
+        Works with your own AI assistant.{" "}
         <Link to="/connect" className="text-foreground underline underline-offset-4">
           Connect yours
         </Link>

@@ -1,7 +1,6 @@
-import { searchTags } from "../qloo/api.server.ts";
 import { Region, type CityScore, type PerformerKind } from "../shared/types.ts";
 import { seedCities } from "./cities.ts";
-import { resolveArtist } from "./resolve.ts";
+import { resolveArtist, resolveStyles } from "./resolve.ts";
 import { scoreCities } from "./score.ts";
 import { noopEmit, type Emit } from "./trace.ts";
 
@@ -13,19 +12,11 @@ export type MarketSignal = { acts: { id: string; name: string }[]; tags: { id: s
 export async function resolveMarketSignal(opts: { acts?: string[]; genres?: string[]; kind?: PerformerKind }): Promise<MarketSignal> {
   const [acts, tags] = await Promise.all([
     Promise.all((opts.acts ?? []).map((a) => resolveArtist(a, opts.kind))),
-    Promise.all(
-      (opts.genres ?? []).map(async (g) => {
-        if (g.startsWith("urn:tag:")) return { id: g, name: g.split(":").at(-1)!.replace(/_/g, " ") };
-        const found = await searchTags(g, { take: 10 });
-        // Prefer genre tags (music or comedy) over dishes and attractions that share the word.
-        const pick = found.find((t) => t.id.startsWith("urn:tag:genre:")) ?? found[0];
-        return pick && { id: pick.id, name: pick.name };
-      }),
-    ),
+    resolveStyles(opts.genres ?? [], opts.kind),
   ]);
   return {
     acts: acts.filter((a) => !!a).map((a) => ({ id: a!.id, name: a!.name })),
-    tags: tags.filter((t): t is { id: string; name: string } => !!t),
+    tags,
   };
 }
 

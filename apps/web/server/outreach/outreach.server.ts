@@ -1,7 +1,11 @@
 import { randomBytes } from "node:crypto";
+import { apiError } from "../agent/errors.ts";
 
 import { getRun, savePlan } from "../agent/runs.server.ts";
+import { sameCity, stopKey } from "@tourbo/core/engine/edit.ts";
+import type { Plan } from "@tourbo/core/shared/types.ts";
 import { appendTrace } from "../agent/trace.server.ts";
+import { changeEdits } from "../agent/edits.server.ts";
 import { db } from "@tourbo/core/db/client.server.ts";
 import type { Outreach, OutreachStatus } from "@tourbo/core/shared/types.ts";
 import { sendEmail } from "./email.server.ts";
@@ -44,10 +48,29 @@ const toOutreach = (r: Row): Outreach => ({
   updatedAt: r.updated_at.toISOString(),
 });
 
+// Emails follow their night (city + room) when the act moves nights. A row whose room is no longer
+// in the plan stays with the same city's night (a passed venue's history); rows of a city the act
+// swapped out are left out. Plans never edited keep their night numbers.
+export function placeOutreach(plan: Plan | null | undefined, list: Outreach[]): Outreach[] {
+  if (!plan?.edited) return list;
+  const keys = new Map(plan.stops.map((s, i) => [stopKey(s), i]));
+  return list
+    .map((o) => ({ ...o, stopIndex: keys.get(stopKey({ city: { name: o.city } as never, venue: { id: o.venueId } as never })) ?? plan.stops.findIndex((s) => sameCity(s.city.name, o.city)) }))
+    .filter((o) => o.stopIndex >= 0)
+    .sort((a, b) => a.stopIndex - b.stopIndex);
+}
+
 export async function listOutreach(runId: string): Promise<Outreach[]> {
   const sql = await db();
-  const rows = await sql<Row[]>`select * from outreach where run_id = ${runId} order by stop_index, created_at`;
-  return rows.map(toOutreach);
+  const [rows, run] = await Promise.all([sql<Row[]>`select * from outreach where run_id = ${runId} order by stop_index, created_at`, getRun(runId)]);
+  return placeOutreach(run?.plan, rows.map(toOutreach));
+}
+
+// The row's night in the current plan (rows hold the night number they were drafted for).
+async function nightOfRow(row: Row) {
+  const run = await getRun(row.run_id);
+  const i = placeOutreach(run?.plan, [toOutreach(row)])[0]?.stopIndex ?? -1;
+  return { run, i, stop: i >= 0 ? run?.plan?.stops[i] : undefined };
 }
 
 async function getRow(id: string) {
@@ -75,7 +98,8 @@ async function insertDraft(runId: string, stopIndex: number) {
 export async function draftAll(runId: string) {
   const run = await getRun(runId);
   if (!run?.plan) throw new Error("Run has no plan yet");
-  const existing = new Set((await listOutreach(runId)).map((o) => o.stopIndex));
+  // One per night: an email counts for its night only while it's for the night's current room.
+  const existing = new Set((await listOutreach(runId)).filter((o) => o.venueId === run.plan!.stops[o.stopIndex]?.venue?.id).map((o) => o.stopIndex));
   const emit = await appendTrace(runId);
   const rows = await Promise.all(
     run.plan.stops.map((stop, i) => (existing.has(i) || !stop.venue ? undefined : insertDraft(runId, i))),
@@ -131,8 +155,7 @@ export async function handleReply(token: string, text: string) {
 
 // A pass swaps in the backup venue, updates the plan and drafts a new inquiry.
 async function promoteBackup(row: Row, emit: Awaited<ReturnType<typeof appendTrace>>) {
-  const run = await getRun(row.run_id);
-  const stop = run?.plan?.stops[row.stop_index];
+  const { run, i: night, stop } = await nightOfRow(row);
   if (!run?.plan || !stop) return;
   if (stop.venue?.id !== row.venue_id) return; // already replaced
   if (!stop.backupVenue) {
@@ -140,9 +163,14 @@ async function promoteBackup(row: Row, emit: Awaited<ReturnType<typeof appendTra
     return;
   }
   const backup = stop.backupVenue;
-  const stops = run.plan.stops.map((s, i) => (i === row.stop_index ? { ...s, venue: backup, backupVenue: undefined } : s));
-  await savePlan(run.id, { ...run.plan, stops });
-  await insertDraft(run.id, row.stop_index);
+  // Through the act's edit list (PLAN Q19), so the swap is recomputed like any other edit and
+  // later edits, Undo or Reset replay it instead of losing it.
+  const r = await changeEdits(run.id, { kind: "apply", edit: { op: "swapVenue", night: stopKey(stop), venueId: backup.id }, source: "venue passed" });
+  if (!r.ok) {
+    emit("repair", `${row.city}: ${row.venue_name} passed; couldn't switch to ${backup.name} (${r.error})`, { city: row.city });
+    return;
+  }
+  await insertDraft(run.id, night);
   emit("repair", `${row.city}: ${row.venue_name} passed → promoted backup ${backup.name}, drafted a new inquiry`, {
     city: row.city,
   });
@@ -151,8 +179,7 @@ async function promoteBackup(row: Row, emit: Awaited<ReturnType<typeof appendTra
 // A reply with money terms: assess it against the act's limits (MCP tourbo_assess_offer) and
 // draft accept / counter / walk-away for the act to review and send.
 async function negotiate(row: Row, terms: ReplyOffer, emit: Awaited<ReturnType<typeof appendTrace>>) {
-  const run = await getRun(row.run_id);
-  const stop = run?.plan?.stops[row.stop_index];
+  const { run, stop } = await nightOfRow(row);
   const money = stop?.money;
   if (!run?.plan || !stop || !money) return;
   const clean = Object.fromEntries(Object.entries(terms).filter(([, v]) => v !== null)) as ReplyOffer;
@@ -184,11 +211,11 @@ async function negotiate(row: Row, terms: ReplyOffer, emit: Awaited<ReturnType<t
       assessment,
       facts: { cityScore: stop.score, expectedTickets: money.tickets, evidence: stop.evidence.slice(0, 3).map((e) => `${e.ref}${e.value ? ` ${e.value}` : ""}`) },
     }).catch((e: Error) => {
-      state.error = e.message;
+      state.error = apiError(e, "outreach reply").error;
       return undefined;
     });
   } catch (error) {
-    state = { terms: clean, assessment: undefined as never, error: (error as Error).message };
+    state = { terms: clean, assessment: undefined as never, error: apiError(error, "outreach offer").error };
   } finally {
     await mcp.close().catch(() => {});
   }

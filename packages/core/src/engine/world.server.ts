@@ -27,8 +27,8 @@ let loading: Promise<boolean> | undefined;
 export function ensureWorld(): Promise<boolean> {
   loading ??= (async () => {
     const sql = await db();
-    const rows = await sql<{ name: string; country: string; country_name: string; admin1: string | null; lat: number; lon: number; population: number; continent: string }[]>`
-      select c.name, c.country, k.name as country_name, c.admin1, c.lat, c.lon, c.population, c.continent
+    const rows = await sql<{ name: string; country: string; country_name: string; admin1: string | null; lat: number; lon: number; population: number; continent: string; timezone: string | null }[]>`
+      select c.name, c.country, k.name as country_name, c.admin1, c.lat, c.lon, c.population, c.continent, c.timezone
       from cities c join countries k on k.code = c.country order by c.population desc`;
     const world: WorldCity[] = rows.map((r) => ({
       name: r.name,
@@ -39,6 +39,7 @@ export function ensureWorld(): Promise<boolean> {
       lon: r.lon,
       country: r.country,
       population: r.population,
+      ...(r.timezone ? { timezone: r.timezone } : {}),
     }));
     setWorld(world);
     return world.length > 0;

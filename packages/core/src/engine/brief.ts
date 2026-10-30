@@ -65,6 +65,12 @@ export async function cityBrief(opts: {
   return { city: opts.city, fanTaste: fans, cityCulture: culture, localArtists: artists, localSpots: spots, sponsors, fanTags: tags };
 }
 
+// What a city loves on its own (no act): culture and its music scene. tourbo://city/{region}/{city}/brief.
+export async function cityOnlyBrief(city: string): Promise<Pick<CityBrief, "city" | "cityCulture" | "localArtists">> {
+  const [culture, artists] = await Promise.all([cityCulture(city), localArtists(city, []).catch(() => [])]);
+  return { city, cityCulture: culture, localArtists: artists };
+}
+
 // Every name in a brief, normalised: the material critic accepts only references in here.
 export function briefNames(brief: CityBrief) {
   const all = [...brief.fanTaste, ...brief.cityCulture, ...brief.localArtists, ...brief.localSpots, ...brief.sponsors, ...brief.fanTags];

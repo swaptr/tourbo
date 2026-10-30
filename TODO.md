@@ -91,6 +91,8 @@ Stages follow PLAN.md §11. Deadline **2026-10-30 11:45pm EDT**. Stage 4 = minim
 - [x] Pre-warm cache for demo artists: `npm run qloo:prewarm` (top 12 cities each, ~55 s cold). Cache TTL 7 days → rerun on Render before judging (Nov 2)
 - [x] Empty / error states: styled 404/error boundary, plan-not-ready states on compare + pipeline, interrupted/failed retry
 - [x] Mobile-acceptable layout (no horizontal overflow at 390 px on plan / compare / pipeline)
+- [x] Q21 profile once + workspace (Tours · Shows · Library, events + material, archive, URL filters, ink app bar)
+- [x] Q21 follow-ups: AI assists wired, Projects folded into tours, any-town home base, New tour popover
 
 ## Stage 8 — Submission
 - [x] README: what, architecture diagram, why it fails without Qloo, judging criteria, local run, env vars (live URL added at deploy)
@@ -190,3 +192,16 @@ Stages follow PLAN.md §11. Deadline **2026-10-30 11:45pm EDT**. Stage 4 = minim
 - [x] Ticket sales tab: check-ins → `tourbo_ticket_pace` advice; post-show results → draw calibration
 - [x] Copy buttons on Connect snippets; mobile pass (390px: home, wizard, plan, notes, emails)
 - [ ] Render deploy (owner sets keys; `render.yaml` ready)
+
+## Grounded ideas for artists (PLAN §18 Q9–Q13, 2026-10-30)
+- [x] Q9 plain UI: short wizard, unlisted acts (sounds like / style / just the city), Adjust panel, /help
+- [x] Q9 Build my set: per-city running order + cover ideas, `tourbo_build_set`
+- [x] Q10 MCP hosted `/mcp` + self-host (`npx @tourbo/mcp`, `--http`, Docker), /connect tabs
+- [x] Q11 home examples: 3–8 nights from data (bundle re-exported from cache; full re-prewarm when quota returns)
+- [x] Q12 Ideas for this place: covers, local topics, painting subjects, region view, `tourbo_ideas`; Ideas = first plan tab
+- [ ] Q13 clean MCP toolset on latest spec (annotations, output schemas, resources, prompts, open-data artist tools)
+- [x] Q14 18 kinds of act on the website; Q15 performance context; Q16 your work without accounts; Q17 insights + BDD suite; Q18 place features; Q19 map-first editable plan; Q20 chat, levers, decision prompts; grounded "why" lines
+- [x] Q13 MCP: annotations, output schemas, ics/markdown export, resources, prompts
+- [ ] `tourbo_plan_edit` MCP tool (move edit/runs/owner logic from web to core)
+- [ ] Live story tests 19–26, 33 once fan-data quota returns; probe the 10 new kinds; demographics probe
+- [ ] Re-prewarm examples (dancer gate) when quota returns

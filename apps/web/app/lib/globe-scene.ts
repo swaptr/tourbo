@@ -146,6 +146,8 @@ const MAX_STOPS = 8;
 const GPU_IDLE_MAX_MS = 4000; // startup: longest wait for the GPU to finish warm-up behind the still
 const ZONES_MOVING_MS = 120; // marker hover zones: rebuild cadence while the camera moves
 const POPS = 2;
+// Pop-up lift above its city, in card heights: the first that clears the route badges wins.
+const POP_LIFTS = [0.55, 1.1, 1.65, 2.2];
 const PEAK_SEARCH = 0.05; // pop-ups: look for the summit within this share of the terrain patch // in-globe pop-ups: the top city + one surprise city
 const POP_IN_MS = 450; // gap between the two pop-ups fading in, after the route is drawn
 
@@ -156,6 +158,7 @@ export type SceneExample = {
   home: { lat: number; lon: number };
   cities: { name: string; lat: number; lon: number; fanStrength: number }[];
   route?: { name: string; lat: number; lon: number }[];
+  focus?: string; // non-route cards: the one city the card is about (one pin, no route line)
   decision: { lines: string[] };
   skipped?: { name: string; lat: number; lon: number };
   surprise?: { city: string };
@@ -1510,7 +1513,10 @@ export async function createGlobeScene(canvas: HTMLCanvasElement | OffscreenCanv
       // The camera frames the story's region only; an inspected example swaps the terrain in place
       // and never moves the camera.
       if (move || !frameBox) (frameBox = box), (frameH = terrainH);
-      const all = allStops;
+      // A route card draws its route; any other card pins only its own city (the globe never shows
+      // a route the card isn't about).
+      const pinCity = ex.focus ? (allStops.find((s) => s.name === ex.focus) ?? ex.cities.find((c) => c.name === ex.focus)) : undefined;
+      const all = ex.focus ? (pinCity ? [pinCity] : allStops.slice(0, 1)) : allStops;
       const strength = new Map(ex.cities.map((c) => [c.name, c.fanStrength]));
       const home = toVec(ex.home.lat, ex.home.lon);
       (waveMat.uniforms.uHome.value as THREE.Vector3).set(...home);
@@ -1557,6 +1563,9 @@ export async function createGlobeScene(canvas: HTMLCanvasElement | OffscreenCanv
         stub.computeLineDistances();
         stub.visible = true;
       } else stub.visible = false;
+      // Draw-call budget (≤ 10 per frame): with the skipped city's stub drawn, the route goes
+      // without its paper halo (one call each).
+      if (stub.visible) halo.visible = false;
     };
     // The bake runs in a worker; the swap waits for it (and for the old marks to ease away).
     const job = ++bakeId;
@@ -2171,11 +2180,11 @@ void main() {
   const paintPop = (title: string, sub: string, x: number, y: number) => {
     atlas.font = `600 ${13 * AS}px system-ui, sans-serif`;
     const tw = atlas.measureText(title).width;
-    atlas.font = `${11 * AS}px system-ui, sans-serif`;
+    atlas.font = `${12 * AS}px system-ui, sans-serif`;
     const sw = atlas.measureText(sub).width;
-    const pad = 8 * AS, h = 40 * AS, w = Math.ceil(Math.max(tw, sw) + pad * 2), tip = 5 * AS, body = h - tip;
+    const pad = 8 * AS, h = 42 * AS, w = Math.ceil(Math.max(tw, sw) + pad * 2), tip = 5 * AS, body = h - tip;
     atlas.fillStyle = bg;
-    atlas.globalAlpha = 0.95;
+    atlas.globalAlpha = 1;
     atlas.beginPath();
     atlas.roundRect(x, y, w, body, 5 * AS);
     atlas.moveTo(x + w / 2 - tip, y + body);
@@ -2191,8 +2200,8 @@ void main() {
     atlas.font = `600 ${13 * AS}px system-ui, sans-serif`;
     atlas.fillText(title, x + pad, y + 16 * AS);
     atlas.fillStyle = muted;
-    atlas.font = `${11 * AS}px system-ui, sans-serif`;
-    atlas.fillText(sub, x + pad, y + 29 * AS);
+    atlas.font = `${12 * AS}px system-ui, sans-serif`;
+    atlas.fillText(sub, x + pad, y + 31 * AS);
     return [w, h];
   };
   type Pop = { lat: number; lon: number; title: string; sub: string; stop: number };
@@ -2309,10 +2318,18 @@ void main() {
     // Pop-ups: the second one hides when it would overlap the first (priority: top city), and
     // any pop-up hides under the docked dialog.
     const pp = pops.map((p) => projectP(p.lat, p.lon, WAVE_LIFT * 3));
+    // Route badges the pop-up must not sit on (a dense route would otherwise cover the city name).
+    const badges = pts.flatMap((q, i) => (stopMerged[i] || q.facing < 0.06 ? [] : [[q.x, q.y, lSize[i * 2] / 2 + 3, lSize[i * 2 + 1] / 2 + 3]]));
+    let lifted = false;
     pops.forEach((_, k) => {
       const w = lSize[(popBase + k) * 2], h = lSize[(popBase + k) * 2 + 1];
-      // Screen rect (anchor -0.55: the card sits 0.55–1.55 card heights above its city).
-      const x0 = pp[k].x - w / 2 - 4, x1 = pp[k].x + w / 2 + 4, y0 = pp[k].y - 1.55 * h - 4, y1 = pp[k].y - 0.55 * h + 4;
+      // Screen rect: the card sits `lift`–(lift + 1) card heights above its city; it climbs in half
+      // steps until no route badge is under it.
+      const x0 = pp[k].x - w / 2 - 4, x1 = pp[k].x + w / 2 + 4;
+      const clear = (a: number) => !badges.some(([bx, by, bw, bh]) => x0 < bx + bw && x1 > bx - bw && pp[k].y - (1 + a) * h - 4 < by + bh && pp[k].y - a * h + 4 > by - bh);
+      const lift = POP_LIFTS.find(clear) ?? POP_LIFTS[POP_LIFTS.length - 1];
+      if (lAnchor[(popBase + k) * 2 + 1] !== -lift) (lAnchor[(popBase + k) * 2 + 1] = -lift), (lifted = true);
+      const y0 = pp[k].y - (1 + lift) * h - 4, y1 = pp[k].y - lift * h + 4;
       let hide = pp[k].facing < 0.06 || panelRects.some(([rx, ry, rw, rh]) => x0 < rx + rw && x1 > rx && y0 < ry + rh && y1 > ry);
       for (let j = 0; j < k; j++) {
         const wj = lSize[(popBase + j) * 2];
@@ -2320,6 +2337,7 @@ void main() {
       }
       popHidden[k] = hide;
     });
+    if (lifted) anchorAttr.needsUpdate = true;
   };
 
   // ---- Leader line to the docked inspect panel ----

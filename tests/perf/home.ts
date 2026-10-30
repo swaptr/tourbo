@@ -206,7 +206,7 @@ async function scenario(page: Page, cdp: CDPSession) {
   });
   const stats = JSON.parse((await page.locator("[data-testid=globe-canvas]").getAttribute("data-stats")) ?? "{}");
   // Unmount: client-side navigation away; every GL object the globe made must be gone.
-  await page.locator("a[href=\"/start\"]", { hasText: "Plan my tour" }).first().click();
+  await page.locator("a[href=\"/start?next=tour\"]", { hasText: "Plan a tour" }).first().click();
   await page.waitForURL(/\/start/);
   await page.waitForTimeout(1500);
   const live = await page.evaluate(() => {

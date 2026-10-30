@@ -23,10 +23,18 @@
     "backtest": "npm run backtest -w @tourbo/web",
     "cities:seed": "npm run cities:seed -w @tourbo/core --",
     "db:import": "npm run db:import -w @tourbo/core --",
+    "kinds:set": "npm run kinds:set -w @tourbo/core --",
+    "kinds:list": "npm run kinds:list -w @tourbo/core",
     "examples:prewarm": "npm run examples:prewarm -w @tourbo/web --",
-    "examples:export": "npm run examples:export -w @tourbo/web --"
+    "examples:export": "npm run examples:export -w @tourbo/web --",
+    "material:migrate": "npm run material:migrate -w @tourbo/web",
+    "mcp:build": "npm run build -w @tourbo/mcp",
+    "test:bdd": "cucumber-js --config tests/bdd/cucumber.mjs",
+    "test:bdd:hobbies": "cucumber-js --config tests/bdd/cucumber.mjs --tags @hobbies"
   },
   "devDependencies": {
+    "@axe-core/playwright": "^4.14.0",
+    "@cucumber/cucumber": "^13.3.0",
     "@types/node": "^22",
     "playwright-core": "^1.64.1",
     "typescript": "^5.9.3"

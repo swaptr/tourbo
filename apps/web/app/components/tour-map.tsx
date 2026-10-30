@@ -1,11 +1,11 @@
 import "maplibre-gl/dist/maplibre-gl.css";
+import { basemapStyle } from "~/lib/map-style";
 import workerUrl from "maplibre-gl/dist/maplibre-gl-worker.mjs?url";
 import { tokenColor } from "~/lib/css-color";
 import { useEffect, useRef } from "react";
 
 import type { CityPlan } from "@tourbo/core/shared/types.ts";
 
-const STYLE = "https://tiles.openfreemap.org/styles/positron";
 
 // Client-only: maplibre is imported lazily inside the effect, so SSR never touches it.
 export function TourMap({ stops }: { stops: CityPlan[] }) {
@@ -19,7 +19,7 @@ export function TourMap({ stops }: { stops: CityPlan[] }) {
     import("maplibre-gl").then((maplibre) => {
       if (disposed || !container.current) return;
       maplibre.setWorkerUrl(workerUrl);
-      map = new maplibre.Map({ container: container.current, style: STYLE, attributionControl: { compact: true } });
+      map = new maplibre.Map({ container: container.current, style: basemapStyle(), attributionControl: { compact: true } });
       map.addControl(new maplibre.NavigationControl({ showCompass: false }));
 
       const bounds = new maplibre.LngLatBounds();

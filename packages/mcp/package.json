@@ -2,26 +2,44 @@
   "name": "@tourbo/mcp",
   "version": "0.1.0",
   "type": "module",
-  "description": "Tourbo MCP server: Qloo-grounded tour planning tools (city scoring, venues, openers, local scene, routing, economics) plus Qloo workflow tools.",
+  "description": "Tourbo MCP server: fan-data-grounded tour planning tools (city scoring, venues, openers, local scene, routing, show economics) plus Qloo workflow tools. Stdio or Streamable HTTP.",
   "license": "MIT",
+  "keywords": [
+    "mcp",
+    "model-context-protocol",
+    "tour",
+    "music",
+    "qloo"
+  ],
+  "engines": {
+    "node": ">=22"
+  },
   "exports": {
     ".": "./src/index.ts",
     "./*": "./src/*"
   },
-  "bin": {
-    "tourbo-mcp": "./dist/bin/stdio.js"
+  "publishConfig": {
+    "access": "public"
   },
+  "bin": {
+    "tourbo-mcp": "dist/bin/tourbo-mcp.js"
+  },
+  "files": [
+    "dist"
+  ],
   "scripts": {
     "start": "node --env-file-if-exists=../../.env src/bin/stdio.ts",
+    "build": "node build.mjs",
+    "prepublishOnly": "node build.mjs",
     "typecheck": "tsc -p tsconfig.json",
     "test": "node --env-file-if-exists=../../.env test/smoke.ts"
   },
-  "dependencies": {
+  "devDependencies": {
+    "@modelcontextprotocol/client": "^2.4.0",
+    "@modelcontextprotocol/node": "^2.1.2",
     "@modelcontextprotocol/server": "^2.4.0",
     "@tourbo/core": "*",
+    "esbuild": "0.28.2",
     "zod": "4.6.7"
-  },
-  "devDependencies": {
-    "@modelcontextprotocol/client": "^2.4.0"
   }
 }

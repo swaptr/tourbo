@@ -1,3 +1,4 @@
+import { ErrorLine, LoadingLines } from "~/components/state";
 import { LoaderCircle } from "lucide-react";
 import { useFetcher } from "react-router";
 
@@ -7,9 +8,11 @@ import { Button } from "~/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "~/components/ui/card";
 import { Input } from "~/components/ui/input";
 import { Label } from "~/components/ui/label";
-import { DISCIPLINES } from "@tourbo/core/disciplines/index.ts";
+import { NativeSelect, NativeSelectOption } from "~/components/ui/native-select";
+import { useKinds } from "~/lib/kinds";
 import { PerformerKind, REGION_NAMES, Region, type Region as RegionT } from "@tourbo/core/shared/types.ts";
 import { connectMcp } from "../../server/mcp.server";
+import { apiError } from "../../server/agent/errors";
 import type { Route } from "./+types/explore";
 
 export function meta({}: Route.MetaArgs) {
@@ -36,8 +39,9 @@ const kindOf = (v: FormDataEntryValue | null) => PerformerKind.catch("musician")
 // Both tools run through the Tourbo MCP server, exactly as an external agent would call them.
 export async function action({ request }: Route.ActionArgs) {
   const form = await request.formData();
-  const mcp = await connectMcp(() => {}, ["tourbo"]);
+  let mcp: Awaited<ReturnType<typeof connectMcp>> | undefined;
   try {
+    mcp = await connectMcp(() => {}, ["tourbo"]);
     if (form.get("intent") === "markets") {
       const regions = form.getAll("regions").map(String);
       const markets = await mcp.call<Markets>("tourbo_find_markets", {
@@ -57,23 +61,22 @@ export async function action({ request }: Route.ActionArgs) {
     });
     return { intent: "acts" as const, acts };
   } catch (error) {
-    return { intent: String(form.get("intent")), error: (error as Error).message };
+    return { intent: String(form.get("intent")), ...apiError(error, "explore") };
   } finally {
-    await mcp.close().catch(() => {});
+    await mcp?.close().catch(() => {});
   }
 }
 
-const selectClass = "h-8 w-full rounded-lg border border-input bg-transparent px-2.5 text-sm dark:bg-input/30";
-
 function KindSelect() {
+  const kinds = useKinds().filter((k) => k.enabled || k.kind === "musician");
   return (
-    <select name="kind" className={selectClass} defaultValue="musician">
-      {Object.values(DISCIPLINES).map((d) => (
-        <option key={d.key} value={d.key}>
-          {d.label}
-        </option>
+    <NativeSelect name="kind" className="w-full" defaultValue="musician">
+      {kinds.map((k) => (
+        <NativeSelectOption key={k.kind} value={k.kind}>
+          {k.label}
+        </NativeSelectOption>
       ))}
-    </select>
+    </NativeSelect>
   );
 }
 
@@ -86,19 +89,64 @@ export default function Explore() {
     <main className="container mx-auto max-w-5xl space-y-8 px-4 py-12">
       <div>
         <h1 className="font-heading text-3xl tracking-tight">For venues and new acts</h1>
-        <p className="mt-2 max-w-3xl text-muted-foreground">
-          Two questions small acts and small rooms ask before any tour exists. Both answers come from fan data through the
-          same tools your own AI assistant can call.
-        </p>
+        <p className="mt-2 text-muted-foreground">Find acts for your room, or cities for acts like you.</p>
       </div>
 
       <Card>
         <CardHeader>
+          <CardTitle>Who should play my room?</CardTitle>
+          <CardDescription>Acts your crowd likes, with local fans. Try “Empty Bottle”, Chicago.</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <acts.Form method="post" className="grid gap-3 sm:grid-cols-[2fr_2fr_1fr_auto] sm:items-end">
+            <input type="hidden" name="intent" value="acts" />
+            <div className="grid gap-1.5">
+              <Label htmlFor="venue">Venue</Label>
+              <Input id="venue" name="venue" required placeholder="Venue name" />
+            </div>
+            <div className="grid gap-1.5">
+              <Label htmlFor="city">City</Label>
+              <Input id="city" name="city" required placeholder="City" />
+            </div>
+            <div className="grid gap-1.5">
+              <Label>Act type</Label>
+              <KindSelect />
+            </div>
+            <Button type="submit" data-primary disabled={acts.state !== "idle"}>
+              {acts.state !== "idle" && <LoaderCircle className="animate-spin" />} Find acts
+            </Button>
+          </acts.Form>
+          {acts.state !== "idle" && <LoadingLines lines={4} label="Finding acts…" />}
+          {acts.state === "idle" && acts.data && "error" in acts.data && <ErrorLine message={acts.data.error} />}
+          {a?.hint && <p className="text-sm text-muted-foreground">{a.hint}</p>}
+          {a?.acts && (
+            <>
+              <p className="text-sm">
+                <span className="font-medium">{a.venue?.name}</span>
+                {a.venue?.address && <span className="text-muted-foreground"> · {a.venue.address}</span>}
+              </p>
+              <ol className="divide-y text-sm">
+                {a.acts.map((act, i) => (
+                  <li key={act.id} className="flex items-center justify-between py-1.5">
+                    <span>
+                      {i + 1}. {act.name}
+                    </span>
+                    <span className="flex gap-1">
+                      <Chip>fit {act.fit}</Chip>
+                      <Chip>local fans {formatNumber(act.localCells)}</Chip>
+                    </span>
+                  </li>
+                ))}
+              </ol>
+              <p className="text-xs text-muted-foreground">{a.note}</p>
+            </>
+          )}
+        </CardContent>
+      </Card>
+      <Card>
+        <CardHeader>
           <CardTitle>Where do acts like me win?</CardTitle>
-          <CardDescription>
-            Rank cities in every region by the fans of comparable acts or a genre (try genre “qawwali”, or acts “Nusrat
-            Fateh Ali Khan”). Built for new and foreign acts with no data of their own.
-          </CardDescription>
+          <CardDescription>Name acts you sound like or a genre, e.g. “qawwali”.</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <markets.Form method="post" className="grid gap-3 sm:grid-cols-[2fr_2fr_1fr_auto] sm:items-end">
@@ -122,11 +170,12 @@ export default function Explore() {
                 </label>
               ))}
             </div>
-            <Button type="submit" disabled={markets.state !== "idle"}>
+            <Button type="submit" variant="outline" disabled={markets.state !== "idle"}>
               {markets.state !== "idle" && <LoaderCircle className="animate-spin" />} Find markets
             </Button>
           </markets.Form>
-          {markets.data && "error" in markets.data && <p className="text-sm text-destructive">{markets.data.error}</p>}
+          {markets.state !== "idle" && <LoadingLines lines={4} label="Ranking cities…" />}
+          {markets.state === "idle" && markets.data && "error" in markets.data && <ErrorLine message={markets.data.error} />}
           {m?.hint && <p className="text-sm text-muted-foreground">{m.hint}</p>}
           {m?.markets && (
             <>
@@ -151,59 +200,6 @@ export default function Explore() {
         </CardContent>
       </Card>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Promoter mode: who should play my room?</CardTitle>
-          <CardDescription>
-            For bars, small venues and promoters: acts this room's crowd likes, ranked by affinity plus local fan
-            presence. Try “Empty Bottle”, Chicago.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <acts.Form method="post" className="grid gap-3 sm:grid-cols-[2fr_2fr_1fr_auto] sm:items-end">
-            <input type="hidden" name="intent" value="acts" />
-            <div className="grid gap-1.5">
-              <Label htmlFor="venue">Venue</Label>
-              <Input id="venue" name="venue" required placeholder="Venue name" />
-            </div>
-            <div className="grid gap-1.5">
-              <Label htmlFor="city">City</Label>
-              <Input id="city" name="city" required placeholder="City" />
-            </div>
-            <div className="grid gap-1.5">
-              <Label>Act type</Label>
-              <KindSelect />
-            </div>
-            <Button type="submit" disabled={acts.state !== "idle"}>
-              {acts.state !== "idle" && <LoaderCircle className="animate-spin" />} Find acts
-            </Button>
-          </acts.Form>
-          {acts.data && "error" in acts.data && <p className="text-sm text-destructive">{acts.data.error}</p>}
-          {a?.hint && <p className="text-sm text-muted-foreground">{a.hint}</p>}
-          {a?.acts && (
-            <>
-              <p className="text-sm">
-                <span className="font-medium">{a.venue?.name}</span>
-                {a.venue?.address && <span className="text-muted-foreground"> · {a.venue.address}</span>}
-              </p>
-              <ol className="divide-y text-sm">
-                {a.acts.map((act, i) => (
-                  <li key={act.id} className="flex items-center justify-between py-1.5">
-                    <span>
-                      {i + 1}. {act.name}
-                    </span>
-                    <span className="flex gap-1">
-                      <Chip>fit {act.fit}</Chip>
-                      <Chip>local cells {formatNumber(act.localCells)}</Chip>
-                    </span>
-                  </li>
-                ))}
-              </ol>
-              <p className="text-xs text-muted-foreground">{a.note}</p>
-            </>
-          )}
-        </CardContent>
-      </Card>
     </main>
   );
 }

@@ -17,10 +17,10 @@ const schema = z.object({
     .string()
     .optional()
     .transform((s) => (s ? s.split(",").map((t) => t.trim()).filter(Boolean) : [])),
-  // Disciplines the hosted onboarding offers (comma-separated keys, or "all"). MCP always accepts every one.
+  // Disciplines the website offers: "all" (default) or comma-separated keys. MCP always accepts every one.
   DEMO_DISCIPLINES: z
     .string()
-    .default("musician,comedian")
+    .default("all")
     .transform((s) => {
       const keys = PerformerKind.options;
       return s.trim() === "all" ? [...keys] : keys.filter((k) => s.split(",").map((t) => t.trim()).includes(k));

@@ -44,6 +44,7 @@ html.dark {
   --color-chart-1: var(--chart-1);
   --color-ring: var(--ring);
   --color-input: var(--input);
+  --color-field: var(--field);
   --color-border: var(--border);
   --color-destructive: var(--destructive);
   --color-accent-foreground: var(--accent-foreground);
@@ -77,7 +78,7 @@ html.dark {
   --card-foreground: oklch(0.22 0.025 265);
   --popover: oklch(0.988 0.007 85);
   --popover-foreground: oklch(0.22 0.025 265);
-  --primary: oklch(0.55 0.17 35);
+  --primary: oklch(0.52 0.17 35);
   --primary-foreground: oklch(0.99 0.005 85);
   --secondary: oklch(0.45 0.13 262);
   --secondary-foreground: oklch(0.99 0.005 85);
@@ -95,7 +96,9 @@ html.dark {
   --info-foreground: oklch(0.99 0.005 85);
   --border: oklch(0.875 0.016 85);
   --input: oklch(0.85 0.018 85);
-  --ring: oklch(0.55 0.17 35);
+  /* Form-field edge: ≥3:1 on paper, card and muted (1.4.11), so a field reads as a field. */
+  --field: oklch(0.6 0.02 85);
+  --ring: oklch(0.52 0.17 35);
   /* Categorical: tomato, cobalt, ochre, sage, plum. */
   --chart-1: oklch(0.6 0.17 35);
   --chart-2: oklch(0.5 0.13 262);
@@ -105,24 +108,34 @@ html.dark {
   /* Fan ramp, low → high: the globe waves, towers and every bar in the app. */
   --score-1: oklch(0.873 0.114 89.4);
   --score-2: oklch(0.756 0.141 62.8);
-  --score-3: oklch(0.619 0.171 37.3);
-  --score-4: oklch(0.477 0.145 30.9);
-  --score-5: oklch(0.477 0.145 30.9);
+  --score-3: oklch(0.58 0.16 350);
+  --score-4: oklch(0.44 0.14 315);
+  --score-5: oklch(0.44 0.14 315);
   /* Globe: sea, land, coast, skipped city. */
   --globe-ocean: oklch(0.604 0.049 206.6);
   --globe-rim: oklch(0.781 0.037 203);
   --globe-land: oklch(0.879 0.037 80.6);
   --globe-coast: oklch(0.799 0.047 81.3);
   --globe-skip: oklch(0.647 0 0);
+  /* Charts (components/charts, dataviz skill; validated vs --card: AA marks, CVD-safe pair).
+     viz-1 tomato = fans / loss; viz-2 cobalt = profit / sold; viz-0 neutral gray = context;
+     viz-o1..4 = ordinal cobalt steps (funnel stages). Heat cells mix viz-1 into --card. */
+  --viz-1: oklch(0.58 0.17 35);
+  --viz-2: oklch(0.5 0.13 262);
+  --viz-0: oklch(0.62 0 0);
+  --viz-o1: oklch(0.74 0.07 262);
+  --viz-o2: oklch(0.66 0.09 262);
+  --viz-o3: oklch(0.58 0.11 262);
+  --viz-o4: oklch(0.5 0.13 262);
   --radius: 0.5rem;
   --sidebar: oklch(0.955 0.013 85);
   --sidebar-foreground: oklch(0.22 0.025 265);
-  --sidebar-primary: oklch(0.55 0.17 35);
+  --sidebar-primary: oklch(0.52 0.17 35);
   --sidebar-primary-foreground: oklch(0.99 0.005 85);
   --sidebar-accent: oklch(0.935 0.014 85);
   --sidebar-accent-foreground: oklch(0.22 0.025 265);
   --sidebar-border: oklch(0.875 0.016 85);
-  --sidebar-ring: oklch(0.55 0.17 35);
+  --sidebar-ring: oklch(0.52 0.17 35);
 }
 
 /* Dark = the same programme printed on ink. */
@@ -151,6 +164,7 @@ html.dark {
   --info-foreground: oklch(0.18 0.02 265);
   --border: oklch(1 0 0 / 12%);
   --input: oklch(1 0 0 / 16%);
+  --field: oklch(1 0 0 / 38%);
   --ring: oklch(0.7 0.15 38);
   --chart-1: oklch(0.7 0.15 38);
   --chart-2: oklch(0.72 0.1 262);
@@ -159,9 +173,16 @@ html.dark {
   --chart-5: oklch(0.68 0.1 330);
   --score-1: oklch(0.873 0.114 89.4);
   --score-2: oklch(0.756 0.141 62.8);
-  --score-3: oklch(0.619 0.171 37.3);
-  --score-4: oklch(0.477 0.145 30.9);
-  --score-5: oklch(0.477 0.145 30.9);
+  --score-3: oklch(0.66 0.16 350);
+  --score-4: oklch(0.62 0.15 315);
+  --score-5: oklch(0.62 0.15 315);
+  --viz-1: oklch(0.65 0.16 36);
+  --viz-2: oklch(0.62 0.12 262);
+  --viz-0: oklch(0.62 0 0);
+  --viz-o1: oklch(0.44 0.08 262);
+  --viz-o2: oklch(0.51 0.095 262);
+  --viz-o3: oklch(0.58 0.11 262);
+  --viz-o4: oklch(0.65 0.12 262);
   --globe-ocean: oklch(0.45 0.045 210);
   --globe-rim: oklch(0.6 0.04 205);
   --globe-land: oklch(0.79 0.035 80);
@@ -179,18 +200,30 @@ html.dark {
 
 @layer base {
   * {
-    @apply border-border outline-ring/50;
+    @apply border-border outline-ring;
   }
   body {
     @apply bg-background text-foreground;
   }
   html {
     @apply font-sans;
+    /* Focus never lands under a sticky bar (2.4.11): room for the tallest stack (section tabs + toolbar). */
+    scroll-padding-top: 6.5rem;
+  }
+  /* One focus ring for everything that doesn't draw its own: 2 px, ring colour (≥3:1 on paper and ink). */
+  :focus-visible {
+    outline: 2px solid var(--ring);
+    outline-offset: 2px;
   }
   h1,
   h2,
   h3 {
     @apply font-heading font-normal tracking-tight;
+  }
+  /* The serif is for 18 px and up: a small heading (list group, card section) is set in the sans. */
+  :is(h1, h2, h3):is(.text-xs, .text-sm, .text-base) {
+    font-family: var(--font-sans);
+    letter-spacing: normal;
   }
   /* Two faces only: code snippets and logs use the body face, never a monospace. */
   code,
@@ -222,9 +255,9 @@ html.dark {
   order: 1;
   display: flex;
   flex-direction: column;
-  /* Fixed per breakpoint and viewport, never measured: fits the screen, the body scrolls. */
-  height: min(21rem, calc(100dvh - 6rem));
-  margin-inline: 1rem;
+  /* Phone: sized to the example in front (no empty space, no inner scroll); the list and "why?"
+     get a fixed reading height. Desktop: one fixed height that fits the longest example. */
+  margin: 0.75rem 1rem 0;
   overflow: hidden;
   contain: layout paint;
   border: 1px solid var(--globe-coast);
@@ -234,13 +267,43 @@ html.dark {
   font-variant-numeric: tabular-nums;
 }
 @media (min-width: 1024px) {
+  /* Left column, under the pitch; the globe owns the right half of the first screen. */
   .ec {
-    position: absolute;
-    top: 0.5rem;
-    left: max(1rem, calc((100% - 72rem) / 2 + 1rem));
+    grid-column: 1;
+    grid-row: 2;
+    align-self: start;
     width: 28rem;
-    height: min(26rem, calc(100dvh - 3.5rem - 2rem));
-    margin: 0;
+    height: 22.5rem; /* the tallest example in the current bundle (352 px at 1440, re-measure after an export): no inner scroll */
+    margin: 1.75rem 0 2.5rem;
+  }
+}
+/* Desktop: one fixed height (fits the longest example); a shorter example sits centred between the
+   eyebrow and the pinned footer instead of leaving a band above the footer. */
+@media (min-width: 1024px) {
+  .ec-layer .ec-body {
+    display: flex;
+    flex-direction: column;
+    justify-content: safe center;
+  }
+}
+@media (max-width: 1023px) {
+  .ec[data-list],
+  .ec[data-why] {
+    min-height: min(28rem, calc(100dvh - 6rem));
+  }
+  .ec-layers {
+    display: grid;
+  }
+  .ec .ec-layer {
+    contain: layout paint;
+  }
+  .ec .ec-layer[data-front] {
+    position: relative;
+    inset: auto;
+    padding-bottom: 0.75rem;
+  }
+  .ec .ec-layer[data-front] .ec-body {
+    overflow: visible;
   }
 }
 .ec-layers {
@@ -263,20 +326,22 @@ html.dark {
 }
 .ec-eyebrow {
   flex: none;
-  /* Fixed line box + containment: a longer byline never nudges the body (CLS 0 on swaps). */
-  height: 1.25rem;
+  /* Fixed two-line box + containment: the byline wraps instead of being cut, and a longer one
+     never nudges the body (CLS 0 on swaps). */
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  height: 2.5rem;
   line-height: 1.25rem;
   contain: layout paint;
   overflow: hidden;
   font-size: 0.75rem;
-  letter-spacing: 0.1em;
-  text-overflow: ellipsis;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
-  white-space: nowrap;
   color: var(--muted-foreground);
 }
 .ec-headline {
-  font-size: 1.625rem;
+  font-size: 1.875rem;
   line-height: 1.08;
   text-wrap: balance;
 }
@@ -288,7 +353,7 @@ html.dark {
   font-size: 0.875rem;
   color: var(--muted-foreground);
 }
-.ec li:not([hidden]) {
+.ec-facts > li:not([hidden]) {
   display: flex;
   gap: 0.5rem;
 }
@@ -311,6 +376,10 @@ html.dark {
   overflow-y: auto;
   overscroll-behavior: contain;
   scrollbar-gutter: stable;
+  /* Focusable so keyboard users can scroll it; the card clips, so the ring sits inside. */
+  &:focus-visible {
+    outline-offset: -2px;
+  }
 }
 /* Chromium/Safari: exact 6 px via ::-webkit-scrollbar (ignored if scrollbar-color is set, so the
    standard properties go to Firefox only). */
@@ -348,6 +417,52 @@ html.dark {
 .ec-why {
   margin-top: 0.75rem;
 }
+/* Numbers inside a fact: a quiet chip so the figures scan first. */
+.ec-fig {
+  padding: 0 0.25rem;
+  border-radius: 0.25rem;
+  background: var(--muted);
+  color: var(--foreground);
+  font-weight: 500;
+  white-space: nowrap;
+}
+.ec-more {
+  margin-top: 0.75rem;
+}
+/* The rehearsed line, quoted above the listeners' reactions. */
+.ec-said {
+  font-size: 1.25rem;
+  line-height: 1.2;
+  text-wrap: pretty;
+}
+.ec-more-trigger {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  height: 1.75rem;
+  padding: 0 0.625rem;
+  border: 1px solid var(--border);
+  border-radius: 9999px;
+  font-size: 0.75rem;
+  color: var(--muted-foreground);
+  cursor: pointer;
+  list-style: none;
+  &::-webkit-details-marker {
+    display: none;
+  }
+  &:hover {
+    background: var(--muted);
+    color: var(--foreground);
+  }
+  &:focus-visible {
+    outline: 3px solid color-mix(in oklch, var(--ring) 50%, transparent);
+    outline-offset: 1px;
+  }
+}
+.ec-more-trigger[aria-expanded="true"],
+.ec-more[open] > .ec-more-trigger {
+  color: var(--foreground);
+}
 .ec-details {
   display: grid;
   gap: 0.5rem;
@@ -367,6 +482,7 @@ html.dark {
   display: flex;
   flex: 1 1 auto;
   align-items: center;
+  gap: 0.625rem;
   min-width: 0;
   overflow: hidden;
 }
@@ -378,34 +494,50 @@ html.dark {
   justify-content: center;
   gap: 0.25rem;
   width: 4.5rem;
-  height: 1.875rem;
-  border-radius: calc(var(--radius) * 0.8);
+  height: 1.75rem;
+  border-radius: var(--radius-md);
   color: var(--muted-foreground);
-  font-size: 0.8125rem;
+  font-size: 0.875rem;
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
+}
+/* Phone: 44 px touch targets (UI standard, 2.5.5) in a taller footer; tighter gaps so "why?" and
+   "Preview" fit beside Prev / All / Next at 390 px. */
+@media (max-width: 1023px) {
+  .ec-foot {
+    height: 3.5rem;
+    padding: 0 0.5rem 0 0.75rem;
+  }
+  .ec-footleft {
+    gap: 0.5rem;
+  }
+  .ec-ctl,
+  .ec-foot .ec-more-trigger {
+    height: 2.75rem;
+  }
+  .ec-ctl {
+    width: 4rem;
+  }
+  .ec-tag {
+    letter-spacing: 0.04em;
+  }
 }
 .ec-ctl[data-pressed] {
   background: color-mix(in oklch, var(--primary) 14%, var(--background));
   color: var(--primary);
 }
-/* "Preview": a quiet tag while a hovered/tapped example is showing (the story's is the default). */
+/* "Preview": a quiet tag in the footer (where the position sits) while a hovered/tapped example
+   is showing; in the flow, so it can never cover the eyebrow. */
 .ec-tag {
-  position: absolute;
-  top: 1.05rem;
-  right: 1rem;
-  z-index: 3;
+  flex: none;
   padding: 0 0.5rem;
   border-radius: 9999px;
   background: color-mix(in oklch, var(--globe-coast) 30%, var(--background));
   color: var(--muted-foreground);
-  font-size: 0.6875rem;
+  font-size: 0.75rem;
   letter-spacing: 0.08em;
   line-height: 1.25rem;
   text-transform: uppercase;
-}
-.ec[data-active] .ec-eyebrow {
-  padding-right: 5rem;
 }
 .ec-ctl:hover:not(:disabled) {
   background: color-mix(in oklch, var(--globe-coast) 22%, transparent);
@@ -416,7 +548,7 @@ html.dark {
   cursor: default;
 }
 .ec-ctl:focus-visible {
-  outline: 2px solid color-mix(in oklch, var(--primary) 60%, transparent);
+  outline: 2px solid var(--ring);
   outline-offset: 1px;
 }
 .ec-navdot {
@@ -464,6 +596,21 @@ html.dark {
   pointer-events: auto;
   transition: none;
 }
+.ec-whyhead {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  height: 2.75rem;
+  padding: 0 1rem 0 0.75rem;
+  border-bottom: 1px solid color-mix(in oklch, var(--border) 70%, transparent);
+  font-size: 0.875rem;
+}
+.ec-whylayer .ec-body {
+  margin-top: 0;
+  padding: 0.75rem 0.5rem 0.75rem 1.25rem;
+}
+.ec[data-why] .ec-layer,
 .ec[data-list] .ec-layer {
   visibility: hidden;
   pointer-events: none;
@@ -483,7 +630,7 @@ html.dark {
 }
 .ec-listtitle {
   font-family: var(--font-heading);
-  font-size: 1.375rem;
+  font-size: 1.25rem;
   line-height: 1.1;
 }
 .ec-search {
@@ -493,18 +640,18 @@ html.dark {
   height: 2rem;
   padding: 0 0.625rem;
   border: 1px solid var(--globe-coast);
-  border-radius: calc(var(--radius) * 0.8);
+  border-radius: var(--radius-md);
   background: color-mix(in oklch, var(--background) 70%, white);
 }
 .ec-search:focus-within {
   border-color: color-mix(in oklch, var(--foreground) 45%, var(--globe-coast));
-  box-shadow: 0 0 0 3px color-mix(in oklch, var(--globe-coast) 35%, transparent);
+  box-shadow: 0 0 0 2px var(--ring);
 }
 .ec-search input {
   flex: 1;
   min-width: 0;
   background: transparent;
-  font-size: 0.8125rem;
+  font-size: 0.875rem;
   outline: none;
 }
 .ec-search input::-webkit-search-cancel-button {
@@ -538,7 +685,7 @@ html.dark {
   border-bottom: 1px solid var(--border);
   background: var(--background);
   color: var(--muted-foreground);
-  font-size: 0.6875rem;
+  font-size: 0.75rem;
   font-weight: 500;
   letter-spacing: 0.12em;
   text-transform: uppercase;
@@ -600,13 +747,13 @@ html.dark {
   border-radius: 9999px;
   background: color-mix(in oklch, var(--globe-coast) 30%, transparent);
   color: var(--muted-foreground);
-  font-size: 0.6875rem;
+  font-size: 0.75rem;
   line-height: 1.25rem;
 }
 .ec-now {
   flex: none;
   color: var(--primary);
-  font-size: 0.6875rem;
+  font-size: 0.75rem;
   font-weight: 500;
 }
 .ec-city {
@@ -638,7 +785,7 @@ html.dark {
     padding: 0.875rem 1rem 0.5rem;
   }
   .ec-listtitle {
-    font-size: 1.125rem;
+    font-size: 1.25rem;
   }
 }
 /* ---- end example card ---- */
@@ -653,4 +800,36 @@ html.dark {
     transition-duration: 0.01ms !important;
     scroll-behavior: auto !important;
   }
+}
+/* Until the page's script takes over (root.tsx sets html[data-hydrated]), controls that need it take
+   no clicks and, if that lasts over 300 ms, look busy. Links, forms' fields and <details> work natively. */
+html.js:not([data-hydrated]) :is(header, main) :is(button, select, [role="tab"], [role="checkbox"], [role="switch"], [role="radio"], [role="slider"], [role="combobox"], input[type="date"]) {
+  pointer-events: none;
+  animation: tb-hydrating 0s linear 300ms forwards;
+}
+@keyframes tb-hydrating {
+  to {
+    opacity: 0.55;
+    filter: saturate(0.6);
+  }
+}
+
+/* /connect code blocks (routes/connect.tsx): they scroll sideways inside themselves; while more
+   code sits off to the right, a soft edge in the block's own colour says so (no gradient). */
+.code-scroll {
+  position: relative;
+  min-width: 0;
+  overflow: hidden;
+  border-radius: var(--radius-lg);
+}
+.code-scroll[data-more]::after {
+  content: "";
+  position: absolute;
+  top: 0.5rem;
+  right: 0;
+  bottom: 0.5rem;
+  width: 0;
+  pointer-events: none;
+  box-shadow: 0 0 1rem 1rem var(--muted);
+  border-radius: var(--radius-lg);
 }

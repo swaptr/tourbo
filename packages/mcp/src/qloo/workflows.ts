@@ -5,18 +5,26 @@ import { z } from "zod";
 
 import { qlooGet, type QlooParams } from "@tourbo/core/qloo/client.server.ts";
 
+import { plainError } from "../errors.ts";
 import { parseDemographic, resolveEntities, resolveTags, resultArray, type Issue, type Resolution } from "./resolve.ts";
 
 export const RESULT_SCHEMA_VERSION = "1.0-preview.1";
 const DEFAULT_LIMIT = 10;
 const MAX_RESULTS = 20;
 
-export const INSIGHTS_TYPES = ["artist", "book", "brand", "movie", "person", "place", "podcast", "tv_show", "videogame"] as const;
-export const SEARCH_TYPES = [...INSIGHTS_TYPES, "locality", "actor", "album", "author", "director"] as const;
+// Insights filter.type values (qloo-docs available-parameters-by-entity-type.md; the hackathon
+// guide lists the same ten). Video games are urn:entity:video_game.
+export const INSIGHTS_TYPES = ["artist", "book", "brand", "destination", "movie", "person", "place", "podcast", "tv_show", "video_game"] as const;
+// Legacy types: search only, not supported in /v2/insights (get-search.md); actor, author and
+// director are deprecated in favour of person.
+export const SEARCH_ONLY_TYPES = ["locality", "album", "actor", "author", "director"] as const;
+export const SEARCH_TYPES = [...INSIGHTS_TYPES, ...SEARCH_ONLY_TYPES] as const;
 const urn = (id: string) => `urn:entity:${id}`;
 
 const insightsType = z.enum(INSIGHTS_TYPES).describe(`Qloo Insights entity type: ${INSIGHTS_TYPES.join(", ")}.`);
-const searchType = z.enum(SEARCH_TYPES).describe(`Qloo search entity type: ${SEARCH_TYPES.join(", ")}.`);
+const searchType = z
+  .enum(SEARCH_TYPES)
+  .describe(`Qloo entity type used to look the name up: ${INSIGHTS_TYPES.join(", ")}; search-only legacy types ${SEARCH_ONLY_TYPES.join(", ")} (actor, author, director are deprecated: prefer person).`);
 const operator = z.enum(["union", "intersection"]).describe("Combine tag values with union (any) or intersection (all).");
 const limit = z.number().int().min(1).max(MAX_RESULTS).optional().describe(`Maximum results to return (1-${MAX_RESULTS}, default ${DEFAULT_LIMIT}).`);
 const entities = z.array(z.string().min(1)).min(1).max(10).describe("Named entities or Qloo entity UUIDs; use tag fields for abstract concepts.");
@@ -100,6 +108,22 @@ export const WORKFLOW_META: Record<Workflow, { title: string; description: strin
   trends: { title: "Qloo trends", description: "Retrieve Qloo time-series popularity metrics for one to five resolved entities over an ISO date range.", docs: "get-trending" },
   find_tags: { title: "Qloo tag search", description: "Search Qloo's tag ontology by natural-language concept and return stable tag URNs.", docs: "get-tags-1" },
 };
+
+// outputSchema of every qloo_* tool: the harness result envelope (loose: results vary by operation).
+export const ENVELOPE_SCHEMA = z.looseObject({
+  schema_version: z.string(),
+  operation: z.string(),
+  status: z.enum(["ok", "empty", "needs_input", "error"]),
+  summary: z.string().optional(),
+  interpretation: z.unknown().optional(),
+  resolution: z.looseObject({ issues: z.array(z.unknown()).optional() }).optional(),
+  results: z.unknown().optional(),
+  series: z.unknown().optional(),
+  result_count: z.number().optional(),
+  warnings: z.array(z.string()).optional(),
+  error: z.looseObject({ code: z.string(), layer: z.string(), retryable: z.boolean(), recovery: z.string() }).optional(),
+  provenance: z.looseObject({ source: z.string(), endpoint: z.string(), documentation: z.string() }).optional(),
+});
 
 export type Envelope = {
   schema_version: string;
@@ -400,15 +424,21 @@ const RUNNERS: { [K in Workflow]: (p: Inputs[K]) => Promise<Envelope> } = {
 };
 
 // Qloo errors become an `error` envelope the model can read, instead of a thrown tool failure.
+// Direct callers (the package export) get the same input check as MCP calls.
 export async function runWorkflow<K extends Workflow>(operation: K, input: Inputs[K]): Promise<Envelope> {
   try {
-    return await RUNNERS[operation](input);
+    const checked = WORKFLOW_INPUTS[operation].safeParse(input ?? {});
+    if (!checked.success) {
+      const first = checked.error.issues[0];
+      return needsInput(operation, `Check the input${first?.path.length ? ` ${first.path.join(".")}` : ""}: ${first?.message ?? "invalid"}.`);
+    }
+    return await RUNNERS[operation](checked.data as Inputs[K]);
   } catch (error) {
     const status = (error as { status?: number }).status;
     const retryable = status === 429 || (status !== undefined && status >= 500);
     return envelope(operation, {
       status: "error",
-      summary: (error as Error).message,
+      summary: plainError(error, `qloo_${operation}`),
       error: {
         code: status ? `HTTP_${status}` : "QLOO_REQUEST_FAILED",
         layer: "qloo_api",

@@ -41,7 +41,6 @@ export function AgentProgress({ events, jobs, status }: { events: TraceEvent[]; 
                 {state === "done" ? <Check className="size-3.5" /> : state === "active" ? <LoaderCircle className="size-3.5 animate-spin" /> : state === "failed" ? <X className="size-3.5" /> : null}
               </span>
               <span className={cn(state === "todo" && "text-muted-foreground", state === "active" && "font-medium")}>{s.label}</span>
-              <span className="ml-auto hidden text-xs text-muted-foreground sm:inline">{s.who}</span>
             </li>
           );
         })}

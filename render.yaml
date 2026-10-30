@@ -21,7 +21,7 @@ services:
       - key: MCP_TOKENS
         sync: false
       - key: DEMO_DISCIPLINES
-        value: musician,comedian
+        value: all
       - key: PUBLIC_URL
         sync: false
       - key: DATABASE_URL

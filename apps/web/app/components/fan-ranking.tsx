@@ -1,4 +1,5 @@
 import type { CityPlan } from "@tourbo/core/shared/types.ts";
+import { rampClass } from "~/components/why-compare";
 import { cn } from "~/lib/utils";
 
 // The tour's cities ranked by fan score: one glance says which is the better location.
@@ -7,18 +8,18 @@ export function FanRanking({ stops }: { stops: CityPlan[] }) {
   if (!ranked.length) return null;
   return (
     <div className="flex h-full flex-col rounded-xl bg-card p-4 ring-1 ring-border" data-testid="fan-ranking">
-      <p className="text-xs font-medium tracking-wide text-muted-foreground uppercase">Fan score by city</p>
+      <p className="text-xs font-medium tracking-wide text-muted-foreground uppercase">Fans by city</p>
       <ol className="mt-3 space-y-2.5">
         {ranked.map((s, i) => (
           <li key={s.city.name} className="grid grid-cols-[1fr_auto] items-center gap-x-3 gap-y-1 text-sm">
             <span className={cn("flex items-center gap-2 truncate", i === 0 && "font-semibold")}>
               {s.city.name}
-              {i === 0 && <span className="rounded-full bg-primary px-2 py-0.5 text-[10px] font-medium tracking-wider text-primary-foreground uppercase">Best bet</span>}
+              {i === 0 && <span className="rounded-full border px-2 py-0.5 text-xs font-medium text-foreground">Strongest</span>}
               {s.thinData && <span className="text-xs font-normal text-muted-foreground">thin data</span>}
             </span>
-            <span className={cn("num text-right", i === 0 ? "font-semibold text-primary" : "text-muted-foreground")}>{s.score}</span>
+            <span className={cn("num text-right", i === 0 ? "font-semibold text-foreground" : "text-muted-foreground")}>{s.score}</span>
             <span className="col-span-2 h-1.5 overflow-hidden rounded-full bg-muted">
-              <span className={cn("block h-full rounded-full", i === 0 ? "bg-primary" : "bg-score-3")} style={{ width: `${s.score}%` }} />
+              <span className={cn("block h-full rounded-full", rampClass(s.score))} style={{ width: `${s.score}%` }} />
             </span>
           </li>
         ))}

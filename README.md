@@ -1,32 +1,36 @@
 # Tourbo
 
-> **The tour manager small acts can't afford.** Tell it who you are and where you want to play. Its agent finds where your fans actually live, picks the rooms, runs the money for every night, writes what to say on stage and handles the venue emails.
+> **A recommendation engine for touring artists, grounded in real taste data.** For every city you play or show in, Tourbo suggests what to perform or make *there*: covers that crowd over-indexes on, local topics to joke or talk about, subjects to paint, the order of your set. Several ideas per city, each backed by a Qloo number. The tour plan (cities, rooms, money, route, venue emails) is the map underneath.
 
 Qloo Agentic Hackathon 2026 entry. Live demo: _link added at deploy_.
 
-Labels and promoters already route tours for big acts. A singer with a 300-person draw, or a comic playing bars, decides by gut: last tour's cities, streaming counts, a friend's advice. A wrong city is a half-empty room and a lost weekend's pay. Tourbo makes those calls with Qloo's taste and location data, explains each one, and then does the follow-up work.
+A band that plays AC/DC its own way in Brisbane or Austin, because its fans there over-index on AC/DC, gets a better night than one that plays the same set everywhere. A comic who opens with the local team, a painter who shows the city's own landmarks: the same idea. Big acts have people who know each city. A singer with a 300-person draw, or a comic playing bars, guesses. Tourbo replaces the guess with Qloo's taste and location data and shows the number behind each idea.
 
 **Who does what**
 
-- **Qloo** knows taste: where an act's fans cluster (street-level heatmaps), which rooms and local acts those fans like, what each city loves, which local brands fit as sponsors.
-- **Tourbo MCP server** (`packages/mcp`) turns that into tour tools: score cities, find rooms, openers, show economics, routing, promo split, offer assessment, ticket pace, plan critic. No AI inside; every number is reproducible.
-- **Claude** is the agent. On the website it calls those tools in-process, weighs trade-offs, writes show notes and venue emails, and negotiates. In your own Claude Code or Claude Desktop, your Claude calls the same tools.
-- **You** approve. Nothing goes to a venue without a click; every money figure is labelled an estimate.
+- **Qloo** knows taste: where an act's fans cluster, which acts those fans over-index on in each city, what each city loves (TV, teams, food, places, people, trends), which rooms and local acts fit.
+- **Tourbo MCP server** (`packages/mcp`) turns those relations into tools: ideas per city, score cities, find rooms, openers, show economics, routing, offer assessment, plan critic. No AI inside; every number is reproducible. Use it hosted or run your own.
+- **Claude** is the agent. On the website it calls those tools, picks the ideas and cities worth it, writes the angle for each idea, show notes and venue emails, and negotiates. In your own Claude Code, Claude Desktop or other MCP client, your assistant calls the same tools.
+- **You** decide. Nothing goes to a venue without a click; every money figure is labelled an estimate.
 
-## What a user gets (the stories in [`STORIES.md`](STORIES.md))
+## What it does (the stories in [`STORIES.md`](STORIES.md))
 
-1. **Plan:** a five-step onboarding (`/start`): what you do → "is this you?" on Qloo, or acts you sound like → click the map and size a circle → dates, number of shows, room size, optional money limits → the jobs you want done. Claude then plans while a progress list shows each step.
-2. **Tour:** a route on the map, and for each night the room, opener, deal, ticket price, expected tickets and profit. Nights that lose money are dropped or turned into support slots. A "why?" toggle shows the Qloo evidence.
-3. **Show notes:** for every night, an opening line, setlist nods to local acts or local bit premises, banter, a crowd moment, room setup and a sponsor ask. A critic rejects any local reference that isn't in that city's Qloo brief and Claude revises. A Qloo-off draft sits alongside for contrast.
-4. **Venue emails:** one inquiry per venue with the fan numbers. Replies are classified; a pass promotes the backup room. An offer is checked against your lowest fee and the planned show (deterministic), then Claude drafts an accept, a counter or a polite walk-away for you to send.
-5. **Ticket sales:** enter tickets sold; Tourbo says whether the show is on track and what to do (shift promo, lean on the opener, smaller room, raise the price). After the show, log attendance; the next plan calibrates your draw from it.
-6. **For venues** (`/explore`): a bar enters its name and gets acts its crowd likes, with local fans. Also "where do acts like me win?" across regions by comparable acts or genre (e.g. qawwali).
-7. **Any discipline:** the same tools plan a painter's gallery run (two-week stays, sales per visitor), a DJ's club nights, a poet's bookstore readings (`tourbo_disciplines`, story 9).
-8. **Your own Claude** (`/connect`): open Claude Code in this repo and Tourbo's tools are there (`.mcp.json`); or add the stdio server anywhere; or use the token-gated hosted endpoint.
+1. **Ideas for a city:** the first tab of every plan, and available for any city you click on the map. Several ideas, each with a "why?" fan-data number and a one-line angle. Ideas that can't point at that city's data are dropped.
+   - **Musicians:** cover ideas: well-known acts your fans in that city over-index on compared with your fans elsewhere ("play it your way"). Across a run, a cover goes to the cities where it over-indexes most, not everywhere.
+   - **Comics and speakers:** local topics from the city's own taste data (TV, films, podcasts, teams, brands, food, places, people, trending), turned into bit premises, crowd-work questions and local examples.
+   - **Painters and gallery shows:** subjects and themes (landmarks, places, the region's taste themes, artists and films its gallery-goers love). Taste-based ideas, not sales predictions.
+   - **Set order:** paste your songs or bits; Tourbo orders them per city, with a reason for each move and a slot for a local nod.
+2. **Not in the fan data? Still works.** Most local acts aren't Qloo entities. Pick acts you sound like, a style (e.g. "observational comedy", "qawwali"), or just the city. The screen says in one line what the ideas are based on.
+3. **The tour underneath:** click the map, size a circle, set dates and shows. You get a route, and for each night the room, opener, deal, ticket price, expected tickets and profit. Nights that lose money are dropped or turned into support slots.
+4. **Show notes and rehearsal:** per night, an opening line, local nods, banter and a sponsor ask, checked by a critic against that city's data. "Rehearse with fans" runs the notes past four simulated audience members built from the city's data.
+5. **Venue emails:** one inquiry per venue with the fan numbers. Replies are classified; a pass promotes the backup room. An offer is checked against your lowest fee, then Claude drafts an accept, a counter or a walk-away for you to send.
+6. **Ticket sales:** enter tickets sold; Tourbo says whether the show is on track and what to change. Logged attendance calibrates your next plan.
+7. **For venues** (`/explore`): a bar enters its name and gets acts its crowd likes that are small enough to book.
+8. **Your own assistant** (`/connect`): use Tourbo's hosted MCP endpoint, or run the same server yourself with your own Qloo key (see below).
 
 ## Why it fails without Qloo
 
-An LLM alone names "big music cities". It can't say where *this* act's fans cluster block by block, which rooms near them that crowd likes, which local acts share the audience, or what the city's audience loves right now. The "With vs without Qloo" tab shows the same model planning blind; the show-notes page shows the generic draft next to the grounded one.
+An LLM alone can suggest "play a classic rock cover" or "joke about the weather". It can't know which covers your fans in Brisbane over-index on compared with your fans in Sydney, which TV show or team Austin over-indexes on this year, or which landmarks a city's gallery-goers care about. It also can't say where *your* fans cluster or which rooms they like. Those are measured relations, not general knowledge, and Qloo has them. The "With vs without Qloo" tab shows the same model working blind; the show-notes page shows the generic draft next to the grounded one.
 
 ## Backtest: agreement with real bookers' picks
 
@@ -93,10 +97,39 @@ flowchart LR
 
 ## Judging criteria
 
-- **Technological implementation:** heatmaps, place/tag insights, cross-domain city taste, sponsor re-ranking and genre-tag markets through a validated, cached client; an MCP server reused by the hosted agent and by external agents; a tool-using agent with critic loops, deterministic economics, negotiation and pace models, and story tests against live Qloo.
-- **Design:** onboarding in five plain steps, live progress, one card per night with the reasoning folded away, plain-language errors with retry.
-- **Potential impact:** a real buyer (independent acts, small venues) and real money: which nights to play, what to charge, what to accept.
-- **Quality of idea:** each decision needs Qloo's taste + location data, and the Qloo-off comparisons make that visible.
+- **Technological implementation:** per-city ideas from Qloo relations (fans-in-city vs fans-elsewhere artist insights for covers, location-only insights across TV, films, podcasts, brands, places, people and trends for topics and subjects), heatmaps, place/tag insights and genre-tag markets, all through one validated client. One MCP server serves the hosted agent, external assistants, and self-hosters. A tool-using agent with critic loops that drop ungrounded ideas, deterministic economics and negotiation, and story tests against live Qloo.
+- **Design:** ideas first, the tour second. A few ideas per city, each with its number behind "why?". Short forms, a path for acts not in the fan data, one primary action per screen, plain-language errors with retry.
+- **Potential impact:** most touring acts are small and many aren't in any taste database. Tourbo gives them what a local promoter knows (what this crowd likes, what to play or say here) plus the money check on each night.
+- **Quality of idea:** a recommendation engine where every suggestion is a measured Qloo relation, not an LLM guess. The Qloo-off comparisons make the difference visible.
+
+## Use the MCP server
+
+Same tools three ways; details and every flag in [`packages/mcp/README.md`](packages/mcp/README.md). Never put a real key or token in a shared config: `<your-key>` / `<your-token>` are placeholders.
+
+**Hosted (ours):** paste `https://<host>/mcp` into your assistant with `Authorization: Bearer <your-token>` (tokens from whoever runs the deployment, `MCP_TOKENS`). Tourbo's own key stays on the server; each token and IP gets 60 tool calls per 10 minutes.
+
+```bash
+claude mcp add --transport http tourbo https://<host>/mcp --header "Authorization: Bearer <your-token>"
+```
+
+**Self-hosted (your own Qloo key, Node 22+):**
+
+```bash
+QLOO_API_KEY=<your-key> npx -y @tourbo/mcp                                            # stdio
+QLOO_API_KEY=<your-key> MCP_TOKENS=<your-token> npx -y @tourbo/mcp --http --port 8787   # own endpoint, /healthz
+docker run --rm -p 8787:8787 -e QLOO_API_KEY=<your-key> -e MCP_TOKENS=<your-token> ghcr.io/<owner>/tourbo-mcp
+claude mcp add --env QLOO_API_KEY=<your-key> --transport stdio tourbo -- npx -y @tourbo/mcp  # Claude Code
+```
+
+Claude Desktop (`claude_desktop_config.json`), Cursor (`.cursor/mcp.json`) and most stdio clients:
+
+```json
+{ "mcpServers": { "tourbo": { "command": "npx", "args": ["-y", "@tourbo/mcp"], "env": { "QLOO_API_KEY": "<your-key>" } } } }
+```
+
+VS Code (`.vscode/mcp.json`) uses `"servers"` with `"type": "stdio"` and the same command; see the package README. Inside this repo, Claude Code picks the server up from `.mcp.json`.
+
+- `npm run mcp:build`: bundles `packages/mcp/dist/bin/tourbo-mcp.js` (one ESM file, `@tourbo/core` inlined). `docker compose --profile mcp up -d --build mcp`: the self-host image on 127.0.0.1:8787. Publishing (`npm publish -w @tourbo/mcp`, image push) is manual; CI (`.github/workflows/mcp.yml`) checks build, smoke, pack contents and size.
 
 ## Run locally
 
@@ -124,13 +157,13 @@ npm run dev              # http://localhost:3000
 | `DATABASE_URL` | no | your own Postgres; unset = the local one in `.data/postgres` |
 | `MCP_TOKENS` | no | comma-separated bearer tokens; enables `/mcp` |
 | `PUBLIC_URL` | no | shown in the Connect page snippets |
-| `DEMO_DISCIPLINES` | no | disciplines the website offers (default `musician,comedian`; `all` for every one) |
+| `DEMO_DISCIPLINES` | no | disciplines the website offers (default `all`; e.g. `musician,comedian` to narrow) |
 | `RESEND_API_KEY`, `RESEND_WEBHOOK_SECRET`, `OUTREACH_*` | no | email; sends are simulated without a key |
 
 ## Limits
 
 - Qloo has no capacity, price or sales data: capacities, draw and profit are estimates (formula shown on each card), calibrated once you log past shows.
-- Disciplines: one registry (`packages/core/src/disciplines/`) covers singers, comedians, DJs, dancers, poets, visual artists, authors and podcasters: Qloo entity types, spaces, support act, prices, extra sales per head, stay length and show-notes prompt. The website offers musicians and comedians by default (`DEMO_DISCIPLINES`); MCP accepts all. Most painters, dancers and poets aren't Qloo entities, so they plan from comparable acts.
+- Disciplines: one registry (`packages/core/src/disciplines/`) covers 18 kinds of act: singers, comedians, DJs, dancers, poets, visual artists, authors, podcasters, speakers, magicians, theatre troupes, photographers, makers, buskers, circus acts, chefs (supper clubs), filmmakers and teachers: Qloo entity types, spaces, support act, prices, extra sales per head, stay length and show-notes prompt. The website and MCP offer all of them (`DEMO_DISCIPLINES` narrows the website); the 10 newest are built from the Qloo docs and not yet probed live. Most painters, dancers and poets aren't Qloo entities, so they plan from comparable acts.
 - Runs are in-process: a restart mid-run shows "interrupted" with a retry button.
 
 ## License

@@ -13,15 +13,23 @@ export class QlooError extends Error {
   readonly status: number;
   readonly path: string;
   readonly body: unknown;
+  /** Set when the monthly quota is used up: seconds until it resets. Retrying won't help. */
+  readonly quotaResetSec?: number;
 
-  constructor(status: number, path: string, body: unknown) {
-    super(`Qloo ${status} on ${path}: ${describe(body)}`);
+  constructor(status: number, path: string, body: unknown, quotaResetSec?: number) {
+    super(`Qloo ${status} on ${path}: ${quotaResetSec !== undefined ? `monthly quota used up, resets in ${Math.ceil(quotaResetSec / 86_400)} days` : describe(body)}`);
     this.name = "QlooError";
     this.status = status;
     this.path = path;
     this.body = body;
+    this.quotaResetSec = quotaResetSec;
   }
 }
+
+// Monthly quota state from Qloo's x-month-ratelimit-* headers. Once it reads 0, calls fail fast
+// (no retries, no request) until the reset time, so a used-up month doesn't cost seconds per click.
+let quotaResetAt = 0;
+export const qlooQuotaResetAt = () => (quotaResetAt > Date.now() ? quotaResetAt : undefined);
 
 const MAX_RETRIES = 3;
 const TIMEOUT_MS = 15_000;
@@ -59,6 +67,7 @@ export async function qlooGet<T = unknown>(
 async function request<T>(url: URL): Promise<T> {
   const { QLOO_API_KEY } = getEnv();
   for (let attempt = 0; ; attempt++) {
+    if (quotaResetAt > Date.now()) throw new QlooError(429, url.pathname, { error_msg: "Rate limit exceeded" }, (quotaResetAt - Date.now()) / 1000);
     callCount++;
     const res = await fetch(url, {
       headers: { "X-Api-Key": QLOO_API_KEY, Accept: "application/json" },
@@ -67,6 +76,11 @@ async function request<T>(url: URL): Promise<T> {
     const body = await res.json().catch(() => null);
     if (res.ok) return body as T;
 
+    if (res.status === 429 && res.headers.get("x-month-ratelimit-remaining") === "0") {
+      const reset = Number(res.headers.get("x-month-ratelimit-reset"));
+      quotaResetAt = Date.now() + (reset > 0 ? reset * 1000 : 3_600_000);
+      throw new QlooError(429, url.pathname, body, (quotaResetAt - Date.now()) / 1000);
+    }
     const retryable = res.status === 429 || res.status >= 500;
     if (!retryable || attempt >= MAX_RETRIES) {
       throw new QlooError(res.status, url.pathname, body);

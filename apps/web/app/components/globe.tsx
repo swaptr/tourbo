@@ -58,6 +58,7 @@ const sceneExample = (ex: HomeExample): SceneExample => ({
   home: { lat: ex.home.lat, lon: ex.home.lon },
   cities: ex.cities.map((c) => ({ name: c.name, lat: c.lat, lon: c.lon, fanStrength: c.fanStrength })),
   route: ex.route?.map((r) => ({ name: r.name, lat: r.lat, lon: r.lon })),
+  focus: ex.feature === "route" ? undefined : (ex.room?.city ?? ex.cities[0]?.name),
   decision: { lines: ex.decision.lines },
   skipped: ex.skipped && { name: ex.skipped.name, lat: ex.skipped.lat, lon: ex.skipped.lon },
   surprise: ex.surprise && { city: ex.surprise.city },
@@ -80,12 +81,29 @@ function whenVisibleAndIdle(el: Element): Promise<void> {
   });
 }
 
+// Roving focus over the marker buttons: one Tab stop, arrows / Home / End move it.
+function roveKeys(e: React.KeyboardEvent<HTMLUListElement>) {
+  const step = { ArrowDown: 1, ArrowRight: 1, ArrowUp: -1, ArrowLeft: -1 }[e.key];
+  const all = [...e.currentTarget.querySelectorAll<HTMLButtonElement>("button")];
+  const at = all.indexOf(document.activeElement as HTMLButtonElement);
+  if (at < 0 || !all.length) return;
+  const to = step ? (at + step + all.length) % all.length : e.key === "Home" ? 0 : e.key === "End" ? all.length - 1 : -1;
+  if (to < 0) return;
+  e.preventDefault();
+  all[at].tabIndex = -1;
+  all[to].tabIndex = 0;
+  all[to].focus();
+}
+
 export function Globe({ examples, source, store, avoidRefs, onReady, className }: GlobeProps) {
   const box = useRef<HTMLDivElement>(null);
   const resetRef = useRef<HTMLButtonElement>(null);
   const post = useRef<(m: GlobeIn) => void>(() => {});
   const [state, setState] = useState<"loading" | "ready" | "failed">("loading");
-  const [hint, setHint] = useState(false);
+  // The zoom hint toggles straight on the DOM: a state flip would re-render the whole globe
+  // component (and its icons) on every plain wheel over it.
+  const hintRef = useRef<HTMLDivElement>(null);
+  const setHint = (on: boolean) => hintRef.current?.toggleAttribute("hidden", !on);
   const isMac = typeof navigator !== "undefined" && /Mac|iPhone|iPad/.test(navigator.platform);
   const [lost, setLost] = useState(false);
   const placeholder = useRef<HTMLDivElement>(null);
@@ -394,9 +412,16 @@ export function Globe({ examples, source, store, avoidRefs, onReady, className }
           store.dispatch(id ? { type: "HOVER", id } : { type: "HOVER", id: null, from: exampleOf(m.from) ?? undefined });
           return;
         }
-        case "tap":
-          store.dispatch({ type: "TAP", id: m.group >= 0 ? exampleOf(m.group) : null });
+        case "tap": {
+          const id = m.group >= 0 ? exampleOf(m.group) : null;
+          store.dispatch({ type: "TAP", id });
+          // On a phone the card sits above the globe: bring it into view so a tap never changes a
+          // card the reader can't see (no-op when it's already on screen).
+          const card = id ? document.querySelector<HTMLElement>("[data-testid=info-panel]") : null;
+          const r = card?.getBoundingClientRect();
+          if (card && r && (r.bottom < 0 || r.top > innerHeight || r.top < 0)) card.scrollIntoView({ block: "nearest", behavior: prefersReducedMotion() ? "auto" : "smooth" });
           return;
+        }
         case "interact":
           store.dispatch(m.kind === "nudge" ? { type: "NUDGE" } : { type: m.kind === "hold" ? "HOLD" : "RELEASE", reason: m.reason ?? "globe" });
           return;
@@ -460,25 +485,26 @@ export function Globe({ examples, source, store, avoidRefs, onReady, className }
         role="application"
         aria-label="Globe. Arrow keys turn it, plus and minus zoom, Escape resets the view."
       ></div>
-      {hint && (
-        <div className="pointer-events-none absolute inset-0 z-20 grid place-items-center" data-testid="zoom-hint">
-          <p className="rounded-md bg-foreground/80 px-3 py-1.5 text-sm text-background">{isMac ? "Use ⌘ + scroll to zoom" : "Use ctrl + scroll to zoom"}</p>
-        </div>
-      )}
+      <div ref={hintRef} hidden className="pointer-events-none absolute inset-0 z-20 grid place-items-center [&[hidden]]:hidden" data-testid="zoom-hint">
+        <p className="rounded-md bg-foreground/80 px-3 py-1.5 text-sm text-background">{isMac ? "Use ⌘ + scroll to zoom" : "Use ctrl + scroll to zoom"}</p>
+      </div>
       {state !== "failed" && <div ref={placeholder} className="pointer-events-none absolute inset-x-[6%] top-[22%] aspect-square rounded-full bg-globe-ocean/60 ring-1 ring-border" aria-hidden />}
       {(state === "failed" || lost) && (
         // WebP with alpha (12 KB); AVIF came out larger for this image, so there's no AVIF source.
         <img src="/globe-still.webp" alt="" width={1440} height={681} className="pointer-events-none absolute inset-0 h-full w-full object-cover object-top" aria-hidden />
       )}
-      {/* Keyboard: every marker is a focusable button (route first); focus shows it, Enter pins it, Esc closes. */}
-      <ul className="sr-only" aria-label="Examples on the globe">
-        {keyOrder.map((i) => {
+      {/* Keyboard: the markers are one Tab stop (roving tabindex): Tab lands on one example, the
+          arrow keys move between them, Enter pins it, Esc closes. Tab again leaves the globe, so the
+          card is a few Tabs away instead of hundreds. */}
+      <ul className="sr-only" aria-label="Examples on the globe, arrow keys to browse" onKeyDown={roveKeys}>
+        {keyOrder.map((i, n) => {
           const g = groups[i];
           const ex = byId.get(g.ids[0])!;
           return (
             <li key={g.key}>
               <button
                 type="button"
+                tabIndex={n === 0 ? 0 : -1}
                 onFocus={() => store.dispatch({ type: "FOCUS", id: ex.id })}
                 onBlur={() => store.dispatch({ type: "FOCUS", id: null })}
                 onClick={() => store.dispatch({ type: "TAP", id: ex.id })}

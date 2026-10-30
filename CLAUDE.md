@@ -1,11 +1,12 @@
 # Tourbo
 
-Tour manager for small acts: Qloo finds the fans, the Tourbo MCP server turns that into tour tools, Claude decides and writes. Product vision + user stories: `STORIES.md`. Architecture plan: `PLAN.md`.
+Recommendation engine for touring artists, grounded in Qloo taste data: per city, what to perform or make there (covers, local topics, painting subjects, set order), on top of a tour plan (cities, rooms, money, route, emails). Qloo has the relations, the Tourbo MCP server turns them into tools, Claude decides and writes. Product vision + user stories: `STORIES.md`. Architecture plan: `PLAN.md`.
 
 ## North star (re-check after every major change)
 - Read `STORIES.md` before UI/UX or flow changes. After each major change, answer its checklist: can Maya finish story 1 from the screen alone; does the UI speak only as Tourbo; does every state (empty, loading, partial, failed, done) look intentional; do the story tests pass.
 - Simple beats complete: one primary action per screen, advanced options collapsed, plain words (no "fanIndex", "heatmap cells" in primary UI; put numbers behind "why?").
 - Vendor-neutral UI: never name Qloo, Claude/Anthropic or the underlying tech in visible UI; say "Tourbo", "fan data", "your AI assistant". Keep the numbers (labelled "fan data") behind "why?". Vendor and client names only on `/connect` (setup) and in README/Devpost.
+- Fan data is the hero, AI is light: every suggestion shows its evidence inline (a fact chip or mini-visual from fan data) when the evidence is strong, a hedged chip when it's weak, and nothing extra when there is none. AI only writes short summaries on top of those facts (batched, cached per run, critic-checked), never new claims. Local ideas season the act's own material; they never replace it.
 - Every error: one plain sentence with what to do next, plus retry where sensible. Never a stack trace or blank page.
 
 ## Code layout (npm workspaces)
@@ -28,6 +29,8 @@ Tour manager for small acts: Qloo finds the fans, the Tourbo MCP server turns th
 - `npm run test -w @tourbo/mcp` — MCP smoke test
 - `npm run qloo:ping` / `qloo:probe` (raw output in /tmp only) / `qloo:prewarm`
 - `npm run examples:export` — DB → static landing bundle (`apps/web/public/landing/`); run before `build`/Docker. `npm run landing:load` — load check of the prerendered `/`
+- `npm run kinds:list` — kind-of-act labels, hints, order, on/off (DB `act_kinds`, seeded from `packages/core/src/disciplines/index.ts`)
+- `npm run kinds:set -- <kind> [--label X] [--hint Y] [--sort N] [--enable|--disable]` — change one kind's display; wizard shows the first 6 by sort; no deploy needed
 - `npm run plan:demo -- "<artist>" [na|eu|in] [shows] [kind] [peers]` — deterministic engine, plan JSON
 - `npm run agent:demo -- "<artist>" [na|eu|in] [shows] [kind] [peers] [promo]` — full agent run (needs `ANTHROPIC_API_KEY`)
 - Scripts run with Node's built-in TS support: relative imports need `.ts` extensions; erasable syntax only (no enums/parameter properties)

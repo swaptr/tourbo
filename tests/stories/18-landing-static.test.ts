@@ -16,7 +16,8 @@ const IMMUTABLE = /public, max-age=31536000, immutable/;
 const manifest = await readFile(`${WEB_DIR}/build/client/landing/manifest.json`, "utf8").then(JSON.parse).catch(() => undefined);
 const noBuild = !hasBuild() && "no production build (npm run build)";
 const noExamples = noBuild || (!manifest?.files.examples && "no landing examples in the build (npm run examples:export)");
-const dockerUp = await appUp();
+// Only a production app (Docker or `npm start`) named by STORY_BASE_URL; the default dev server sets no cache policy.
+const dockerUp = !!process.env.STORY_BASE_URL && (await appUp());
 
 let srv: LandingServer;
 before(async () => {
@@ -33,7 +34,7 @@ test("landing: prerendered HTML has the hero and the first example (play order) 
   assert.equal(res.status, 200);
   const page = text(await res.text());
   assert.match(page, /Your fans already picked your tour/);
-  assert.match(page, /Plan my tour/);
+  assert.match(page, /Plan a tour/);
   assert.ok(page.includes(first.act.name), `first act ${first.act.name} is in the HTML`);
   assert.ok(page.includes(text(first.decision.headline).trim()), `first headline "${first.decision.headline}" is in the HTML`);
   // It's the build-time file, byte for byte (no request-time render).

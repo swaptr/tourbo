@@ -1,23 +1,23 @@
 {
-  "version": "2026-10-30T05:39:21.724Z",
+  "version": "2026-10-30T21:54:39.220Z",
   "counts": {
-    "examples": 322,
-    "acts": 130,
+    "examples": 61,
+    "acts": 48,
     "continents": 6
   },
-  "status": "incomplete",
+  "status": "ready",
   "files": {
-    "examples": "examples.bdb7c6d2e3.json",
+    "examples": "examples.b21437fe90.json",
     "world": "world.b44c363704.json",
     "towns": "towns.4e45d2a0ec.json",
     "regions": {
-      "europe": "density-europe.44a35b7424.json",
-      "oceania": "density-oceania.2c56c4758b.json",
-      "asia": "density-asia.6351ea87dd.json",
-      "north_america": "density-north_america.4b8525d4e7.json",
-      "africa": "density-africa.f3c182b390.json",
-      "south_america": "density-south_america.ecdd1fe1d6.json"
+      "oceania": "density-oceania.d049be2128.json",
+      "asia": "density-asia.6a254a93de.json",
+      "south_america": "density-south_america.4cb6082670.json",
+      "europe": "density-europe.9d6a88c8a0.json",
+      "north_america": "density-north_america.46851f60d4.json",
+      "africa": "density-africa.bc9185b9fd.json"
     },
-    "contrast": "contrast.1ca77d4172.json"
+    "contrast": "contrast.f95fdc31b2.json"
   }
 }

@@ -1,10 +1,9 @@
 import { Check, Copy } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
-import { Badge } from "~/components/ui/badge";
-import { cn } from "~/lib/utils";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "~/components/ui/card";
-import { BrandMark, BRANDS } from "~/components/partner-logos";
+import { Button } from "~/components/ui/button";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "~/components/ui/tabs";
+import { BRANDS } from "~/components/partner-logos";
 import { mcpCatalog } from "../../server/mcp.server";
 import type { Route } from "./+types/connect";
 
@@ -19,32 +18,58 @@ export async function loader({ request }: Route.LoaderArgs) {
 }
 
 // Placeholders only: never publish a real Qloo key or MCP token in a config.
-const stdioJson = JSON.stringify(
-  {
-    mcpServers: {
-      tourbo: {
-        command: "node",
-        args: ["--env-file-if-exists=/path/to/tourbo/.env", "/path/to/tourbo/packages/mcp/src/bin/stdio.ts"],
-      },
-    },
-  },
-  null,
-  2,
-);
+const KEY = "<your-key>";
+const TOKEN = "<your-token>";
+const json = (v: unknown) => JSON.stringify(v, null, 2);
+const NPX = { command: "npx", args: ["-y", "@tourbo/mcp"], env: { QLOO_API_KEY: KEY } };
+const own = {
+  run: `QLOO_API_KEY=${KEY} npx -y @tourbo/mcp`,
+  http: `QLOO_API_KEY=${KEY} MCP_TOKENS=${TOKEN} npx -y @tourbo/mcp --http --port 8787`,
+  docker: `docker run --rm -p 8787:8787 -e QLOO_API_KEY=${KEY} -e MCP_TOKENS=${TOKEN} ghcr.io/<owner>/tourbo-mcp`,
+  claudeCode: `claude mcp add --env QLOO_API_KEY=${KEY} --transport stdio tourbo -- npx -y @tourbo/mcp`,
+  mcpServers: json({ mcpServers: { tourbo: NPX } }),
+  vscode: json({
+    inputs: [{ type: "promptString", id: "qloo-key", description: "Qloo API key", password: true }],
+    servers: { tourbo: { type: "stdio", ...NPX, env: { QLOO_API_KEY: "${input:qloo-key}" } } },
+  }),
+};
+const ours = (url: string) => ({
+  claudeCode: `claude mcp add --transport http tourbo ${url} --header "Authorization: Bearer ${TOKEN}"`,
+  cursor: json({ mcpServers: { tourbo: { url, headers: { Authorization: `Bearer ${TOKEN}` } } } }),
+  vscode: json({ servers: { tourbo: { type: "http", url, headers: { Authorization: `Bearer ${TOKEN}` } } } }),
+  gemini: json({ mcpServers: { tourbo: { httpUrl: url, headers: { Authorization: `Bearer ${TOKEN}` } } } }),
+});
 
-function Snippet({ title, code }: { title: string; code: string }) {
+function Snippet({ title, code, primary }: { title: string; code: string; primary?: boolean }) {
   const [copied, setCopied] = useState(false);
+  // Code keeps its shape (no wrapping): the block scrolls sideways inside itself and is focusable
+  // so keyboard users can scroll it. When it overflows, a soft right edge and "Scroll →" say so,
+  // until the reader reaches the end.
+  const pre = useRef<HTMLPreElement>(null);
+  const [more, setMore] = useState(false);
+  useEffect(() => {
+    const el = pre.current;
+    if (!el) return;
+    const check = () => setMore(el.scrollLeft + el.clientWidth < el.scrollWidth - 2);
+    check();
+    const ro = new ResizeObserver(check);
+    ro.observe(el);
+    el.addEventListener("scroll", check, { passive: true });
+    return () => (ro.disconnect(), el.removeEventListener("scroll", check));
+  }, [code]);
   return (
-    <div className="grid gap-1.5">
-      <p className="text-sm font-medium">{title}</p>
-      <div className="relative">
-        <pre className="overflow-x-auto rounded-lg bg-muted p-3 pr-12 text-xs leading-relaxed">
-          <code>{code}</code>
-        </pre>
-        <button
+    <div className="grid min-w-0 grid-cols-[minmax(0,1fr)] gap-1.5">
+      <div className="flex items-end justify-between gap-3">
+        <p className="min-w-0 text-sm font-medium [overflow-wrap:anywhere]">
+          {title}
+          {more && <span className="ml-2 text-xs font-normal whitespace-nowrap text-muted-foreground">Scroll →</span>}
+        </p>
+        <Button
           type="button"
+          variant={primary ? "default" : "outline"}
+          data-primary={primary || undefined}
           aria-label={copied ? "Copied" : `Copy: ${title}`}
-          className="absolute top-2 right-2 rounded-md bg-background p-1.5 text-muted-foreground ring-1 ring-foreground/10 hover:text-foreground"
+          className="shrink-0 pointer-coarse:h-11"
           onClick={() =>
             navigator.clipboard?.writeText(code.replace(/^> /gm, "")).then(() => {
               setCopied(true);
@@ -52,9 +77,24 @@ function Snippet({ title, code }: { title: string; code: string }) {
             })
           }
         >
-          {copied ? <Check className="size-3.5 text-success" /> : <Copy className="size-3.5" />}
-        </button>
+          {copied ? <Check /> : <Copy />}
+          {copied ? "Copied" : "Copy"}
+        </Button>
       </div>
+      <div className="code-scroll" data-more={more || undefined}>
+        <pre
+          ref={pre}
+          tabIndex={0}
+          role="region"
+          aria-label={`${title}${more ? " (scrolls sideways)" : ""}`}
+          className="overflow-x-auto rounded-lg bg-muted p-3 text-xs leading-relaxed whitespace-pre outline-none focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ring"
+        >
+          <code className="font-mono">{code}</code>
+        </pre>
+      </div>
+      <span className="sr-only" aria-live="polite">
+        {copied ? `${title} copied` : ""}
+      </span>
     </div>
   );
 }
@@ -73,164 +113,220 @@ function ToolList({ tools }: { tools: { name: string; title: string; description
   );
 }
 
-const STDIO = "node --env-file-if-exists=/path/to/tourbo/.env /path/to/tourbo/packages/mcp/src/bin/stdio.ts";
-const vscodeJson = JSON.stringify(
-  { servers: { tourbo: { type: "stdio", command: "node", args: ["--env-file-if-exists=/path/to/tourbo/.env", "/path/to/tourbo/packages/mcp/src/bin/stdio.ts"] } } },
-  null,
-  2,
-);
-
-type Client = { id: string; label: string; brand?: keyof typeof BRANDS; status: string };
+type Client = { id: string; label: string; brand?: keyof typeof BRANDS };
 const CLIENTS: Client[] = [
-  { id: "claude", label: "Claude", brand: "claude", status: "works locally" },
-  { id: "chatgpt", label: "ChatGPT", brand: "chatgpt", status: "needs the hosted endpoint" },
-  { id: "gemini", label: "Gemini", brand: "gemini", status: "works locally" },
-  { id: "cursor", label: "Cursor / VS Code", status: "works locally" },
-  { id: "other", label: "Others", status: "any MCP client" },
+  { id: "claude", label: "Claude", brand: "claude" },
+  { id: "chatgpt", label: "ChatGPT", brand: "chatgpt" },
+  { id: "gemini", label: "Gemini", brand: "gemini" },
+  { id: "cursor", label: "Cursor / VS Code" },
+  { id: "other", label: "Others" },
 ];
+const MODES = [
+  { id: "ours", label: "Use ours" },
+  { id: "own", label: "Run your own" },
+] as const;
+type Mode = (typeof MODES)[number]["id"];
 
+// The page is three steps: pick your assistant, pick where Tourbo runs, copy one block.
+// Both pickers are Base UI tabs (arrows, Home/End); the hash (#gemini, #own) deep-links either.
 export default function Connect({ loaderData }: Route.ComponentProps) {
   const { tourbo, qloo, remoteEnabled, mcpUrl } = loaderData;
+  const [mode, setMode] = useState<Mode>(remoteEnabled ? "ours" : "own");
   const [tab, setTab] = useState("claude");
-  // Links like /connect#gemini open that client's tab.
   useEffect(() => {
     const pick = () => {
       const id = window.location.hash.slice(1);
+      if (MODES.some((m) => m.id === id)) setMode(id as Mode);
       if (CLIENTS.some((c) => c.id === id)) setTab(id);
     };
     pick();
     window.addEventListener("hashchange", pick);
     return () => window.removeEventListener("hashchange", pick);
   }, []);
-  const remoteBadge = <Badge variant={remoteEnabled ? "default" : "secondary"}>{remoteEnabled ? "on" : "off on this server"}</Badge>;
+  const go = (id: string) => history.replaceState(null, "", `#${id}`);
+  const hosted = ours(mcpUrl);
 
   return (
-    <main className="container mx-auto max-w-3xl px-4 py-12">
-      <h1 className="font-heading text-3xl tracking-tight">Use Tourbo from your AI assistant</h1>
-      <p className="mt-2 text-muted-foreground">
+    <main className="container mx-auto max-w-3xl px-4 py-10 sm:py-14">
+      <h1 className="text-4xl text-balance sm:text-5xl">Use Tourbo from your AI assistant</h1>
+      <p className="mt-3 max-w-prose text-muted-foreground">
         Give your own AI assistant Tourbo's tour tools over MCP, the open standard most assistants speak. It can then plan tours,
-        check offers and write show notes right in your chats. Tourbo's tools do no AI themselves: your assistant does the
-        thinking, Tourbo brings the fan data and the tour math.
+        check offers and write show notes right in your chats. Your assistant does the thinking; Tourbo brings the fan data and the tour math.
+      </p>
+      <p className="mt-3 max-w-prose text-muted-foreground">
+        Under the hood: the fan data comes from Qloo, and the AI assistant on this website is Claude. Here you bring your own
+        assistant (Claude, ChatGPT, Gemini, Cursor or any other that speaks MCP).
       </p>
 
-      <Card className="mt-8">
-        <CardHeader>
-          <CardTitle>Any MCP client</CardTitle>
-          <CardDescription>Run the server on your machine (stdio), or point your client at the hosted URL.</CardDescription>
-        </CardHeader>
-        <CardContent className="grid gap-4">
-          <Snippet title="1. Get the code and install" code={"git clone https://github.com/<you>/tourbo && cd tourbo\nnpm install"} />
-          <Snippet title="2. Add your Qloo API key to .env (never commit it)" code={"cp .env.example .env   # then set QLOO_API_KEY"} />
-          <Snippet title="3. The command your client runs (stdio)" code={STDIO} />
-          <div className="grid gap-1.5">
-            <p className="flex items-center gap-2 text-sm font-medium">Or the hosted URL (Streamable HTTP) {remoteBadge}</p>
-            <Snippet title="Needs a token from whoever runs this server: Authorization: Bearer <token>" code={mcpUrl} />
-          </div>
-        </CardContent>
-      </Card>
-
-      <h2 className="mt-12 text-xl">Step by step for your assistant</h2>
-      <div role="tablist" aria-label="AI assistants" className="mt-4 flex flex-wrap gap-2">
-        {CLIENTS.map((c) => (
-          <button
-            key={c.id}
-            id={`tab-${c.id}`}
-            role="tab"
-            type="button"
-            aria-selected={tab === c.id}
-            aria-controls={`panel-${c.id}`}
-            onClick={() => {
-              setTab(c.id);
-              history.replaceState(null, "", `#${c.id}`);
+      <div className="mt-10 grid gap-3">
+          <Step n={1} title="Pick your assistant" />
+          <Tabs
+            value={tab}
+            onValueChange={(v) => {
+              setTab(String(v));
+              go(String(v));
             }}
-            className={cn(
-              "flex h-11 items-center gap-2 rounded-xl px-4 text-sm font-medium ring-1 transition-colors",
-              tab === c.id ? "bg-card ring-2 ring-primary" : "ring-border hover:bg-card",
-            )}
           >
-            {c.brand && BRANDS[c.brand].onDark ? <BrandMark brand={BRANDS[c.brand]} className="h-4" /> : c.label}
-          </button>
-        ))}
+            <TabsList aria-label="AI assistants" className="h-auto w-full flex-wrap justify-start gap-1 group-data-horizontal/tabs:h-auto">
+              {CLIENTS.map((c) => {
+                return (
+                  <TabsTrigger key={c.id} value={c.id} id={`tab-${c.id}`} aria-label={c.label} className="h-8 flex-none px-3">
+                    {c.label}
+                  </TabsTrigger>
+                );
+              })}
+            </TabsList>
+
+            <div className="mt-7 grid gap-3">
+              <Step n={2} title={remoteEnabled ? "Pick where Tourbo runs" : "Run Tourbo yourself"} />
+              {remoteEnabled ? (
+                <Tabs
+                  value={mode}
+                  onValueChange={(v) => {
+                    setMode(v as Mode);
+                    go(String(v));
+                  }}
+                >
+                  <TabsList aria-label="Where Tourbo runs" size="lg">
+                    {MODES.map((m) => (
+                      <TabsTrigger key={m.id} value={m.id} id={`tab-${m.id}`} className="px-3">
+                        {m.label}
+                      </TabsTrigger>
+                    ))}
+                  </TabsList>
+                  <TabsContent value="ours" className="max-w-prose rounded-md text-muted-foreground outline-none focus-visible:ring-3 focus-visible:ring-ring/50">
+                    Nothing to install: your assistant talks to this Tourbo. You need a token: ask whoever runs this Tourbo for one. Each
+                    token gets 60 tool calls every 10 minutes.
+                  </TabsContent>
+                  <TabsContent value="own" className="grid gap-3 rounded-md outline-none focus-visible:ring-3 focus-visible:ring-ring/50">
+                    <p className="max-w-prose text-muted-foreground">{OWN_NOTE}</p>
+                    <Snippet title="Check it starts on your machine (Ctrl+C to stop)" code={own.run} />
+                  </TabsContent>
+                </Tabs>
+              ) : (
+                // The hosted address is off on this server: no dead option, one plain line instead.
+                <>
+                  <p className="max-w-prose text-muted-foreground">
+                    {OWN_NOTE} This Tourbo doesn't offer a hosted address, so your assistant runs its own copy.
+                  </p>
+                  <Snippet title="Check it starts on your machine (Ctrl+C to stop)" code={own.run} />
+                </>
+              )}
+            </div>
+
+            <div className="mt-7 grid gap-3">
+              <Step n={3} title="Copy this into your assistant" />
+              {CLIENTS.map((c) => (
+                <TabsContent key={c.id} value={c.id} className="grid grid-cols-[minmax(0,1fr)] gap-5 rounded-xl bg-card p-4 ring-1 ring-foreground/10 sm:p-5 outline-none focus-visible:ring-3 focus-visible:ring-ring/50">
+                  <ClientSetup client={c.id} mode={mode} hosted={hosted} mcpUrl={mcpUrl} />
+                </TabsContent>
+              ))}
+            </div>
+
+            <div className="mt-7 grid gap-3">
+              <Step n={4} title="Check it worked" />
+              <p className="max-w-prose text-muted-foreground">
+                Restart your assistant, then ask it: <q className="font-medium text-foreground">List Tourbo's tools.</q> You should see{" "}
+                {tourbo.length + qloo.length} tools, {tourbo.length} of them starting with <span className="font-mono text-sm text-foreground">tourbo_</span>, such as{" "}
+                <span className="font-mono text-sm text-foreground">tourbo_plan_tour</span>. Nothing listed? Check the address or command
+                you pasted, and that your key or token is filled in.
+              </p>
+            </div>
+          </Tabs>
       </div>
-      <p className="mt-2 text-xs text-muted-foreground">Logos belong to their owners and only show which apps can connect; no endorsement implied.</p>
 
-      {CLIENTS.map((c) => (
-        <section key={c.id} id={c.id} role="tabpanel" aria-labelledby={`tab-${c.id}`} hidden={tab !== c.id} className="mt-4 scroll-mt-20">
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex flex-wrap items-center gap-2">
-                {c.label} <Badge variant="secondary">{c.status}</Badge>
-              </CardTitle>
-              {c.id === "claude" && (
-                <CardDescription>Claude Code, Claude Desktop, or a custom connector on claude.ai (custom connectors take a remote URL).</CardDescription>
-              )}
-              {c.id === "chatgpt" && (
-                <CardDescription>
-                  ChatGPT only connects to a server on a public HTTPS address (or through OpenAI's Secure MCP Tunnel), with no sign-in or
-                  OAuth sign-in. It doesn't take API keys or bearer tokens, so it works once the hosted endpoint is deployed with OAuth
-                  sign-in. Full tool use needs a Business, Enterprise or Edu workspace.
-                </CardDescription>
-              )}
-              {c.id === "gemini" && (
-                <CardDescription>
-                  Gemini CLI runs the Tourbo server on your machine. Google moved free-tier and Google One users to Antigravity CLI in
-                  June 2026. The Gemini app's custom apps (US, personal accounts) need the public endpoint, like ChatGPT.
-                </CardDescription>
-              )}
-              {c.id === "cursor" && <CardDescription>Both editors run stdio servers from a JSON file in your project or home folder.</CardDescription>}
-              {c.id === "other" && (
-                <CardDescription>Any client that speaks MCP works: give it the stdio command above, or the hosted URL with a bearer token.</CardDescription>
-              )}
-            </CardHeader>
-            <CardContent className="grid gap-4">
-              {c.id === "claude" && (
-                <>
-                  <Snippet title="Claude Code in the Tourbo folder: nothing to set up (.mcp.json registers Tourbo)" code={'claude\n> Plan a 4-show tour for Japanese Breakfast near Seattle that makes money'} />
-                  <Snippet title="Claude Code in any folder" code={`claude mcp add --transport stdio tourbo -- ${STDIO}`} />
-                  <Snippet title="Claude Desktop (claude_desktop_config.json)" code={stdioJson} />
-                  <Snippet title="Hosted endpoint in Claude Code" code={`claude mcp add --transport http --header "Authorization: Bearer <token>" tourbo ${mcpUrl}`} />
-                </>
-              )}
-              {c.id === "chatgpt" && (
-                <div className="grid gap-2 text-sm">
-                  <p>When the endpoint is public:</p>
-                  <ol className="list-decimal space-y-1 pl-5 text-muted-foreground">
-                    <li>Open ChatGPT, go to Plugins and press +.</li>
-                    <li>Choose Add custom MCP server, name it Tourbo and paste the endpoint below.</li>
-                    <li>Sign in when asked, then ask for a tour.</li>
-                  </ol>
-                  <Snippet title="Endpoint" code={mcpUrl} />
-                </div>
-              )}
-              {c.id === "gemini" && <Snippet title="Gemini CLI: add to ~/.gemini/settings.json" code={stdioJson} />}
-              {c.id === "cursor" && (
-                <>
-                  <Snippet title="Cursor: .cursor/mcp.json (project) or ~/.cursor/mcp.json" code={stdioJson} />
-                  <Snippet title="VS Code: .vscode/mcp.json" code={vscodeJson} />
-                </>
-              )}
-              {c.id === "other" && <Snippet title="Most clients take this shape (mcpServers)" code={stdioJson} />}
-            </CardContent>
-          </Card>
-        </section>
-      ))}
-
-      <details className="mt-10 rounded-xl ring-1 ring-foreground/10">
-        <summary className="cursor-pointer px-4 py-3 text-sm font-medium">
+      <details className="group mt-12 rounded-xl ring-1 ring-foreground/10">
+        <summary className="cursor-pointer rounded-xl px-4 py-3 text-sm font-medium outline-none hover:bg-muted/50 focus-visible:ring-2 focus-visible:ring-ring">
           All {tourbo.length + qloo.length} tools <span className="font-normal text-muted-foreground">· for builders</span>
         </summary>
         <div className="border-t px-4 pb-4">
-      <section className="mt-2">
-        <h2 className="font-heading text-xl">Tourbo tools ({tourbo.length})</h2>
-        <ToolList tools={tourbo} />
-        <h2 className="mt-8 font-heading text-xl">Qloo workflow tools ({qloo.length})</h2>
-        <p className="text-sm text-muted-foreground">
-          A TypeScript port of Qloo's hackathon harness workflows, with name resolution and the same result envelope.
-        </p>
-        <ToolList tools={qloo} />
-      </section>
+          <h2 className="mt-4 text-xl">Tourbo tools ({tourbo.length})</h2>
+          <ToolList tools={tourbo} />
+          <h2 className="mt-8 text-xl">Qloo workflow tools ({qloo.length})</h2>
+          <p className="text-sm text-muted-foreground">A TypeScript port of Qloo's hackathon harness workflows, with name resolution and the same result envelope.</p>
+          <ToolList tools={qloo} />
         </div>
       </details>
     </main>
   );
+}
+
+const OWN_NOTE =
+  "Run the same server on your machine or your own host with your own Qloo API key (Node 22 or newer). Keep keys and tokens out of anything you share or commit.";
+
+function Step({ n, title }: { n: number; title: string }) {
+  return (
+    <h2 className="flex items-center gap-3 text-2xl">
+      <span aria-hidden className="grid size-7 shrink-0 place-items-center rounded-full border border-foreground/25 font-sans text-sm font-medium tracking-normal num">
+        {n}
+      </span>
+      {title}
+    </h2>
+  );
+}
+
+// The blocks for one assistant in one mode. Copy buttons are outline; a lone block's is the page's one primary.
+function ClientSetup({ client, mode, hosted, mcpUrl }: { client: string; mode: Mode; hosted: ReturnType<typeof ours>; mcpUrl: string }) {
+  const note = (text: string) => <p className="max-w-prose text-sm text-muted-foreground">{text}</p>;
+  if (mode === "ours") {
+    switch (client) {
+      case "claude":
+        return (
+          <>
+            <Snippet primary title="Claude Code" code={hosted.claudeCode} />
+            {note("Claude Desktop and claude.ai custom connectors take an address but no token yet: use Run your own there.")}
+          </>
+        );
+      case "chatgpt":
+        return note(
+          "ChatGPT connects only to a public HTTPS address with no sign-in or OAuth sign-in; it doesn't take tokens. It works once the hosted address gets OAuth sign-in. Full tool use needs a Business, Enterprise or Edu workspace.",
+        );
+      case "gemini":
+        return <Snippet primary title="Gemini CLI: ~/.gemini/settings.json" code={hosted.gemini} />;
+      case "cursor":
+        return (
+          <>
+            <Snippet title="Cursor: .cursor/mcp.json (project) or ~/.cursor/mcp.json" code={hosted.cursor} />
+            <Snippet title="VS Code: .vscode/mcp.json" code={hosted.vscode} />
+          </>
+        );
+      default:
+        return (
+          <>
+            <Snippet title="Address (Streamable HTTP)" code={mcpUrl} />
+            <Snippet title="Header your assistant sends" code={`Authorization: Bearer ${TOKEN}`} />
+          </>
+        );
+    }
+  }
+  switch (client) {
+    case "claude":
+      return (
+        <>
+          <Snippet title="Claude Code" code={own.claudeCode} />
+          <Snippet title="Claude Desktop: claude_desktop_config.json" code={own.mcpServers} />
+          <Snippet title="Claude Code inside a Tourbo checkout: nothing to set up (.mcp.json registers Tourbo)" code={"claude\n> Plan a 4-show tour for Japanese Breakfast near Seattle that makes money"} />
+        </>
+      );
+    case "chatgpt":
+      return note("ChatGPT needs a public HTTPS address with OAuth sign-in, which a self-hosted Tourbo doesn't offer yet. Use another assistant on this page for now.");
+    case "gemini":
+      return <Snippet primary title="Gemini CLI: ~/.gemini/settings.json" code={own.mcpServers} />;
+    case "cursor":
+      return (
+        <>
+          <Snippet title="Cursor: .cursor/mcp.json (project) or ~/.cursor/mcp.json" code={own.mcpServers} />
+          <Snippet title="VS Code: .vscode/mcp.json (asks for the key once, stores it securely)" code={own.vscode} />
+        </>
+      );
+    default:
+      return (
+        <>
+          <Snippet title="Most clients take this shape (mcpServers)" code={own.mcpServers} />
+          <Snippet title="On your machine (stdio): your assistant starts this" code={own.run} />
+          <Snippet title="Your own address (HTTP at http://127.0.0.1:8787/mcp, needs a token you choose)" code={own.http} />
+          <Snippet title="Docker (HTTP on port 8787, health check at /healthz)" code={own.docker} />
+        </>
+      );
+  }
 }
