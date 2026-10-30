@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto";
 
-import { db } from "@tourbo/core/db/client.server.ts";
-import { findCity } from "@tourbo/core/engine/cities.ts";
+import { db } from "../db/client.server.ts";
+import { findCity } from "../engine/cities.ts";
 import {
   applyEdits,
   applyPlanEdits,
@@ -16,15 +16,14 @@ import {
   type Pool,
   type PoolRows,
   type Preference,
-} from "@tourbo/core/engine/edit.ts";
-import { ensureWorld } from "@tourbo/core/engine/world.server.ts";
-import type { PlanEdit } from "@tourbo/core/engine/proposals.ts";
-import type { Plan, TraceEvent } from "@tourbo/core/shared/types.ts";
+} from "../engine/edit.ts";
+import { ensureWorld } from "../engine/world.server.ts";
+import type { PlanEdit } from "../engine/proposals.ts";
+import type { Plan, TraceEvent } from "../shared/types.ts";
 
-import { getRun, getSteps, savePlan, saveStep, type Run } from "./runs.server.ts";
-import { traceHistory } from "./trace.server.ts";
+import { getSteps, runPlanRow, savePlan, saveStep, traceHistory } from "./steps.server.ts";
 
-// "Your plan, your call" (PLAN §18 Q19) on the server: the act's edits are a versioned list on the
+// "Your plan, your call" (PLAN §18 Q19), shared by the web app and the MCP tool tourbo_plan_edit: the act's edits are a versioned list on the
 // run (run_steps "edits"); Tourbo's own plan is kept as "base" on the first edit; runs.plan always
 // holds base + edits, so every other tab (show notes, emails, tickets, insights) sees the act's
 // plan. The candidate pool comes from what the run saved while planning (run_steps "pool" /
@@ -52,7 +51,7 @@ export async function poolRows(runId: string): Promise<PoolRows> {
   return { ...cities, openers: pool.get("openers")?.openers, venues: Object.fromEntries(venues) };
 }
 
-export async function loadPool(run: Pick<Run, "id" | "plan">, events?: TraceEvent[]): Promise<Pool | undefined> {
+export async function loadPool(run: { id: string; plan: Plan | null }, events?: TraceEvent[]): Promise<Pool | undefined> {
   const base = (await basePlan(run.id)) ?? run.plan;
   if (!base) return undefined;
   await ensureWorld().catch(() => false);
@@ -81,7 +80,7 @@ async function keyArtifacts(runId: string, base: Plan) {
 
 // applyMany: several edits as one step (an Ask Tourbo proposal, group = its id); undoGroup takes
 // exactly that group back out, wherever it is in the list. Chat and the map share this one list.
-type Change =
+export type Change =
   | { kind: "apply"; edit: Edit; source?: string } // source: who made it when not the act ("venue passed")
   | { kind: "applyMany"; edits: Edit[]; group: string }
   | { kind: "undo" }
@@ -90,9 +89,10 @@ type Change =
   | { kind: "dismiss"; pref: string }
   | { kind: "restorePref"; pref: string };
 
-// One change to the act's edits; version guards against two tabs editing at once.
+// One change to the act's edits; version guards against two tabs editing at once. No owner check
+// here: the web route checks the owner key, the MCP tool treats the run id as the capability.
 export async function changeEdits(runId: string, change: Change, version?: number): Promise<EditResult> {
-  const run = await getRun(runId);
+  const run = await runPlanRow(runId);
   if (!run?.plan) return fail(404, "This plan isn't here any more. It may have been deleted.");
   if (run.status !== "done") return fail(409, "Wait until the plan is done, then change it.");
   const state = await editState(runId);

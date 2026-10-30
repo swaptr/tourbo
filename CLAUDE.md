@@ -1,9 +1,9 @@
 # Tourbo
 
-Recommendation engine for touring artists, grounded in Qloo taste data: per city, what to perform or make there (covers, local topics, painting subjects, set order), on top of a tour plan (cities, rooms, money, route, emails). Qloo has the relations, the Tourbo MCP server turns them into tools, Claude decides and writes. Product vision + user stories: `STORIES.md`. Architecture plan: `PLAN.md`.
+Recommendation engine for touring artists, grounded in Qloo taste data: per city, what to perform or make there (covers, local topics, painting subjects, set order), on top of a tour plan (cities, rooms, money, route, emails). Qloo has the relations, the Tourbo MCP server turns them into tools, Claude decides and writes. Product vision + user stories: `tests/stories/STORIES.md`. Architecture plan: `PLAN.md`.
 
 ## North star (re-check after every major change)
-- Read `STORIES.md` before UI/UX or flow changes. After each major change, answer its checklist: can Maya finish story 1 from the screen alone; does the UI speak only as Tourbo; does every state (empty, loading, partial, failed, done) look intentional; do the story tests pass.
+- Read `tests/stories/STORIES.md` before UI/UX or flow changes. After each major change, answer its checklist: can Maya finish story 1 from the screen alone; does the UI speak only as Tourbo; does every state (empty, loading, partial, failed, done) look intentional; do the story tests pass.
 - Simple beats complete: one primary action per screen, advanced options collapsed, plain words (no "fanIndex", "heatmap cells" in primary UI; put numbers behind "why?").
 - Vendor-neutral UI: never name Qloo, Claude/Anthropic or the underlying tech in visible UI; say "Tourbo", "fan data", "your AI assistant". Keep the numbers (labelled "fan data") behind "why?". Vendor and client names only on `/connect` (setup) and in README/Devpost.
 - Fan data is the hero, AI is light: every suggestion shows its evidence inline (a fact chip or mini-visual from fan data) when the evidence is strong, a hedged chip when it's weak, and nothing extra when there is none. AI only writes short summaries on top of those facts (batched, cached per run, critic-checked), never new claims. Local ideas season the act's own material; they never replace it.

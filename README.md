@@ -13,7 +13,7 @@ A band that plays AC/DC its own way in Brisbane or Austin, because its fans ther
 - **Claude** is the agent. On the website it calls those tools, picks the ideas and cities worth it, writes the angle for each idea, show notes and venue emails, and negotiates. In your own Claude Code, Claude Desktop or other MCP client, your assistant calls the same tools.
 - **You** decide. Nothing goes to a venue without a click; every money figure is labelled an estimate.
 
-## What it does (the stories in [`STORIES.md`](STORIES.md))
+## What it does (the stories in [`STORIES.md`](tests/stories/STORIES.md))
 
 1. **Ideas for a city:** the first tab of every plan, and available for any city you click on the map. Several ideas, each with a "why?" fan-data number and a one-line angle. Ideas that can't point at that city's data are dropped.
    - **Musicians:** cover ideas: well-known acts your fans in that city over-index on compared with your fans elsewhere ("play it your way"). Across a run, a cover goes to the cities where it over-indexes most, not everywhere.

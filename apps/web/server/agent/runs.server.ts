@@ -76,11 +76,6 @@ export async function getRun(id: string): Promise<Run | undefined> {
   };
 }
 
-export async function savePlan(id: string, plan: Plan) {
-  const sql = await db();
-  await sql`update runs set plan = ${sql.json(plan as postgres.JSONValue)} where id = ${id}`;
-}
-
 export async function setBaseline(id: string, baseline: Baseline) {
   const sql = await db();
   await sql`update runs set baseline = ${sql.json(baseline as postgres.JSONValue)} where id = ${id}`;
@@ -92,16 +87,4 @@ export function markActive(id: string) {
 
 export const isActive = (id: string) => active.has(id);
 
-// Finished AI outputs inside a run (run_steps), reused when a failed or interrupted run resumes.
-export async function getSteps<T>(runId: string, step: string): Promise<Map<string, T>> {
-  const sql = await db();
-  const rows = await sql<{ key: string; output: T }[]>`select key, output from run_steps where run_id = ${runId} and step = ${step}`;
-  return new Map(rows.map((r) => [r.key, r.output]));
-}
-
-export async function saveStep(runId: string, step: string, key: string, output: unknown) {
-  const sql = await db();
-  await sql`
-    insert into run_steps (run_id, step, key, output) values (${runId}, ${step}, ${key}, ${sql.json(output as postgres.JSONValue)})
-    on conflict (run_id, step, key) do update set output = excluded.output, created_at = now()`;
-}
+export { getSteps, savePlan, saveStep } from "@tourbo/core/runs/steps.server.ts";

@@ -25,7 +25,7 @@ import { ownerKeyFor, recordWork, removeWork, subscribeWork } from "~/lib/work";
 import { PHASE_LABEL, phaseOf, today } from "~/lib/workspace";
 import { eventRow } from "../../server/workspace.server";
 import { getRun } from "../../server/agent/runs.server";
-import { loadPool } from "../../server/agent/edits.server";
+import { loadPool } from "@tourbo/core/runs/edits.server.ts";
 import {
   dateRange,
   days,

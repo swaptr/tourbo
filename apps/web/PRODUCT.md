@@ -34,8 +34,8 @@ Every recommendation is a fan-data relation made useful ("your fans in Austin ov
 - Existing rules: one strong accent, two fonts, no monospace, no glow, no hard-coded colours in components, light ("paper") and dark modes.
 
 ## Evidence on Hand
-- Static landing bundle: `apps/web/public/landing/` (103 real examples, 64 acts, fan maps; every number and place cross-checked at export, quality over quantity).
-- Stories with tests: `STORIES.md`, `tests/stories/`, `tests/bdd/`.
+- Static landing bundle: `apps/web/public/landing/` (61 real examples, 48 acts, fan maps; every number, name and place cross-checked at export, trust over count).
+- Stories with tests: `tests/stories/` (`STORIES.md`), `tests/bdd/`.
 - No testimonials, customers or usage metrics exist; never fabricate them.
 
 ## Product Principles

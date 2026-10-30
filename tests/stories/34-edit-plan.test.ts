@@ -11,7 +11,7 @@ import { closeDb, db } from "@tourbo/core/db/client.server.ts";
 import { stopKey, type Pool } from "@tourbo/core/engine/edit.ts";
 import type { Plan } from "@tourbo/core/shared/types.ts";
 import { getPreps } from "../../apps/web/server/agent/prep.server.ts";
-import { editState } from "../../apps/web/server/agent/edits.server.ts";
+import { editState } from "@tourbo/core/runs/edits.server.ts";
 import { applyProposal, proposeEdits, undoProposal } from "../../apps/web/server/agent/proposals.server.ts";
 import { appUp, BASE } from "./_mcp.ts";
 

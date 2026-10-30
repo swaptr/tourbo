@@ -41,23 +41,7 @@ async function persist(runId: string, event: TraceEvent) {
   `;
 }
 
-export async function traceHistory(runId: string, afterSeq = 0): Promise<TraceEvent[]> {
-  const sql = await db();
-  const rows = await sql<
-    { seq: number; kind: TraceEvent["kind"]; payload: { message: string; data: Record<string, unknown> | null }; created_at: Date }[]
-  >`
-    select seq, kind, payload, created_at from trace_events
-    where run_id = ${runId} and seq > ${afterSeq}
-    order by seq
-  `;
-  return rows.map((row) => ({
-    seq: row.seq,
-    kind: row.kind,
-    message: row.payload.message,
-    data: row.payload.data ?? undefined,
-    at: row.created_at.toISOString(),
-  }));
-}
+export { traceHistory } from "@tourbo/core/runs/steps.server.ts";
 
 export async function appendTrace(runId: string): Promise<Emit> {
   const sql = await db();

@@ -7,7 +7,7 @@ related_targets: ["app/routes/work.tsx","app/routes/material.tsx","app/routes/ne
 
 # Workspace, forms and Library (Q21) — surface brief
 
-Mode: **Operate**. Replaces the quick pre-review draft (2026-10-30). Grounded in STORIES.md, PLAN Q9/Q12/Q16/Q19–Q21, PRODUCT.md, idea_final.md judging criteria, and the app review in `.impeccable/review/app-review.md`.
+Mode: **Operate**. Replaces the quick pre-review draft (2026-10-30). Grounded in tests/stories/STORIES.md, PLAN Q9/Q12/Q16/Q19–Q21, PRODUCT.md, idea_final.md judging criteria, and the app review in `.impeccable/review/app-review.md`.
 
 ## Job and audience
 Working artists (18 kinds, draw ~100–1,000), most not in the fan data. Laptop: plan tours and one-off shows, keep their songs/bits/pieces. Phone, on the road: open tonight's show, its set, three local ideas, the room. Judges meet it once, in a few minutes, after the home globe. Return use is weekly; trust must be instant.

@@ -2,7 +2,7 @@ import { db } from "@tourbo/core/db/client.server.ts";
 import type { Pace } from "@tourbo/core/engine/pace.ts";
 import { connectMcp } from "../mcp.server.ts";
 import { stopKey } from "@tourbo/core/engine/edit.ts";
-import { nightOf } from "./edits.server.ts";
+import { nightOf } from "@tourbo/core/runs/edits.server.ts";
 import { getRun } from "./runs.server.ts";
 import { appendTrace } from "./trace.server.ts";
 

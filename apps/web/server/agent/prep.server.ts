@@ -12,7 +12,7 @@ import type { CityPlan, Plan } from "@tourbo/core/shared/types.ts";
 import { connectMcp } from "../mcp.server.ts";
 import { WORKER_MODEL } from "./models.ts";
 import { getRun } from "./runs.server.ts";
-import { nightOf } from "./edits.server.ts";
+import { nightOf } from "@tourbo/core/runs/edits.server.ts";
 import { leverDefaults } from "./ideas.server.ts";
 import { leverContext, type LeverContext } from "@tourbo/core/engine/levers.ts";
 import type { Rehearsal } from "./rehearsal.server.ts";

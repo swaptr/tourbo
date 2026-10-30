@@ -5,7 +5,7 @@ import { getRun, savePlan } from "../agent/runs.server.ts";
 import { sameCity, stopKey } from "@tourbo/core/engine/edit.ts";
 import type { Plan } from "@tourbo/core/shared/types.ts";
 import { appendTrace } from "../agent/trace.server.ts";
-import { changeEdits } from "../agent/edits.server.ts";
+import { changeEdits } from "@tourbo/core/runs/edits.server.ts";
 import { db } from "@tourbo/core/db/client.server.ts";
 import type { Outreach, OutreachStatus } from "@tourbo/core/shared/types.ts";
 import { sendEmail } from "./email.server.ts";

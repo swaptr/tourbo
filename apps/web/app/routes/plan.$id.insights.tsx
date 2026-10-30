@@ -18,7 +18,7 @@ import type { Outreach, Plan } from "@tourbo/core/shared/types.ts";
 import { getRun } from "../../server/agent/runs.server";
 import { logError } from "../../server/agent/errors";
 import { listOutreach } from "../../server/outreach/outreach.server";
-import { nightOf } from "../../server/agent/edits.server";
+import { nightOf } from "@tourbo/core/runs/edits.server.ts";
 import type { Route } from "./+types/plan.$id.insights";
 
 const UUID = /^[0-9a-f-]{36}$/i;

@@ -10,7 +10,7 @@ import { haversineKm } from "@tourbo/core/engine/routing.ts";
 import type { CityPlan, Hotspot, Plan } from "@tourbo/core/shared/types.ts";
 
 import { connectMcp, type McpSession } from "../mcp.server.ts";
-import { changeEdits, previewPlanEdits } from "./edits.server.ts";
+import { changeEdits, previewPlanEdits } from "@tourbo/core/runs/edits.server.ts";
 import { getRun, getSteps, savePlan, saveStep } from "./runs.server.ts";
 import { toMoney } from "./tools.ts";
 import { traceHistory } from "./trace.server.ts";

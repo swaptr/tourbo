@@ -28,7 +28,7 @@ import { recordWork, rememberRun } from "~/lib/work";
 import { startRun } from "../../server/agent/orchestrator.server";
 import { ownerHash } from "../../server/owner.server";
 import { getRun, type RunStatus } from "../../server/agent/runs.server";
-import { basePlan, changeEdits, editState, loadPool } from "../../server/agent/edits.server";
+import { basePlan, changeEdits, editState, loadPool } from "@tourbo/core/runs/edits.server.ts";
 import { nightExtras, tabCounts, type NightSetLine } from "../../server/agent/nights.server";
 import { traceHistory } from "../../server/agent/trace.server";
 import { db } from "@tourbo/core/db/client.server.ts";

@@ -7,6 +7,8 @@ import assert from "node:assert/strict";
 import { Client } from "@modelcontextprotocol/client";
 import { StdioClientTransport } from "@modelcontextprotocol/client/stdio";
 import { fromJsonSchema } from "@modelcontextprotocol/server";
+import { closeDb } from "@tourbo/core/db/client.server.ts";
+import { cloneDoneRun, deleteRun } from "@tourbo/core/runs/clone.server.ts";
 
 const live = process.env.SMOKE_LIVE === "1";
 const env = { ...(process.env as Record<string, string>), QLOO_CACHE: "memory" };
@@ -32,6 +34,8 @@ const hint = (n: string) => tools.find((t) => t.name === n)!.annotations!;
 assert.equal(hint("tourbo_project_update").destructiveHint, true);
 assert.equal(hint("tourbo_project_create").destructiveHint, false);
 assert.equal(hint("tourbo_route").openWorldHint, false);
+assert.equal(hint("tourbo_plan_edit").destructiveHint, true);
+assert.equal(hint("tourbo_plan_edit").openWorldHint, false);
 assert.equal(hint("tourbo_score_cities").openWorldHint, true);
 
 const validate = async (name: string, value: unknown) => {
@@ -74,6 +78,33 @@ await call("tourbo_build_set", { text: "", cities: ["Chicago"] }, { error: true 
 await call("tourbo_export_markdown", {}, { error: true });
 await call("tourbo_export_ics", { stops: [{ date: "2027-03-01", city: "Chicago", timezone: "Mars/Olympus" }] }, { error: true });
 await call("tourbo_critique_plan", { plan: { nope: true } }, { error: true });
+await call("tourbo_plan_edit", { run_id: "not-a-uuid" }, { error: true });
+await call("tourbo_plan_edit", { run_id: "00000000-0000-0000-0000-000000000000" }, { error: true });
+
+// tourbo_plan_edit on a copy of a finished run in the local DB (skipped when there is none).
+const copy = await cloneDoneRun("mcp smoke act").catch((e: Error) => (console.log(`plan_edit skipped: ${e.message}`), undefined));
+if (copy) {
+  try {
+    const view = await call("tourbo_plan_edit", { run_id: copy.id, candidates: true });
+    assert.equal(view.version, 0);
+    assert.ok(view.candidates.length > 0, "candidates from the run");
+    const night = view.nights.find((n: { verdict: string | null }) => n.verdict !== "skip") ?? view.nights[0];
+    const drop = await call("tourbo_plan_edit", { run_id: copy.id, edits: [{ op: "dropNight", night: night.key }], version: view.version });
+    assert.equal(drop.version, 1);
+    assert.equal(drop.edits, 1);
+    assert.ok(drop.nights.find((n: { key: string }) => n.key === night.key).dropped, "night dropped");
+    assert.ok(drop.change.removed.includes(night.key));
+    const stale = await call("tourbo_plan_edit", { run_id: copy.id, action: "reset", version: 0 }, { error: true });
+    assert.match(stale, /changed since that version/);
+    await call("tourbo_plan_edit", { run_id: copy.id, edits: [{ op: "swapVenue", night: night.key, venueId: "no-such-room" }] }, { error: true });
+    const undo = await call("tourbo_plan_edit", { run_id: copy.id, action: "undo" });
+    assert.equal(undo.edits, 0);
+    assert.equal(undo.money?.profit, view.money?.profit, "undo restores the money");
+    await call("tourbo_plan_edit", { run_id: copy.id, action: "undo" }, { error: true });
+  } finally {
+    await deleteRun(copy.id);
+  }
+}
 
 if (live) {
   const act = await call("tourbo_resolve_act", { name: "Japanese Breakfast" });
@@ -88,4 +119,5 @@ if (live) {
   await call("tourbo_ideas", { cities: ["Chicago"], act_id: act.id });
 }
 await client.close();
+await closeDb();
 console.log("\nsmoke ok");

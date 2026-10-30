@@ -1,7 +1,7 @@
 import { z } from "zod";
 
 import { preferences } from "@tourbo/core/engine/edit.ts";
-import { changeEdits, editState, loadPool } from "../../server/agent/edits.server";
+import { changeEdits, editState, loadPool } from "@tourbo/core/runs/edits.server.ts";
 import { getRun } from "../../server/agent/runs.server";
 import { checkOwner, forbidden, notFound, ownerKeyOf, UUID } from "../../server/owner.server";
 import { apiError } from "../../server/agent/errors";

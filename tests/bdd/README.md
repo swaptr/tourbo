@@ -1,7 +1,7 @@
 # BDD acceptance suite
 
 Given/When/Then features in plain user language (`features/*.feature`): one per story in
-`STORIES.md`, plus `every-kind-of-act.feature` (a Scenario Outline over all 18 kinds in
+`tests/stories/STORIES.md`, plus `every-kind-of-act.feature` (a Scenario Outline over all 18 kinds in
 `packages/core/src/disciplines/index.ts`) and `plan-edits.feature`.
 
 ```

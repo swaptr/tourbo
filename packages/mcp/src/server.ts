@@ -13,6 +13,7 @@ import { disciplineCatalog, TOURBO_TOOLS, type ToolDef } from "./tourbo/tools.ts
 import { IDEAS_TOOL } from "./tourbo/ideas.ts";
 import "./tourbo/places.ts"; // registers tourbo_place_features into TOURBO_TOOLS
 import "./extra/tools.ts"; // registers tourbo_export_ics + tourbo_export_markdown
+import "./extra/plan-edit.ts"; // registers tourbo_plan_edit
 import { planMarkdown } from "./extra/markdown.ts";
 import { runPlan } from "./extra/runs.ts";
 import { NO_KEY, plainError, toolFailure } from "./errors.ts";
@@ -31,7 +32,7 @@ Front door, ideas → plan → set → edit:
 1. Ideas: tourbo_ideas for one or more cities (covers for musicians, local topics for comics and speakers, subjects for visual artists), each with a ref and its number. Works without an act id (city taste only).
 2. Plan: tourbo_resolve_act (pass peers for unknown acts; or tourbo_find_markets by genre) → tourbo_score_cities → tourbo_city_detail for the strongest cities → tourbo_show_economics per city (skip or take a support slot when it loses money) → tourbo_route. Shortcut: tourbo_plan_tour does the whole pipeline in one call. tourbo_place_features adds income, holidays, weather and tone notes.
 3. Set: tourbo_build_set orders the act's own songs or bits per city with a few local touches (the act's material leads); tourbo_city_brief and tourbo_rehearsal_panel for show prep.
-4. Edit and keep: change the cities or venues and re-run tourbo_route / tourbo_show_economics for the changed nights; save notes with tourbo_project_* tools; export with tourbo_export_ics (calendar) and tourbo_export_markdown.
+4. Edit and keep: a saved plan (run id from /plan/<id>) changes with tourbo_plan_edit (swap a city or room, move a date, drop a night, undo, reset) and returns the new money and route; for an unsaved plan re-run tourbo_route / tourbo_show_economics for the changed nights; save notes with tourbo_project_* tools; export with tourbo_export_ics (calendar) and tourbo_export_markdown.
 After booking: tourbo_assess_offer (venue offers), tourbo_ticket_pace, tourbo_promo_plan.
 qloo_* tools are general fan-data workflows (recommend, rank, where_popular, …) for anything else.
 Never name venues, openers or local references that are not in tool results. Money figures are estimates. Errors come back as one sentence saying what to do next.`;
