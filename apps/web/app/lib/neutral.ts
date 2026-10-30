@@ -8,6 +8,8 @@ const RULES: [RegExp, string][] = [
   [/\bQloo[- ]on\b/gi, "with fan data"],
   [/\b(?:no|without) Qloo\b/gi, "without fan data"],
   [/\bQloo heatmaps?\b/gi, "fan map"],
+  // Agent-written angles sometimes say "mapped in the heatmap".
+  [/\b(in|on|from) (?:the|a) heatmaps?\b/gi, "$1 the fan data"],
   [/\bQloo[- ](?:data|results|fan data)\b/gi, "fan data"],
   [/\bQloo[- ]backed\b/gi, "fan-data"],
   [/\bQloo (popularity|demand|affinity|score|scores|brief|reference|references|picks?)\b/gi, "fan-data $1"],

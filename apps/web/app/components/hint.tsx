@@ -33,7 +33,7 @@ export function Hint({
         className={cn(
           "inline-flex shrink-0 cursor-pointer items-center gap-1 rounded-full align-middle text-muted-foreground outline-none hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring",
           // One look for every text trigger ("why?", "more"): a small outlined pill, never an underlined link.
-          text ? "h-6 rounded-full border border-border px-2 text-xs leading-none text-foreground/80 hover:bg-muted" : "size-5 justify-center",
+          text ? "h-6 rounded-full border border-border px-2 text-xs leading-none text-foreground/80 hover:bg-muted" : "size-6 justify-center",
           className,
         )}
       >

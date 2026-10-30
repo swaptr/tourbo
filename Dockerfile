@@ -1,3 +1,4 @@
+# syntax=docker/dockerfile:1
 # npm workspaces: packages/core, packages/mcp, apps/web. Web build bundles @tourbo/* (ssr.noExternal);
 # package sources ship too so the stdio MCP server and maintenance scripts run from the image.
 FROM node:22-alpine AS development-dependencies-env
@@ -6,7 +7,7 @@ COPY package.json package-lock.json ./
 COPY packages/core/package.json packages/core/
 COPY packages/mcp/package.json packages/mcp/
 COPY apps/web/package.json apps/web/
-RUN npm ci
+RUN --mount=type=cache,target=/root/.npm npm ci --prefer-offline --no-audit --no-fund
 
 FROM node:22-alpine AS production-dependencies-env
 WORKDIR /app
@@ -14,7 +15,7 @@ COPY package.json package-lock.json ./
 COPY packages/core/package.json packages/core/
 COPY packages/mcp/package.json packages/mcp/
 COPY apps/web/package.json apps/web/
-RUN npm ci --omit=dev
+RUN --mount=type=cache,target=/root/.npm npm ci --omit=dev --prefer-offline --no-audit --no-fund
 
 FROM node:22-alpine AS build-env
 WORKDIR /app

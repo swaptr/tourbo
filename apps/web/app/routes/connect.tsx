@@ -150,27 +150,24 @@ export default function Connect({ loaderData }: Route.ComponentProps) {
     <main className="container mx-auto max-w-3xl px-4 py-10 sm:py-14">
       <h1 className="text-4xl text-balance sm:text-5xl">Use Tourbo from your AI assistant</h1>
       <p className="mt-3 max-w-prose text-muted-foreground">
-        Give your own AI assistant Tourbo's tour tools over MCP, the open standard most assistants speak. It can then plan tours,
-        check offers and write show notes right in your chats. Your assistant does the thinking; Tourbo brings the fan data and the tour math.
-      </p>
-      <p className="mt-3 max-w-prose text-muted-foreground">
-        Under the hood: the fan data comes from Qloo, and the AI assistant on this website is Claude. Here you bring your own
-        assistant (Claude, ChatGPT, Gemini, Cursor or any other that speaks MCP).
+        Give your AI assistant Tourbo's tour tools over MCP, so it can plan tours, check offers and write show notes in your chats.
+        Tourbo brings the fan data (from Qloo) and the tour math; your assistant does the thinking (this site's own is Claude).
       </p>
 
       <div className="mt-10 grid gap-3">
           <Step n={1} title="Pick your assistant" />
           <Tabs
+            className="min-w-0"
             value={tab}
             onValueChange={(v) => {
               setTab(String(v));
               go(String(v));
             }}
           >
-            <TabsList aria-label="AI assistants" className="h-auto w-full flex-wrap justify-start gap-1 group-data-horizontal/tabs:h-auto">
+            <TabsList aria-label="AI assistants" className="h-auto w-full min-w-0 flex-nowrap justify-start gap-1 overflow-x-auto [scrollbar-width:none] group-data-horizontal/tabs:h-auto sm:flex-wrap">
               {CLIENTS.map((c) => {
                 return (
-                  <TabsTrigger key={c.id} value={c.id} id={`tab-${c.id}`} aria-label={c.label} className="h-8 flex-none px-3">
+                  <TabsTrigger key={c.id} value={c.id} id={`tab-${c.id}`} aria-label={c.label} className="h-8 flex-none px-3 max-sm:px-2">
                     {c.label}
                   </TabsTrigger>
                 );
@@ -265,7 +262,7 @@ function Step({ n, title }: { n: number; title: string }) {
   );
 }
 
-// The blocks for one assistant in one mode. Copy buttons are outline; a lone block's is the page's one primary.
+// The blocks for one assistant in one mode. The first block's Copy is the page's one primary; the rest are outline.
 function ClientSetup({ client, mode, hosted, mcpUrl }: { client: string; mode: Mode; hosted: ReturnType<typeof ours>; mcpUrl: string }) {
   const note = (text: string) => <p className="max-w-prose text-sm text-muted-foreground">{text}</p>;
   if (mode === "ours") {
@@ -286,14 +283,14 @@ function ClientSetup({ client, mode, hosted, mcpUrl }: { client: string; mode: M
       case "cursor":
         return (
           <>
-            <Snippet title="Cursor: .cursor/mcp.json (project) or ~/.cursor/mcp.json" code={hosted.cursor} />
+            <Snippet primary title="Cursor: .cursor/mcp.json (project) or ~/.cursor/mcp.json" code={hosted.cursor} />
             <Snippet title="VS Code: .vscode/mcp.json" code={hosted.vscode} />
           </>
         );
       default:
         return (
           <>
-            <Snippet title="Address (Streamable HTTP)" code={mcpUrl} />
+            <Snippet primary title="Address (Streamable HTTP)" code={mcpUrl} />
             <Snippet title="Header your assistant sends" code={`Authorization: Bearer ${TOKEN}`} />
           </>
         );
@@ -303,7 +300,7 @@ function ClientSetup({ client, mode, hosted, mcpUrl }: { client: string; mode: M
     case "claude":
       return (
         <>
-          <Snippet title="Claude Code" code={own.claudeCode} />
+          <Snippet primary title="Claude Code" code={own.claudeCode} />
           <Snippet title="Claude Desktop: claude_desktop_config.json" code={own.mcpServers} />
           <Snippet title="Claude Code inside a Tourbo checkout: nothing to set up (.mcp.json registers Tourbo)" code={"claude\n> Plan a 4-show tour for Japanese Breakfast near Seattle that makes money"} />
         </>
@@ -315,14 +312,14 @@ function ClientSetup({ client, mode, hosted, mcpUrl }: { client: string; mode: M
     case "cursor":
       return (
         <>
-          <Snippet title="Cursor: .cursor/mcp.json (project) or ~/.cursor/mcp.json" code={own.mcpServers} />
+          <Snippet primary title="Cursor: .cursor/mcp.json (project) or ~/.cursor/mcp.json" code={own.mcpServers} />
           <Snippet title="VS Code: .vscode/mcp.json (asks for the key once, stores it securely)" code={own.vscode} />
         </>
       );
     default:
       return (
         <>
-          <Snippet title="Most clients take this shape (mcpServers)" code={own.mcpServers} />
+          <Snippet primary title="Most clients take this shape (mcpServers)" code={own.mcpServers} />
           <Snippet title="On your machine (stdio): your assistant starts this" code={own.run} />
           <Snippet title="Your own address (HTTP at http://127.0.0.1:8787/mcp, needs a token you choose)" code={own.http} />
           <Snippet title="Docker (HTTP on port 8787, health check at /healthz)" code={own.docker} />

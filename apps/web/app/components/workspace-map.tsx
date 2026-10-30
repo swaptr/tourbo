@@ -9,10 +9,11 @@ import type { Plan } from "@tourbo/core/shared/types.ts";
 import { prefersReducedMotion, tokenColor } from "~/lib/css-color";
 import { isDarkPage, MAP_STYLE } from "~/lib/map-style";
 import { cn } from "~/lib/utils";
+import { addRampRoute, nightMarker, paintRampRoute } from "~/components/map-marks";
 
 const STYLE = MAP_STYLE;
 const isDark = isDarkPage;
-const OURS = ["hotspots", "route", "alts", "alts-label", "venues", "venue-clusters", "venue-count", "venues-label"];
+const OURS = ["hotspots", "route-casing", "route", "alts", "alts-label", "venues", "venue-clusters", "venue-count", "venues-label"];
 const hasWebGL = () => {
   try {
     const c = document.createElement("canvas");
@@ -40,7 +41,6 @@ type Props = {
 };
 
 const played = (s: Plan["stops"][number]) => s.money?.verdict !== "skip";
-const RING = ["ring-score-1", "ring-score-2", "ring-score-3", "ring-score-4"] as const;
 const signed = (fmt: (n: number) => string, n: number) => (n === 0 ? "±0" : `${n > 0 ? "+" : "−"}${fmt(Math.abs(n))}`);
 
 // The plan workspace's canvas (PLAN Q19): the route, numbered night pins (at the chosen room when it
@@ -56,6 +56,8 @@ export function WorkspaceMap({ plan, pool, selected, cityOptions, venueOptions, 
   pick.current = onPick;
   const [ready, setReady] = useState(false);
   const [failed, setFailed] = useState(false);
+  const routeRef = useRef<{ points: [number, number][]; scores: number[] } | undefined>(undefined);
+  const [narrow, setNarrow] = useState(false);
   const [layers, setLayers] = useState<Layers>({ venues: true, fans: true, alternatives: true, route: true });
 
   // Map once.
@@ -97,6 +99,8 @@ export function WorkspaceMap({ plan, pool, selected, cityOptions, venueOptions, 
             },
           });
         });
+        // The ramp's dark-mode tokens differ: repaint the route once the new style is in.
+        map.on("style.load", () => routeRef.current && map.getLayer("route") && paintRampRoute(map, routeRef.current.points, routeRef.current.scores));
         themeWatch.observe(document.documentElement, { attributes: true, attributeFilter: ["class"] });
         map.on("load", () => {
           box.current?.querySelector(".maplibregl-ctrl-attrib")?.classList.remove("maplibregl-compact-show");
@@ -107,8 +111,8 @@ export function WorkspaceMap({ plan, pool, selected, cityOptions, venueOptions, 
           const empty = { type: "FeatureCollection" as const, features: [] };
           map.addSource("hotspots", { type: "geojson", data: empty });
           map.addLayer({ id: "hotspots", type: "heatmap", source: "hotspots", paint: { "heatmap-weight": ["get", "w"], "heatmap-radius": ["interpolate", ["linear"], ["zoom"], 3, 16, 11, 40], "heatmap-intensity": 1.2, "heatmap-opacity": 0.6, "heatmap-color": ["interpolate", ["linear"], ["heatmap-density"], 0, "rgba(0,0,0,0)", 0.2, tokenColor("score-1", 0.35), 0.5, tokenColor("score-2", 0.5), 0.8, tokenColor("score-3", 0.6), 1, tokenColor("score-4", 0.7)] } });
-          map.addSource("route", { type: "geojson", data: empty });
-          map.addLayer({ id: "route", type: "line", source: "route", layout: { "line-join": "round", "line-cap": "round" }, paint: { "line-color": tokenColor("foreground", 0.8), "line-width": 2, "line-dasharray": [2, 1.5] } });
+          map.addSource("route", { type: "geojson", data: empty, lineMetrics: true });
+          addRampRoute(map, "route");
           map.addSource("alts", { type: "geojson", data: empty, promoteId: "name" });
           map.addLayer({
             id: "alts",
@@ -179,7 +183,10 @@ export function WorkspaceMap({ plan, pool, selected, cityOptions, venueOptions, 
     const stops = plan.stops.filter(played);
     const set = (id: string, data: GeoJSON.GeoJSON) => (map.getSource(id) as import("maplibre-gl").GeoJSONSource | undefined)?.setData(data);
     const at = (s: Plan["stops"][number]): [number, number] => (s.venue?.lat !== undefined && s.venue.lon !== undefined ? [s.venue.lon, s.venue.lat] : [s.city.lon, s.city.lat]);
-    set("route", { type: "Feature", properties: {}, geometry: { type: "LineString", coordinates: stops.map(at) } });
+    const points = stops.map(at);
+    set("route", { type: "Feature", properties: {}, geometry: { type: "LineString", coordinates: points } });
+    routeRef.current = { points, scores: stops.map((s) => s.score) };
+    paintRampRoute(map, points, routeRef.current.scores);
     const inPlan = new Set(plan.stops.map((s) => s.city.name.toLowerCase()));
     const hs = [...plan.stops.flatMap((s) => s.hotspots), ...(pool?.cities.filter((c) => !inPlan.has(c.name.toLowerCase())).flatMap((c) => c.hotspots) ?? [])];
     set("hotspots", { type: "FeatureCollection", features: hs.map((h) => ({ type: "Feature", properties: { w: h.affinity * h.popularity }, geometry: { type: "Point", coordinates: [h.lon, h.lat] } })) });
@@ -210,27 +217,8 @@ export function WorkspaceMap({ plan, pool, selected, cityOptions, venueOptions, 
     markers.current.forEach((m) => m.remove());
     markers.current = plan.stops.map((s, i) => {
       const key = stopKey(s);
-      const el = document.createElement("button");
-      el.type = "button";
+      const el = nightMarker(s, i, { selected: key === selected, label: mini ? false : undefined, detail: `${mini ? `${s.city.name}, ` : ""}night ${i + 1}${s.venue ? `, ${s.venue.name}` : ""}` });
       el.tabIndex = -1; // pointer shortcut only: the Nights list is the keyboard path (markers can sit outside the visible map)
-      el.setAttribute("aria-label", `Night ${i + 1}: ${s.city.name}${s.venue ? `, ${s.venue.name}` : ""}`);
-      el.className = cn(
-        // No CSS transform/transition here: MapLibre positions markers with transform.
-        "relative flex cursor-pointer items-center justify-center rounded-full text-xs font-semibold shadow ring-[3px]",
-        // Ink circles ringed in the fan ramp (that city's fan strength); "your pick" is outlined;
-        // the selected night is bigger with an ink outline.
-        played(s) ? RING[Math.min(3, Math.max(0, Math.floor(s.score / 25)))] : "ring-background",
-        key === selected ? "size-9 text-sm outline-2 outline-offset-2 outline-foreground" : "size-7",
-        !played(s) ? "bg-muted text-muted-foreground line-through" : s.yours ? "bg-background text-foreground" : "bg-foreground text-background",
-      );
-      el.append(String(i + 1));
-      // Its own city label beside the pin (the pin covers the map's label underneath).
-      if (!mini) {
-        const label = document.createElement("span");
-        label.className = "pointer-events-none absolute top-1/2 left-full ml-1.5 -translate-y-1/2 rounded bg-background/85 px-1 text-xs font-medium whitespace-nowrap text-foreground no-underline";
-        label.textContent = s.city.name.split(",")[0];
-        el.append(label);
-      }
       el.addEventListener("click", (e) => {
         e.stopPropagation();
         pick.current({ type: "night", key });
@@ -266,8 +254,9 @@ export function WorkspaceMap({ plan, pool, selected, cityOptions, venueOptions, 
     // resize observer frames again once it has a size.
     if (box.width < 40 || box.height < 40) return;
     const pad = mini ? 24 : Math.max(24, Math.min(64, Math.round(Math.min(box.width, box.height) / 8)));
-    // Layer toggles sit top-left on the full map: a little more room at the top.
-    map.fitBounds(bounds, { padding: { top: pad + (mini ? 0 : 28), bottom: pad, left: pad, right: pad }, maxZoom: TOUR_ZOOM, duration: prefersReducedMotion() || !ready ? 0 : 600 });
+    // Layer toggles sit top-left on the full map: a little more room at the top; each night's label
+    // sits right of its pin: more room on the right so none runs off the edge.
+    map.fitBounds(bounds, { padding: { top: pad + (mini ? 0 : 28), bottom: pad, left: pad, right: pad + (mini ? 0 : 72) }, maxZoom: TOUR_ZOOM, duration: prefersReducedMotion() || !ready ? 0 : 600 });
   };
   // A swapped night is re-keyed right after the edit (same position): that is no new pick, so the
   // whole-tour view after the edit stays.
@@ -300,6 +289,7 @@ export function WorkspaceMap({ plan, pool, selected, cityOptions, venueOptions, 
     const ro = new ResizeObserver(([e]) => {
       map.resize();
       const { width: w, height: h } = e.contentRect;
+      setNarrow(w < 640);
       const big = Math.abs(w - last.w) > 80 || Math.abs(h - last.h) > 80;
       last = { w, h };
       if (big && w > 0 && h > 0) {
@@ -320,9 +310,11 @@ export function WorkspaceMap({ plan, pool, selected, cityOptions, venueOptions, 
     const vis = (on: boolean) => (on ? "visible" : "none");
     for (const id of ["venues", "venue-clusters", "venue-count", "venues-label"]) map.setLayoutProperty(id, "visibility", vis(layers.venues));
     map.setLayoutProperty("hotspots", "visibility", vis(layers.fans));
-    for (const id of ["alts", "alts-label"]) map.setLayoutProperty(id, "visibility", vis(layers.alternatives));
-    map.setLayoutProperty("route", "visibility", vis(layers.route));
-  }, [ready, layers]);
+    map.setLayoutProperty("alts", "visibility", vis(layers.alternatives));
+    // Phone-width map: other cities' labels would run off the edge; their circles stay (tap one for its numbers).
+    map.setLayoutProperty("alts-label", "visibility", vis(layers.alternatives && !narrow));
+    for (const id of ["route", "route-casing"]) map.setLayoutProperty(id, "visibility", vis(layers.route));
+  }, [ready, layers, narrow]);
 
   const toggles: { key: keyof Layers; label: string; icon: typeof Store }[] = [
     { key: "venues", label: "Rooms", icon: Store },
@@ -367,11 +359,15 @@ function RouteSketch({ plan, selected, mini, onPick }: { plan: Plan; selected?: 
   const [x0, x1, y0, y1] = [Math.min(...xs), Math.max(...xs), Math.min(...ys), Math.max(...ys)];
   const span = Math.max(x1 - x0, y1 - y0, 0.5);
   const at = (s: Plan["stops"][number]) => ({ x: 10 + ((s.city.lon - x0) / span) * 80 + (span - (x1 - x0)) / span * 40, y: 10 + ((-s.city.lat - y0) / span) * 80 + (span - (y1 - y0)) / span * 40 });
-  const pts = stops.filter(played).map(at);
+  const ps = stops.filter(played);
+  const pts = ps.map(at);
   return (
     <div className="absolute inset-0 flex flex-col bg-muted/40">
       <svg viewBox="0 0 100 100" preserveAspectRatio="xMidYMid meet" className="min-h-0 flex-1" role="img" aria-label="Sketch of the tour route">
-        <polyline points={pts.map((p) => `${p.x},${p.y}`).join(" ")} fill="none" stroke="var(--foreground)" strokeOpacity={0.55} strokeWidth={0.8} strokeDasharray="2 1.5" vectorEffect="non-scaling-stroke" />
+        {/* Route on the fan ramp: each leg in the colour of the night it leaves. */}
+        {pts.slice(1).map((p, i) => (
+          <line key={i} x1={pts[i].x} y1={pts[i].y} x2={p.x} y2={p.y} stroke={`var(--score-${Math.min(4, Math.max(1, Math.floor(ps[i].score / 25) + 1))})`} strokeWidth={2.5} strokeLinecap="round" vectorEffect="non-scaling-stroke" />
+        ))}
         {stops.map((s, i) => {
           const p = at(s);
           const key = stopKey(s);

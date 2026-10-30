@@ -261,13 +261,19 @@ export function createTools(ctx: RunContext) {
           return undefined;
         });
         if (rec) plan.money = toMoney(rec);
+        // The money picked the backup room: it becomes the night's room, so the card's room,
+        // capacity and ticket numbers describe the same place.
+        if (rec && plan.backupVenue && rec.best.room === plan.backupVenue.name && rec.best.room !== plan.venue?.name) {
+          [plan.venue, plan.backupVenue] = [plan.backupVenue, plan.venue];
+          plan.capacity = { min: rec.best.scenario.capacity, max: rec.best.scenario.capacity, estimate: true };
+        }
         ctx.cities.set(row.city, plan);
         if (plan.money) emit("decision", `${row.city}: ${fmtMoney(plan.money)} (estimate)`, { city: row.city, verdict: plan.money.verdict, profit: plan.money.profit });
         return JSON.stringify({
           city: row.city,
-          venue: worker.venue?.name,
-          backup: worker.backupVenue?.name,
-          capacityEstimate: worker.capacity && `${worker.capacity.min}–${worker.capacity.max}`,
+          venue: plan.venue?.name,
+          backup: plan.backupVenue?.name,
+          capacityEstimate: plan.capacity && `${plan.capacity.min}–${plan.capacity.max}`,
           opener: opener && `${opener.name} (${opener.source === "local" ? "local favourite" : "similar act"}, ${opener.localCells} local cells)`,
           angle: worker.angle,
           money: plan.money && { verdict: plan.money.verdict, deal: plan.money.deal, price: plan.money.price, tickets: plan.money.tickets, capacity: plan.money.capacity, profit: plan.money.profit, currency: plan.money.currency, why: plan.money.why, priceNudge: plan.money.priceNudge?.note },

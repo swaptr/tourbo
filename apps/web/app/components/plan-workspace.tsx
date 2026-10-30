@@ -331,7 +331,7 @@ export function PlanWorkspace(props: WorkspaceProps) {
       data-testid="plan-workspace"
       data-tab={tab}
       className={cn(
-        "flex flex-col gap-3 xl:grid xl:min-h-0 xl:flex-1 xl:grid-cols-[15rem_minmax(0,1fr)_24rem] xl:gap-4",
+        "flex flex-col gap-3 pt-4 xl:grid xl:min-h-0 xl:flex-1 xl:grid-cols-[15rem_minmax(0,1fr)_24rem] xl:gap-4",
         onPlan ? "xl:grid-rows-[minmax(0,1fr)_auto] xl:[grid-template-areas:'rail_map_panel'_'rail_main_panel']" : "xl:grid-rows-[9rem_minmax(0,1fr)] xl:[grid-template-areas:'map_main_panel'_'rail_main_panel']",
       )}
     >
@@ -346,7 +346,7 @@ export function PlanWorkspace(props: WorkspaceProps) {
           onKeyDown={onRailKey}
           className={cn(
             "xl:min-h-0 xl:flex-1 xl:space-y-1 xl:overflow-y-auto xl:p-0.5",
-            chips ? "relative flex gap-1.5 overflow-x-auto px-4 pb-1 [scrollbar-width:none] xl:block xl:px-0.5" : "space-y-1.5",
+            chips ? "relative flex gap-1.5 overflow-x-auto px-4 py-1 [scrollbar-width:none] xl:block xl:px-0.5" : "space-y-1.5",
           )}
         >
           {plan.stops.map((s, i) => (
@@ -706,7 +706,7 @@ export function NotesSections({ prep, open = ["opening", "setlist"] }: { prep: N
 
 function PanelLink({ to, children }: { to: string; children: ReactNode }) {
   return (
-    <Link to={to} className="inline-flex items-center gap-1 px-1 text-xs font-medium text-muted-foreground underline-offset-4 hover:text-foreground hover:underline">
+    <Link to={to} className="inline-flex min-h-6 items-center gap-1 rounded-sm px-1 text-xs outline-none focus-visible:ring-2 focus-visible:ring-ring font-medium text-muted-foreground underline-offset-4 hover:text-foreground hover:underline">
       {children} <ChevronRight className="size-3" aria-hidden />
     </Link>
   );

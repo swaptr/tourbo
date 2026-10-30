@@ -47,7 +47,8 @@ export function AgentProgress({ events, jobs, status }: { events: TraceEvent[]; 
       </ol>
       {!finished && !failed && latest && (
         <p className="mt-4 line-clamp-2 border-t pt-3 text-sm text-muted-foreground" aria-live="polite">
-          {neutral(latest.message)}
+          {/* The bracketed detail is engine numbers ("51 local cells"); it stays in "How Tourbo decided". */}
+          {neutral(latest.message).replace(/\s*\([^)]*\)/g, "")}
         </p>
       )}
     </div>

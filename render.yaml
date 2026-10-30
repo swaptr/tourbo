@@ -5,6 +5,8 @@ services:
     dockerfilePath: ./Dockerfile
     healthCheckPath: /healthz
     plan: free
+    # Deploy a push to main only after every GitHub check on it passes (.github/workflows/ci.yml).
+    autoDeployTrigger: checksPass
     envVars:
       - key: QLOO_API_KEY
         sync: false
@@ -24,11 +26,7 @@ services:
         value: all
       - key: PUBLIC_URL
         sync: false
+      # Supabase, shared pooler in session mode (IPv4; port 5432):
+      # postgresql://postgres.<ref>:<password>@aws-<n>-<region>.pooler.supabase.com:5432/postgres?sslmode=require
       - key: DATABASE_URL
-        fromDatabase:
-          name: tourbo-db
-          property: connectionString
-
-databases:
-  - name: tourbo-db
-    plan: free
+        sync: false

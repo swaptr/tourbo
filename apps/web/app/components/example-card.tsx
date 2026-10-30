@@ -163,7 +163,7 @@ export const ExampleCard = memo(function ExampleCard({ view, empty, reduced, act
           {whyView?.why && (
             <>
               <div className="ec-whyhead">
-                <button ref={whyBack} type="button" className="ec-ctl" onClick={closeWhy}>
+                <button ref={whyBack} type="button" className="ec-ctl ec-back" onClick={closeWhy}>
                   ‹ Back
                 </button>
                 <p id="ec-why-title" className="min-w-0 truncate font-medium">

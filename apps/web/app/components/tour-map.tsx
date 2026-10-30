@@ -1,7 +1,7 @@
 import "maplibre-gl/dist/maplibre-gl.css";
 import { basemapStyle } from "~/lib/map-style";
 import workerUrl from "maplibre-gl/dist/maplibre-gl-worker.mjs?url";
-import { tokenColor } from "~/lib/css-color";
+import { addRampRoute, nightMarker, paintRampRoute } from "~/components/map-marks";
 import { useEffect, useRef } from "react";
 
 import type { CityPlan } from "@tourbo/core/shared/types.ts";
@@ -54,28 +54,14 @@ export function TourMap({ stops }: { stops: CityPlan[] }) {
             "heatmap-opacity": 0.75,
           },
         });
-        map.addSource("route", {
-          type: "geojson",
-          data: {
-            type: "Feature",
-            properties: {},
-            geometry: { type: "LineString", coordinates: stops.map((s) => [s.city.lon, s.city.lat]) },
-          },
-        });
-        map.addLayer({
-          id: "route",
-          type: "line",
-          source: "route",
-          layout: { "line-join": "round", "line-cap": "round" },
-          paint: { "line-color": tokenColor("primary"), "line-width": 2.5, "line-dasharray": [2, 1.5] },
-        });
+        const points = stops.map((s): [number, number] => [s.city.lon, s.city.lat]);
+        map.addSource("route", { type: "geojson", lineMetrics: true, data: { type: "Feature", properties: {}, geometry: { type: "LineString", coordinates: points } } });
+        addRampRoute(map, "route");
+        paintRampRoute(map, points, stops.map((s) => s.score));
       });
 
       stops.forEach((stop, i) => {
-        const el = document.createElement("div");
-        el.className =
-          "flex size-6 items-center justify-center rounded-full bg-primary text-xs font-semibold text-primary-foreground shadow ring-2 ring-background";
-        el.textContent = String(i + 1);
+        const el = nightMarker(stop, i, { label: false, detail: `${stop.city.name}, night ${i + 1}` });
         const popup = new maplibre.Popup({ offset: 14, closeButton: false }).setText(
           `${stop.city.name}${stop.venue ? ` — ${stop.venue.name}` : ""}${stop.date ? ` (${stop.date})` : ""}`,
         );

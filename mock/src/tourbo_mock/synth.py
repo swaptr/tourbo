@@ -5,6 +5,7 @@ import copy
 import hashlib
 import json
 import math
+import os
 import re
 import threading
 
@@ -288,12 +289,14 @@ def search(p: dict):
         for e in store.pool(slot, 40):
             if (set(e.get("types") or []) | {e.get("subtype")}) & set(types):
                 cands.setdefault(e["entity_id"], e)
-    for e in registry().values():
+    for e in (registry().values() if os.environ.get("MOCK_INVENT_ACTS") == "1" else []):
         if set(e.get("types") or []) & set(types):
             cands.setdefault(e["entity_id"], e)
     exact = [e for e in cands.values() if norm(e["name"]) == nq]
     prefix = sorted((e for e in cands.values() if nq in norm(e["name"]) and e not in exact), key=lambda e: -(e.get("popularity") or 0))
-    first = exact or [made_up(q, types[0])]
+    # Like the real API, a name nobody has heard of gets only loose matches (the app then asks
+    # "who do you sound like?"). MOCK_INVENT_ACTS=1 makes one up instead.
+    first = exact or ([made_up(q, types[0])] if os.environ.get("MOCK_INVENT_ACTS") == "1" else [])
     fuzzy = sorted(cands.values(), key=lambda e: unit(f"{nq}|{e['entity_id']}"))
     out, seen = [], set()
     for e in first + prefix + fuzzy:

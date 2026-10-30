@@ -80,7 +80,7 @@ export default function Insights({ loaderData }: Route.ComponentProps) {
       {!plan?.stops.length ? (
         <ChartEmpty title="Nothing to chart yet">
           {live ? "The plan is still being made. Charts appear when it's done." : "This plan has no nights to chart."}{" "}
-          <Link to={`/plan/${id}`} className="underline underline-offset-4">
+          <Link to={`/plan/${id}`} className="inline-flex min-h-6 items-center underline underline-offset-4">
             Back to the tour
           </Link>
         </ChartEmpty>
@@ -232,7 +232,7 @@ function EmailsChart({ rows, id }: { rows: Pick<Outreach, "status" | "city">[] |
     return (
       <ChartEmpty title={T.emails}>
         No venue emails yet.{" "}
-        <Link to={`/plan/${id}/pipeline`} className="underline underline-offset-4">
+        <Link to={`/plan/${id}/pipeline`} className="inline-flex min-h-6 items-center underline underline-offset-4">
           Write them on Venue emails
         </Link>
       </ChartEmpty>
@@ -254,7 +254,7 @@ function PaceCard({ plan, rows, id }: { plan: Plan; rows: Checkin[] | null; id: 
     return (
       <ChartEmpty title={T.pace}>
         No ticket numbers yet.{" "}
-        <Link to={`/plan/${id}/live`} className="underline underline-offset-4">
+        <Link to={`/plan/${id}/live`} className="inline-flex min-h-6 items-center underline underline-offset-4">
           Log tickets sold on Ticket sales
         </Link>
       </ChartEmpty>

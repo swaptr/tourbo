@@ -178,6 +178,9 @@ function PlanIdeasView({ loaderData }: Route.ComponentProps) {
   const canWrite = canEdit && !!base && total > 0;
   const coversHref = `/plan/${id}/covers?night=${selected}`;
   const [picked, setPicked] = useState<string>();
+  // One retry on screen: the note's "Look again" wins, then the partial notice's, then the empty card's.
+  const staleAsk = regen.state === "idle" && !regen.data?.refreshError && canEdit && stale.length > 0;
+  const partialRetry = !!ideas?.partial && !limits.data && canEdit && !staleAsk && total > 0;
   const writeForm = (className?: string) =>
     canWrite && (
       <write.Form method="post" className={className}>
@@ -196,7 +199,7 @@ function PlanIdeasView({ loaderData }: Route.ComponentProps) {
           <h2 className="font-heading text-2xl tracking-tight">Ideas across the tour</h2>
           {cities.length > 0 && (
             <p className="num mt-0.5 text-sm text-pretty text-muted-foreground">
-              {total > 0 ? `${total} pick${total === 1 ? "" : "s"} for ${cities.length} night${cities.length === 1 ? "" : "s"}. Pick one to keep or drop it on that night.` : `${cities.length} night${cities.length === 1 ? "" : "s"}`}
+              {total > 0 ? `${total} pick${total === 1 ? "" : "s"} for ${cities.length} night${cities.length === 1 ? "" : "s"}. Pick one to keep or drop it.` : `${cities.length} night${cities.length === 1 ? "" : "s"}`}
             </p>
           )}
         </div>
@@ -224,7 +227,7 @@ function PlanIdeasView({ loaderData }: Route.ComponentProps) {
         </p>
       )}
       {regen.state === "idle" && regen.data?.refreshError && <ErrorLine message={regen.data.refreshError} retry={regen.data.refreshRetry} onRetry={() => ask(stale)} />}
-      {regen.state === "idle" && !regen.data?.refreshError && canEdit && stale.length > 0 && (
+      {staleAsk && (
         <p className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
           Your note changes what Tourbo looks for in {stale.join(", ")}.
           <Button type="button" size="xs" variant="outline" onClick={() => ask(stale)}>
@@ -234,30 +237,17 @@ function PlanIdeasView({ loaderData }: Route.ComponentProps) {
       )}
       {ideas && (
         <>
-          <p className="max-w-prose text-sm text-pretty text-muted-foreground" data-testid="ideas-basis">
-            {total > 0 && <span className="font-medium text-foreground">{neutral(ideas.frame)} </span>}
-            {neutral(ideas.basisLine)}
-            {coversTab && total > 0 && (
-              <>
-                {" "}Covers have{" "}
-                <Link to={coversHref} className="font-medium text-foreground underline underline-offset-4 hover:no-underline">
-                  their own tab
-                </Link>
-                .
-              </>
-            )}
-          </p>
-          {ideas.note && <p className="text-sm text-muted-foreground">{neutral(ideas.note)}</p>}
-          {/visual|photo|film|maker/.test(kind) && <p className="text-xs text-muted-foreground">{neutral(ideas.label)}</p>}
           {ideas.partial && !limits.data && (
-            <p role="status" className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-muted-foreground">
-              <Info className="size-4 shrink-0" aria-hidden />
-              <span>Some fan data didn't load, so a few ideas may be missing.</span>
-              {canEdit && (
-                <Button type="button" size="xs" variant="outline" onClick={fetchIdeas} disabled={looking}>
-                  Try again
-                </Button>
-              )}
+            <p role="status" className="flex items-start gap-2 text-sm text-pretty text-muted-foreground">
+              <Info className="mt-0.5 size-4 shrink-0" aria-hidden />
+              <span className="min-w-0">
+                Some fan data didn't load, so a few ideas may be missing.
+                {partialRetry && (
+                  <Button type="button" size="xs" variant="outline" className="ml-2 align-middle" onClick={fetchIdeas} disabled={looking}>
+                    Try again
+                  </Button>
+                )}
+              </span>
             </p>
           )}
           {total > 0 ? (
@@ -286,7 +276,7 @@ function PlanIdeasView({ loaderData }: Route.ComponentProps) {
                     See the covers <ArrowRight />
                   </Button>
                 )}
-                {canEdit && !limits.data && (
+                {canEdit && !limits.data && !staleAsk && (
                   <Button type="button" variant="outline" className="max-sm:h-11" onClick={fetchIdeas} disabled={looking}>
                     {looking ? <LoaderCircle className="animate-spin" /> : <RotateCw />} {looking ? "Looking…" : "Look again"}
                   </Button>
@@ -294,6 +284,21 @@ function PlanIdeasView({ loaderData }: Route.ComponentProps) {
               </div>
             </div>
           )}
+          <p className="max-w-prose text-sm text-pretty text-muted-foreground" data-testid="ideas-basis">
+            {total > 0 && <span className="font-medium text-foreground">{neutral(ideas.frame)} </span>}
+            {neutral(ideas.basisLine)}
+            {coversTab && total > 0 && (
+              <>
+                {" "}Covers have{" "}
+                <Link to={coversHref} className="font-medium text-foreground underline underline-offset-4 hover:no-underline">
+                  their own tab
+                </Link>
+                .
+              </>
+            )}
+          </p>
+          {ideas.note && <p className="text-sm text-muted-foreground">{neutral(ideas.note)}</p>}
+          {/visual|photo|film|maker/.test(kind) && <p className="text-xs text-muted-foreground">{neutral(ideas.label)}</p>}
         </>
       )}
     </div>

@@ -250,6 +250,9 @@ html.dark {
 /* ---- Example card (components/example-card.tsx): the home dialog. Card selectors only. ---- */
 /* Fixed size per breakpoint, never moves; a swap fades the new layer in over the old (WAAPI). */
 .ec {
+  /* Header and footer share one bar height and one control height (phone: 44 px targets). */
+  --ec-bar: 2.5rem;
+  --ec-ctl: 1.5rem;
   position: relative;
   z-index: 20;
   order: 1;
@@ -420,7 +423,7 @@ html.dark {
 /* Numbers inside a fact: a quiet chip so the figures scan first. */
 .ec-fig {
   padding: 0 0.25rem;
-  border-radius: 0.25rem;
+  border-radius: var(--radius-sm);
   background: var(--muted);
   color: var(--foreground);
   font-weight: 500;
@@ -439,7 +442,7 @@ html.dark {
   flex: none;
   display: inline-flex;
   align-items: center;
-  height: 1.75rem;
+  height: var(--ec-ctl);
   padding: 0 0.625rem;
   border: 1px solid var(--border);
   border-radius: 9999px;
@@ -474,8 +477,8 @@ html.dark {
   display: flex;
   align-items: center;
   gap: 0.25rem;
-  height: 2.75rem;
-  padding: 0 0.75rem 0.25rem 1.25rem;
+  height: var(--ec-bar);
+  padding: 0 0.5rem 0 0.75rem;
   border-top: 1px solid color-mix(in oklch, var(--border) 70%, transparent);
 }
 .ec-footleft {
@@ -493,27 +496,23 @@ html.dark {
   align-items: center;
   justify-content: center;
   gap: 0.25rem;
-  width: 4.5rem;
-  height: 1.75rem;
+  width: 4rem;
+  height: var(--ec-ctl);
   border-radius: var(--radius-md);
   color: var(--muted-foreground);
-  font-size: 0.875rem;
+  font-size: 0.75rem;
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
 }
 /* Phone: 44 px touch targets (UI standard, 2.5.5) in a taller footer; tighter gaps so "why?" and
    "Preview" fit beside Prev / All / Next at 390 px. */
 @media (max-width: 1023px) {
-  .ec-foot {
-    height: 3.5rem;
-    padding: 0 0.5rem 0 0.75rem;
+  .ec {
+    --ec-bar: 3.5rem;
+    --ec-ctl: 2.75rem;
   }
   .ec-footleft {
     gap: 0.5rem;
-  }
-  .ec-ctl,
-  .ec-foot .ec-more-trigger {
-    height: 2.75rem;
   }
   .ec-ctl {
     width: 4rem;
@@ -600,11 +599,18 @@ html.dark {
   flex: none;
   display: flex;
   align-items: center;
-  gap: 0.5rem;
-  height: 2.75rem;
+  gap: 0.625rem;
+  height: var(--ec-bar);
   padding: 0 1rem 0 0.75rem;
   border-bottom: 1px solid color-mix(in oklch, var(--border) 70%, transparent);
   font-size: 0.875rem;
+}
+.ec-whyhead .ec-back {
+  width: auto;
+  padding: 0 0.625rem;
+  border: 1px solid var(--border);
+  border-radius: 9999px;
+  font-size: 0.75rem;
 }
 .ec-whylayer .ec-body {
   margin-top: 0;

@@ -1,0 +1,31 @@
+# Checks on every push and PR. Render builds and deploys main itself (render.yaml autoDeployTrigger:
+# checksPass), only after these pass; no secrets needed here.
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci --prefer-offline --no-audit --no-fund
+      - run: npm run typecheck
+      - run: node --test tests/unit/*.test.ts
+      - run: npm run build

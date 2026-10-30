@@ -215,3 +215,113 @@ Do not add surfaces until issues 1 and 2 land.
 ## 2026-10-31: target change
 
 The user lowered the target to every surface ≥ 4.0/5. Checkpoint 3 had the app at 4.0, with surfaces from 3.7 to 4.3. Bring the surfaces under 4.0 (the Ideas tab, /ideas, /connect and home) up to it, then stop polishing.
+
+## 2026-10-31 — checkpoint 4
+
+Method: single-context critique (degraded: a score-only checkpoint run, no isolated sub-agents). The visual review was finished before the detector output was read. Evidence: Playwright at 1440×900 and 390×844, light and dark, demo act "Juniper Lane" from `/tmp/tourbo-demo.json` (entries already carry `updatedAt`). Pages: `/` (no profile), `/start`, `/work`, `/work?show=events`, `/material`, `/ideas`, `/connect`, `/help`, run `/plan/32e2510c…` and demo tour `/plan/bf687b05…` (Tonight, Plan, Ideas, Covers, Set, Notes, Booking, Numbers, night panel). Shots are in `/tmp/tourbo-ckpt4/shots/` (not committed). The fan-data pause notice showed, as expected, and was not penalised.
+
+### Scores (/5, delta vs checkpoint 3)
+| Surface | Now | CP3 | Δ |
+|---|---|---|---|
+| Home `/` | 4.0 | 4.0 | 0 |
+| `/start` | 4.0 | 4.0 | 0 |
+| Workspace lists (Tours · Shows · Library) | 4.0 | 3.9 | +0.1 |
+| `/ideas` | 4.0 | <4.0 (unscored row) | up |
+| `/connect` | 3.9 | <4.0 (unscored row) | ~0 |
+| `/help` | 4.2 | 4.2 | 0 |
+| Tour frame (header, rail · main · night panel) | 4.1 | 4.1 | 0 |
+| Tonight | 4.1 | 4.1 (tour page) | 0 |
+| Plan | 4.1 | 4.1 (tour page) | 0 |
+| Ideas tab | 3.9 | 3.9 | 0 |
+| Covers (kind tab) | 4.1 | 3.9 | +0.2 |
+| Set | 4.1 | 4.1 (tour page) | 0 |
+| Notes | 4.0 | 4.1 (tour page, issue 3 open) | ~0 |
+| Numbers | 3.9 | 4.1 (tour page) | -0.2 |
+| Whole app | 4.0 | 4.0 | 0 |
+
+Fixed since CP3:
+- A work index entry without `updatedAt` now sorts as oldest instead of freezing the page (`app/lib/work.ts:33-35`).
+- Tours rows read "Chicago is your fan hotspot; Columbus has the fewest fans." with a why?. No "over-index", "8.2×" or "(37)" in primary UI on any page.
+- The demo tour no longer names Japanese Breakfast. That copy now shows only on the Japanese Breakfast run.
+- Notes has one tomato. "Add" is an outline button and the To-do box is a 20 px design-system control.
+- Covers and Openers no longer report extra primaries. Every tab measured 0 or 1 visible `[data-primary]`.
+- The Numbers map uses dark tiles in dark mode.
+- Run-wide checks: no text under 12 px, no sideways overflow at 390, vendor names only on `/connect`, one h1 per page.
+
+### Surfaces under 4.0
+
+**Ideas tab (3.9)**
+1. **P2 Two retries for one problem.** The pause line has "Try again" and the card under it has "Look again" (`routes/plan.$id.ideas.tsx:231,255,291`). At 390 the notice's info icon sits alone on its own line above the sentence.
+2. **P2 Too much before the only action.** The pane shows a title, "4 nights", an explainer, the notice and then the card. The title butts against the tab rule with no top gap. This is CP3 issue 5 and it also hits Covers, Set, Notes and Numbers. At 390 the night-chip strip touches the tab rule and clips the selected chip's top border.
+3. **P3 The night panel's Ideas only points elsewhere.** It repeats the main pane's covers pointer, and "See Chicago's covers" is a 16 px tall target, under 24 px.
+
+**Numbers (3.9)**
+1. **P2 The map is a second marker language.** It uses flat cobalt dots with no night numbers, unlike Plan's numbered ink markers with ramp rings (`components/charts/fan-money-map.tsx`). The dots cover their own city labels ("Mi●lis", "●ICAGO").
+2. **P2 The route is still not on the ramp.** Numbers draws flat grey lines and Plan draws grey dashes (CP3 issue 4). The brief's signature, the ramp route through numbered markers, is still missing on every map. On the run's phone Plan map, "Other cities" ghosts crowd the strip and cut labels off ("Ann Arbor ~$10,7", "Cleveland ~$8,").
+3. **P3 Small targets.** The why-icon "The numbers behind…" is 20×20 and "Write them on Venue email" is 18 px tall. The tour header's profit figure is repeated in the first chart's summary.
+
+**`/connect` (3.9)**
+1. **P2 No visible primary.** The Claude tab renders 0 `[data-primary]`, so the Copy you most need (step 3) has the same outline weight as step 2's check command (`routes/connect.tsx:70`).
+2. **P2 Prose before the steps.** About 90 words in two paragraphs come before step 1, and step 2 adds another paragraph. At 390, step 1 starts at the fold.
+3. **P3 At 390 the assistant switcher wraps to two rows** ("Cursor / VS Code", "Others"), so it reads as two controls.
+
+### Other notes (surfaces at 4.0+)
+- Home: the example card restates its title as its first bullet ("8 nights, $102,690 estimated profit" twice), and a dead band sits between the eyebrow and the title. At 390 the card is below the fold.
+- Lists: at 390 the search placeholder is still clipped ("Search tours a"). The Shows date tiles are dashed boxes while the Tours dates have none. The two demo tours share the title "Chicago to Minneapolis".
+- Night panel: the Room tab shows two why? chips in a row (one inline, one orphan). "100% full" is drawn on the fan ramp, but it is not a fan meter.
+- Run tour: the angle line is still cut mid-clause ("Chance the Rapper's city a stone's…").
+
+### Detector
+`impeccable detect --json app`: exit 0, 1 advisory finding (CP3: 1). It is `design-system-radius` at `app.css:423` (0.25rem), the same rule as CP3, whose line has moved. No slop or contrast rules fired. Every issue above is IA, map styling or target size, which the detector cannot see.
+
+### Direction
+Three surfaces sit at 3.9. Small, scoped fixes reach the target, with no new surfaces:
+- Ideas tab: one retry, a pane-title top gap and a chip-strip gap shared by all tabs.
+- Numbers: reuse Plan's numbered markers, keep labels clear and put the route on the ramp.
+- `/connect`: make step 3's Copy the primary and cut the intro to one sentence.
+
+## 2026-10-31 — checkpoint 5
+
+Method: same as checkpoint 4 (single-context, degraded: a score-only checkpoint run with no isolated sub-agents; the visual review was finished before the detector output was read). Evidence: Playwright at 1440×900 and 390×844, light and dark, demo act "Juniper Lane" from `/tmp/tourbo-demo.json`. Same pages and tabs as CP4. Shots are in `/tmp/tourbo-ckpt5/shots/` (not committed). The fan-data pause notice showed, as expected, and was not penalised.
+
+### Scores (/5, delta vs checkpoint 4)
+| Surface | Now | CP4 | Δ |
+|---|---|---|---|
+| Home `/` | 4.1 | 4.0 | +0.1 |
+| `/start` | 4.0 | 4.0 | 0 |
+| Workspace lists (Tours · Shows · Library) | 4.0 | 4.0 | 0 |
+| `/ideas` | 4.0 | 4.0 | 0 |
+| `/connect` | 4.0 | 3.9 | +0.1 |
+| `/help` | 4.2 | 4.2 | 0 |
+| Tour frame (header, rail · main · night panel) | 4.1 | 4.1 | 0 |
+| Tonight | 4.1 | 4.1 | 0 |
+| Plan | 4.2 | 4.1 | +0.1 |
+| Ideas tab | 4.0 | 3.9 | +0.1 |
+| Covers (kind tab) | 4.1 | 4.1 | 0 |
+| Set | 4.1 | 4.1 | 0 |
+| Notes | 4.0 | 4.0 | 0 |
+| Numbers | 4.1 | 3.9 | +0.2 |
+| Whole app | 4.1 | 4.0 | +0.1 |
+
+Every surface is ≥ 4.0. The target is met.
+
+Fixed since CP4:
+- Maps: Plan, Numbers and the mini-map share numbered night markers with a route on the fan ramp (`components/map-marks.ts`). Numbers labels each night with what you keep ("Chicago +$13,170") and has a plain legend. The run's phone Plan map no longer cuts off ghost-city labels. Dark tiles on all maps.
+- Ideas tab: one retry ("Look again"), a gap under the tab line, phone chips no longer clipped, and no targets under 24 px. Its tiny-target list is empty, as on Numbers.
+- `/connect`: one tomato Copy (step 3), a shorter intro, and the picker on one row on phone.
+- Home card: a 40 px footer with a 24 px why? pill and controls.
+- Run-wide checks: no sideways overflow at 390, no text under 12 px, vendor names only on `/connect`, one h1 and at most one visible primary per page.
+
+### Open issues (none blocks the target)
+1. **P2 Map labels collide with basemap labels.** Plan and Numbers markers sit on the basemap's own city names ("Mi④olis", "Mi③ee"). On phone Numbers, the Chicago and Milwaukee markers overlap at the default zoom.
+2. **P2 Night panel, Room tab.** Two why? chips sit in a row (one inline, one orphan). "100% full" is drawn on the fan ramp, but it is not a fan meter.
+3. **P3 Ideas tab copy order.** The explainer "Ideas from your fans' taste…" now trails below the card as an orphan line, and "4 nights" still takes a line of its own.
+4. **P3 `/connect` on phone.** The one-row picker hides "Others" past the edge with no scroll cue. The intro is still six lines at 390.
+5. **P3 Home card.** The title is repeated as the first bullet ("8 nights, $102,690 estimated profit"), and a dead band sits between the eyebrow and the title.
+6. **P3 Lists (carried from CP4).** The search placeholder is clipped at 390 ("Search tours a"), and Shows date tiles are dashed while Tours dates have no border.
+
+### Detector
+`impeccable detect --json app`: exit 0, 2 advisory findings (CP4: 1). One is `design-system-radius` at `app.css:426` (0.25rem, the same rule as before). The other is new: `design-system-font-size` at `app.css:503` (0.8125rem is off the DESIGN.md type ramp). Snap the new one to the ramp or document it. No slop or contrast rules fired.
+
+### Direction
+The target is met: every surface is ≥ 4.0 and the app is at 4.1. Per the target change, stop polishing. If there is time, issues 1–2 (map label collisions, night-panel why?) are the cheapest visible wins.

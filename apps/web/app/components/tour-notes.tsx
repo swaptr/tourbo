@@ -9,7 +9,7 @@ import { Checkbox } from "~/components/ui/checkbox";
 // Ticks are ink (tomato stays the screen's one primary action); 20px box, larger hit area.
 const TICK = "mt-0.5 size-5 data-checked:border-foreground data-checked:bg-foreground data-checked:text-background";
 import { Input } from "~/components/ui/input";
-import { ownerKeyFor } from "~/lib/work";
+import { ownerKeyFor, subscribeWork } from "~/lib/work";
 import { cn } from "~/lib/utils";
 
 // A tour's notes and to-dos (PLAN Q21, replaces project pages). Mount anywhere with the tour id:
@@ -21,7 +21,13 @@ export function TourNotes({ runId, compact }: { runId: string; compact?: boolean
   const [text, setText] = useState("");
   const [todo, setTodo] = useState(false);
   const [busy, setBusy] = useState(false);
-  const key = ownerKeyFor(runId);
+  // Read after mount: the server has no localStorage, so a render-time read breaks hydration.
+  const [key, setKey] = useState<string>();
+  useEffect(() => {
+    const read = () => setKey(ownerKeyFor(runId));
+    read();
+    return subscribeWork(read);
+  }, [runId]);
   const headers = { "content-type": "application/json", ...(key ? { "X-Owner-Key": key } : {}) };
   const url = `/api/tours/${runId}/notes`;
   const call = async <T,>(init?: RequestInit, path = url): Promise<T> => {

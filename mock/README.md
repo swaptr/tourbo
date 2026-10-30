@@ -43,8 +43,9 @@ another DB).
    geography and real venue names.
 3. `synthetic`: deterministic answers in the real shapes, seeded by the request: names from a small
    sample of saved real entities, heatmap cells around cities from the app's `cities` table,
-   and `/search` returns any unknown name as an entity with a stable id (remembered in
-   `.cache/synthetic-entities.json` so `/entities` finds it again).
+   and `/search` answers an unknown name with loose matches only, like the real API (so the
+   app asks "who do you sound like?"); `MOCK_INVENT_ACTS=1` makes it up as an entity with a stable id
+   instead (remembered in `.cache/synthetic-entities.json` so `/entities` finds it again).
 
 Saved responses are read from the DB at runtime only; nothing is dumped into the repo. `.cache/`
 (URL index, rebuilt when `qloo_cache` changes) is git-ignored.

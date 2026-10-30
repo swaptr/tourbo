@@ -109,7 +109,8 @@ function Cell({ idea, more, city, label, on, onClick }: { idea: Idea; more: numb
       type="button"
       onClick={onClick}
       aria-current={on || undefined}
-      aria-label={`${idea.ref}${more > 0 ? ` and ${more} more` : ""}: ${label.toLowerCase()} for ${city}, ${chip.text}. Open ${city}'s ideas.`}
+      // Name starts with the visible text in order (WCAG 2.5.3): ref, chip, "+N".
+      aria-label={`${idea.ref} ${chip.text}${more > 0 ? ` +${more}` : ""}, ${label.toLowerCase()} for ${city}. Open ${city}'s ideas.`}
       className={cn("flex w-full flex-col items-start gap-1.5 px-3 py-2.5 text-left outline-none hover:bg-muted/60 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset", on && "ring-2 ring-foreground/50 ring-inset")}
     >
       <span className="line-clamp-2 font-medium text-pretty">{idea.ref}</span>
