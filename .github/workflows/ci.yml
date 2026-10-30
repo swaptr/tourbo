@@ -57,6 +57,8 @@ jobs:
       - run: npm run cities:seed
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          # The app's env check requires it; the seed itself never calls fan data.
+          QLOO_API_KEY: ${{ secrets.QLOO_API_KEY }}
 
   deploy:
     needs: [check, seed]
