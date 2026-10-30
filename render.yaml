@@ -1,3 +1,5 @@
+# Render service shape only. Secrets and deploys are driven from GitHub (.github/workflows/ci.yml):
+# the deploy job writes every env var from GitHub secrets to this service, then deploys the commit.
 services:
   - type: web
     name: tourbo
@@ -7,28 +9,5 @@ services:
     plan: free
     # Next to the Supabase database (eu-west-3, Paris); every page makes several DB round trips.
     region: frankfurt
-    # Deploy a push to main only after every GitHub check on it passes (.github/workflows/ci.yml).
-    autoDeployTrigger: checksPass
-    envVars:
-      - key: QLOO_API_KEY
-        sync: false
-      - key: QLOO_BASE_URL
-        value: https://hackathon.api.qloo.com
-      - key: ANTHROPIC_API_KEY
-        sync: false
-      - key: RESEND_API_KEY
-        sync: false
-      - key: RESEND_WEBHOOK_SECRET
-        sync: false
-      - key: OUTREACH_REPLY_DOMAIN
-        sync: false
-      - key: MCP_TOKENS
-        sync: false
-      - key: DEMO_DISCIPLINES
-        value: all
-      - key: PUBLIC_URL
-        sync: false
-      # Supabase, shared pooler in session mode (IPv4; port 5432):
-      # postgresql://postgres.<ref>:<password>@aws-<n>-<region>.pooler.supabase.com:5432/postgres?sslmode=require
-      - key: DATABASE_URL
-        sync: false
+    # GitHub Actions deploys after its checks pass; Render never deploys on its own.
+    autoDeployTrigger: "off"

@@ -1,5 +1,12 @@
-# Checks on every push and PR. Render builds and deploys main itself (render.yaml autoDeployTrigger:
-# checksPass), only after these pass; no secrets needed here.
+# One place for deploys and secrets: GitHub.
+# - Every push / PR: typecheck, unit tests, build.
+# - Push to main (or "Run workflow"): copy the env vars below from GitHub secrets to the Render
+#   service (replacing whatever is there), deploy this commit, and wait until it is live.
+#   Changed a secret only? Actions → ci → Run workflow, to push it out.
+# - "Run workflow" with "seed cities" ticked: load GeoNames cities into DATABASE_URL (one-time).
+# Required secrets: RENDER_API_KEY, RENDER_SERVICE_ID, DATABASE_URL, QLOO_API_KEY, ANTHROPIC_API_KEY.
+# Optional secrets: MCP_TOKENS, RESEND_API_KEY, RESEND_WEBHOOK_SECRET, OUTREACH_REPLY_DOMAIN.
+# Variable: TOURBO_URL (https://<service>.onrender.com), used as PUBLIC_URL and by keepalive.yml.
 name: ci
 
 on:
@@ -7,6 +14,11 @@ on:
     branches: [main]
   pull_request:
   workflow_dispatch:
+    inputs:
+      seed:
+        description: Seed cities into DATABASE_URL before deploying
+        type: boolean
+        default: false
 
 concurrency:
   group: ci-${{ github.ref }}
@@ -29,3 +41,73 @@ jobs:
       - run: npm run typecheck
       - run: node --test tests/unit/*.test.ts
       - run: npm run build
+
+  seed:
+    if: github.event_name == 'workflow_dispatch' && inputs.seed
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci --prefer-offline --no-audit --no-fund
+      - run: npm run cities:seed
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+
+  deploy:
+    needs: [check, seed]
+    # Runs after check; seed is optional (skipped unless ticked).
+    if: always() && needs.check.result == 'success' && needs.seed.result != 'failure' && github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}
+      RENDER_SERVICE_ID: ${{ secrets.RENDER_SERVICE_ID }}
+      # Everything the app reads in production. Empty values are left out.
+      APP_DATABASE_URL: ${{ secrets.DATABASE_URL }}
+      APP_QLOO_API_KEY: ${{ secrets.QLOO_API_KEY }}
+      APP_QLOO_BASE_URL: https://hackathon.api.qloo.com
+      APP_ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+      APP_PUBLIC_URL: ${{ vars.TOURBO_URL }}
+      APP_DEMO_DISCIPLINES: all
+      APP_MCP_TOKENS: ${{ secrets.MCP_TOKENS }}
+      APP_RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
+      APP_RESEND_WEBHOOK_SECRET: ${{ secrets.RESEND_WEBHOOK_SECRET }}
+      APP_OUTREACH_REPLY_DOMAIN: ${{ secrets.OUTREACH_REPLY_DOMAIN }}
+    steps:
+      - name: Check secrets
+        run: |
+          missing=""
+          for k in RENDER_API_KEY RENDER_SERVICE_ID APP_DATABASE_URL APP_QLOO_API_KEY APP_ANTHROPIC_API_KEY; do
+            [ -n "${!k}" ] || missing="$missing ${k#APP_}"
+          done
+          if [ -n "$missing" ]; then echo "::error::Missing GitHub secrets:$missing"; exit 1; fi
+      - name: Sync env vars to Render
+        run: |
+          # Every APP_* variable with a value becomes a Render env var; the list replaces Render's.
+          body=$(env | grep '^APP_' | while IFS='=' read -r k v; do
+            [ -n "$v" ] && jq -n --arg k "${k#APP_}" --arg v "$v" '{key: $k, value: $v}'
+          done | jq -s .)
+          curl -fsS -o /dev/null -X PUT "https://api.render.com/v1/services/$RENDER_SERVICE_ID/env-vars" \
+            -H "Authorization: Bearer $RENDER_API_KEY" -H "Content-Type: application/json" -d "$body"
+          echo "synced: $(echo "$body" | jq -r 'map(.key) | join(", ")')"
+      - name: Deploy and wait
+        run: |
+          api="https://api.render.com/v1/services/$RENDER_SERVICE_ID/deploys"
+          auth="Authorization: Bearer $RENDER_API_KEY"
+          id=$(curl -fsS -X POST "$api" -H "$auth" -H "Content-Type: application/json" \
+            -d "{\"commitId\":\"$GITHUB_SHA\"}" | jq -r .id)
+          echo "Render deploy $id for $GITHUB_SHA"
+          for i in $(seq 1 90); do
+            status=$(curl -fsS "$api/$id" -H "$auth" | jq -r .status)
+            echo "status: $status"
+            case "$status" in
+              live) exit 0 ;;
+              build_failed|update_failed|canceled|deactivated|pre_deploy_failed) exit 1 ;;
+            esac
+            sleep 10
+          done
+          echo "::error::timed out waiting for Render"; exit 1
