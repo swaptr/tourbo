@@ -151,9 +151,9 @@ Stages follow PLAN.md §11. Deadline **2026-10-30 11:45pm EDT**. Stage 4 = minim
 - [x] Q8 static landing: `/` prerendered with the first example inline, CDN cache headers, pre-compressed assets; 1,000-visit load test = 0 DB / fan-data / AI calls
 - [x] npm scripts without Docker: local Postgres (`embedded-postgres`, `.data/postgres`) when `DATABASE_URL` is unset; `npm run db:import` copies the old Docker DB (done, verified)
 - [x] ~~Q4 auth (Better Auth)~~ dropped: hackathon organisers rejected adding authentication
-- [ ] Globe agent final pass: slow-drag fix, drag/zoom controls overhaul, look (shadows, coast haze), nearby examples as flat surfaces, CLS 0, flaky hover tests (in progress)
+- [x] Globe final pass: slow-drag fix (MSAA only below DPR 1.75, zoom-patch repaint after 180 ms still), drag/zoom overhaul (grab-follow, zoom to cursor, clamps, keyboard, ctrl+scroll hint, never stuck), look (softer shadows, crisp coast), up to 6 nearby examples as flat surfaces (no extra draw call), CLS 0; story 14 22/22 ×3
 - [ ] Dance gate: 2 of 3 dancer acts (Dance Theatre of Harlem, Pilobolus) blocked by the fan-data monthly quota (0 left, resets ~Nov 28; raise requested on Discord); home bundle status stays "incomplete" until then
-- [ ] Desktop perf budget: main thread 4.4 ms/frame (target < 4); 4× throttled long tasks
+- [ ] Perf: desktop 60 fps, 0 long tasks, 3.2 ms main thread; GPU 7.4–8.9 ms (target 8); 4× throttled long tasks
 
 ## Any artist (PLAN §16, built 2026-10-30)
 - [x] Discipline registry `packages/core/src/disciplines/`: entity types, space tags, peer type + filter, prices, per-head sales, stay length, prep prompt, room rules, verified probe note
