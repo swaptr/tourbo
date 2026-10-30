@@ -277,4 +277,18 @@ create table if not exists act_kinds (
 insert into act_kinds (kind, label, hint, sort) values
   ${ACT_KINDS_SEED}
 on conflict (kind) do nothing;
+
+-- Lock every table to the app's own role. Hosted Postgres (Supabase) also serves tables over a
+-- public REST API to its anon/authenticated roles; RLS on with no policies denies them everything.
+-- The app connects as the tables' owner, which RLS does not apply to.
+do $$
+declare t text;
+begin
+  foreach t in array array['runs','trace_events','qloo_cache','cache','outreach','show_results','checkins',
+    'show_prep','projects','project_items','run_steps','cities','countries','home_examples','home_fan_density',
+    'profiles','events','material','event_set','assists','act_kinds']
+  loop
+    execute format('alter table %I enable row level security', t);
+  end loop;
+end $$;
 `;
