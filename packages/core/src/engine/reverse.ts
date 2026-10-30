@@ -1,7 +1,7 @@
 import { heatmap, insights, searchEntities } from "../qloo/api.server.ts";
 import type { PerformerKind } from "../shared/types.ts";
 import { dedupeArtists, isMusician } from "./openers.ts";
-import { ENTITY_TYPE } from "./resolve.ts";
+import { discipline } from "../disciplines/index.ts";
 import { noopEmit, type Emit } from "./trace.ts";
 
 // Promoter mode: which acts does this room's crowd like? Signal = the venue entity; acts are
@@ -11,8 +11,8 @@ export async function actsForVenue(opts: { venue: string; city: string; kind?: P
   const [place] = await searchEntities(`${opts.venue} ${opts.city}`, { types: ["urn:entity:place"], take: 1 });
   if (!place) return { found: false, hint: `No place "${opts.venue}" in ${opts.city} in Qloo.` };
   emit("qloo_call", `Venue ${place.name} resolved`, { id: place.entity_id });
-  const { entities = [] } = await insights(ENTITY_TYPE[kind], { "signal.interests.entities": place.entity_id, take: 40 });
-  const acts = dedupeArtists(kind === "musician" ? entities.filter(isMusician) : entities).slice(0, (opts.limit ?? 10) + 5);
+  const { entities = [] } = await insights(discipline(kind).peerType, { "signal.interests.entities": place.entity_id, take: 40 });
+  const acts = dedupeArtists(discipline(kind).musicFilter ? entities.filter(isMusician) : entities).slice(0, (opts.limit ?? 10) + 5);
   const withLocal = await Promise.all(
     acts.map(async (a) => ({
       id: a.entity_id,

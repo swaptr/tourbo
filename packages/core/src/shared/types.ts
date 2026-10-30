@@ -2,13 +2,22 @@ import { z } from "zod";
 
 // Shared between server/core and app/ (no server-only imports here).
 
-export const Region = z.enum(["na", "eu", "in"]);
+// Money/cost profiles. A city's region comes from its country (world cities) or the seed list.
+export const Region = z.enum(["na", "eu", "in", "latam", "africa", "asia", "oceania"]);
 export type Region = z.infer<typeof Region>;
 
-export const REGION_NAMES: Record<Region, string> = { na: "North America", eu: "Europe", in: "India" };
+export const REGION_NAMES: Record<Region, string> = {
+  na: "North America",
+  eu: "Europe",
+  in: "India",
+  latam: "Latin America",
+  africa: "Africa",
+  asia: "Asia",
+  oceania: "Oceania",
+};
 
-// Musicians resolve as urn:entity:artist, comedians as urn:entity:person (verified 2026-10-29).
-export const PerformerKind = z.enum(["musician", "comedian"]);
+// Discipline keys; profiles (entity types, spaces, prices, prep) live in disciplines/index.ts.
+export const PerformerKind = z.enum(["musician", "comedian", "dj", "dancer", "poet", "visual_artist", "author", "podcaster"]);
 export type PerformerKind = z.infer<typeof PerformerKind>;
 
 const list = z.preprocess(
@@ -92,6 +101,9 @@ export const CityScore = z.object({
   score: z.number(), // 0–100, normalized across the candidate set
   cells: z.number(),
   fanIndex: z.number().optional(), // Σ affinity × popularity over heatmap cells (relative demand)
+  // The score's two parts, 0–100 across the candidate set: score = 60% reach + 40% lean.
+  reach: z.number().optional(), // how many fans (log footprint)
+  lean: z.number().optional(), // how strongly the city leans to the act (mean affinity rank)
   hotspots: z.array(Hotspot),
   thinData: z.boolean(),
 });

@@ -1,5 +1,7 @@
 import { z } from "zod";
 
+import { PerformerKind } from "@tourbo/core/shared/types.ts";
+
 // Web-app-only settings; Qloo and DB settings live in @tourbo/core's getEnv().
 const schema = z.object({
   // Outreach (Resend). Without RESEND_API_KEY, sends are simulated.
@@ -15,6 +17,14 @@ const schema = z.object({
     .string()
     .optional()
     .transform((s) => (s ? s.split(",").map((t) => t.trim()).filter(Boolean) : [])),
+  // Disciplines the hosted onboarding offers (comma-separated keys, or "all"). MCP always accepts every one.
+  DEMO_DISCIPLINES: z
+    .string()
+    .default("musician,comedian")
+    .transform((s) => {
+      const keys = PerformerKind.options;
+      return s.trim() === "all" ? [...keys] : keys.filter((k) => s.split(",").map((t) => t.trim()).includes(k));
+    }),
   // Public base URL, shown in the MCP connect instructions.
   PUBLIC_URL: z.string().optional(),
 });

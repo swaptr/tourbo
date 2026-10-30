@@ -2,26 +2,33 @@
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
 @import "@fontsource-variable/geist";
+@import "@fontsource/instrument-serif/index.css";
+@import "@fontsource/instrument-serif/400-italic.css";
 
 @custom-variant dark (&:is(.dark *));
 
-@theme {
-  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif,
-    "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
-}
-
-html,
-body {
-  @apply bg-white dark:bg-gray-950;
-
-  @media (prefers-color-scheme: dark) {
-    color-scheme: dark;
-  }
+html.dark {
+  color-scheme: dark;
 }
 
 @theme inline {
-  --font-heading: var(--font-sans);
-  --font-sans: 'Geist Variable', sans-serif;
+  /* Two faces: Instrument Serif for the wordmark, headings and big numbers; Geist for everything else. */
+  --font-heading: 'Instrument Serif', ui-serif, Georgia, serif;
+  --font-sans: 'Geist Variable', ui-sans-serif, system-ui, sans-serif;
+  --color-success: var(--success);
+  --color-success-foreground: var(--success-foreground);
+  --color-warning: var(--warning);
+  --color-warning-foreground: var(--warning-foreground);
+  --color-info: var(--info);
+  --color-info-foreground: var(--info-foreground);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-score-1: var(--score-1);
+  --color-score-2: var(--score-2);
+  --color-score-3: var(--score-3);
+  --color-score-4: var(--score-4);
+  --color-score-5: var(--score-5);
+  --color-globe-ocean: var(--globe-ocean);
+  --color-globe-land: var(--globe-land);
   --color-sidebar-ring: var(--sidebar-ring);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
@@ -63,72 +70,111 @@ body {
 }
 
 :root {
-  --background: oklch(1 0 0);
-  --foreground: oklch(0.145 0 0);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.145 0 0);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.145 0 0);
-  --primary: oklch(0.205 0 0);
-  --primary-foreground: oklch(0.985 0 0);
-  --secondary: oklch(0.97 0 0);
-  --secondary-foreground: oklch(0.205 0 0);
-  --muted: oklch(0.97 0 0);
-  --muted-foreground: oklch(0.556 0 0);
-  --accent: oklch(0.97 0 0);
-  --accent-foreground: oklch(0.205 0 0);
-  --destructive: oklch(0.577 0.245 27.325);
-  --border: oklch(0.922 0 0);
-  --input: oklch(0.922 0 0);
-  --ring: oklch(0.708 0 0);
-  --chart-1: oklch(0.87 0 0);
-  --chart-2: oklch(0.556 0 0);
-  --chart-3: oklch(0.439 0 0);
-  --chart-4: oklch(0.371 0 0);
-  --chart-5: oklch(0.269 0 0);
-  --radius: 0.625rem;
-  --sidebar: oklch(0.985 0 0);
-  --sidebar-foreground: oklch(0.145 0 0);
-  --sidebar-primary: oklch(0.205 0 0);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.97 0 0);
-  --sidebar-accent-foreground: oklch(0.205 0 0);
-  --sidebar-border: oklch(0.922 0 0);
-  --sidebar-ring: oklch(0.708 0 0);
+  /* Light = printed programme: warm paper, deep ink, one tomato accent, cobalt second. */
+  --background: oklch(0.954 0.013 82.4);
+  --foreground: oklch(0.288 0.05 265.9);
+  --card: oklch(0.988 0.007 85);
+  --card-foreground: oklch(0.22 0.025 265);
+  --popover: oklch(0.988 0.007 85);
+  --popover-foreground: oklch(0.22 0.025 265);
+  --primary: oklch(0.55 0.17 35);
+  --primary-foreground: oklch(0.99 0.005 85);
+  --secondary: oklch(0.45 0.13 262);
+  --secondary-foreground: oklch(0.99 0.005 85);
+  --muted: oklch(0.935 0.014 85);
+  --muted-foreground: oklch(0.47 0.02 265);
+  --accent: oklch(0.92 0.035 60);
+  --accent-foreground: oklch(0.25 0.03 265);
+  --destructive: oklch(0.5 0.18 25);
+  --destructive-foreground: oklch(0.99 0.005 85);
+  --success: oklch(0.46 0.1 155);
+  --success-foreground: oklch(0.99 0.005 85);
+  --warning: oklch(0.5 0.11 70);
+  --warning-foreground: oklch(0.99 0.005 85);
+  --info: oklch(0.45 0.13 262);
+  --info-foreground: oklch(0.99 0.005 85);
+  --border: oklch(0.875 0.016 85);
+  --input: oklch(0.85 0.018 85);
+  --ring: oklch(0.55 0.17 35);
+  /* Categorical: tomato, cobalt, ochre, sage, plum. */
+  --chart-1: oklch(0.6 0.17 35);
+  --chart-2: oklch(0.5 0.13 262);
+  --chart-3: oklch(0.72 0.12 80);
+  --chart-4: oklch(0.6 0.08 150);
+  --chart-5: oklch(0.5 0.1 330);
+  /* Fan ramp, low → high: the globe waves, towers and every bar in the app. */
+  --score-1: oklch(0.873 0.114 89.4);
+  --score-2: oklch(0.756 0.141 62.8);
+  --score-3: oklch(0.619 0.171 37.3);
+  --score-4: oklch(0.477 0.145 30.9);
+  --score-5: oklch(0.477 0.145 30.9);
+  /* Globe: sea, land, coast, skipped city. */
+  --globe-ocean: oklch(0.604 0.049 206.6);
+  --globe-rim: oklch(0.781 0.037 203);
+  --globe-land: oklch(0.879 0.037 80.6);
+  --globe-coast: oklch(0.799 0.047 81.3);
+  --globe-skip: oklch(0.647 0 0);
+  --radius: 0.5rem;
+  --sidebar: oklch(0.955 0.013 85);
+  --sidebar-foreground: oklch(0.22 0.025 265);
+  --sidebar-primary: oklch(0.55 0.17 35);
+  --sidebar-primary-foreground: oklch(0.99 0.005 85);
+  --sidebar-accent: oklch(0.935 0.014 85);
+  --sidebar-accent-foreground: oklch(0.22 0.025 265);
+  --sidebar-border: oklch(0.875 0.016 85);
+  --sidebar-ring: oklch(0.55 0.17 35);
 }
 
+/* Dark = the same programme printed on ink. */
 .dark {
-  --background: oklch(0.145 0 0);
-  --foreground: oklch(0.985 0 0);
-  --card: oklch(0.205 0 0);
-  --card-foreground: oklch(0.985 0 0);
-  --popover: oklch(0.205 0 0);
-  --popover-foreground: oklch(0.985 0 0);
-  --primary: oklch(0.922 0 0);
-  --primary-foreground: oklch(0.205 0 0);
-  --secondary: oklch(0.269 0 0);
-  --secondary-foreground: oklch(0.985 0 0);
-  --muted: oklch(0.269 0 0);
-  --muted-foreground: oklch(0.708 0 0);
-  --accent: oklch(0.269 0 0);
-  --accent-foreground: oklch(0.985 0 0);
-  --destructive: oklch(0.704 0.191 22.216);
-  --border: oklch(1 0 0 / 10%);
-  --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.556 0 0);
-  --chart-1: oklch(0.87 0 0);
-  --chart-2: oklch(0.556 0 0);
-  --chart-3: oklch(0.439 0 0);
-  --chart-4: oklch(0.371 0 0);
-  --chart-5: oklch(0.269 0 0);
-  --sidebar: oklch(0.205 0 0);
-  --sidebar-foreground: oklch(0.985 0 0);
-  --sidebar-primary: oklch(0.488 0.243 264.376);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.269 0 0);
-  --sidebar-accent-foreground: oklch(0.985 0 0);
-  --sidebar-border: oklch(1 0 0 / 10%);
-  --sidebar-ring: oklch(0.556 0 0);
+  --background: oklch(0.2 0.02 265);
+  --foreground: oklch(0.94 0.012 85);
+  --card: oklch(0.235 0.022 265);
+  --card-foreground: oklch(0.94 0.012 85);
+  --popover: oklch(0.235 0.022 265);
+  --popover-foreground: oklch(0.94 0.012 85);
+  --primary: oklch(0.7 0.15 38);
+  --primary-foreground: oklch(0.18 0.02 265);
+  --secondary: oklch(0.72 0.11 262);
+  --secondary-foreground: oklch(0.18 0.02 265);
+  --muted: oklch(0.27 0.02 265);
+  --muted-foreground: oklch(0.74 0.015 265);
+  --accent: oklch(0.32 0.04 50);
+  --accent-foreground: oklch(0.94 0.012 85);
+  --destructive: oklch(0.7 0.15 25);
+  --destructive-foreground: oklch(0.18 0.02 265);
+  --success: oklch(0.76 0.1 155);
+  --success-foreground: oklch(0.18 0.02 265);
+  --warning: oklch(0.8 0.11 75);
+  --warning-foreground: oklch(0.18 0.02 265);
+  --info: oklch(0.75 0.1 262);
+  --info-foreground: oklch(0.18 0.02 265);
+  --border: oklch(1 0 0 / 12%);
+  --input: oklch(1 0 0 / 16%);
+  --ring: oklch(0.7 0.15 38);
+  --chart-1: oklch(0.7 0.15 38);
+  --chart-2: oklch(0.72 0.1 262);
+  --chart-3: oklch(0.8 0.11 80);
+  --chart-4: oklch(0.72 0.08 150);
+  --chart-5: oklch(0.68 0.1 330);
+  --score-1: oklch(0.873 0.114 89.4);
+  --score-2: oklch(0.756 0.141 62.8);
+  --score-3: oklch(0.619 0.171 37.3);
+  --score-4: oklch(0.477 0.145 30.9);
+  --score-5: oklch(0.477 0.145 30.9);
+  --globe-ocean: oklch(0.45 0.045 210);
+  --globe-rim: oklch(0.6 0.04 205);
+  --globe-land: oklch(0.79 0.035 80);
+  --globe-coast: oklch(0.7 0.045 81);
+  --globe-skip: oklch(0.6 0 0);
+  --sidebar: oklch(0.22 0.02 265);
+  --sidebar-foreground: oklch(0.94 0.012 85);
+  --sidebar-primary: oklch(0.7 0.15 38);
+  --sidebar-primary-foreground: oklch(0.18 0.02 265);
+  --sidebar-accent: oklch(0.27 0.02 265);
+  --sidebar-accent-foreground: oklch(0.94 0.012 85);
+  --sidebar-border: oklch(1 0 0 / 12%);
+  --sidebar-ring: oklch(0.7 0.15 38);
 }
 
 @layer base {
@@ -140,5 +186,471 @@ body {
   }
   html {
     @apply font-sans;
+  }
+  h1,
+  h2,
+  h3 {
+    @apply font-heading font-normal tracking-tight;
+  }
+  /* Two faces only: code snippets and logs use the body face, never a monospace. */
+  code,
+  kbd,
+  samp,
+  pre {
+    font-family: var(--font-sans);
+  }
+}
+
+/* Figures line up in columns. */
+@utility num {
+  font-variant-numeric: tabular-nums;
+}
+
+/* Quiet lift for cards that open something. */
+@utility sticker {
+  transition: border-color 200ms ease, box-shadow 200ms ease;
+  &:hover {
+    box-shadow: 0 1px 0 0 var(--border), 0 8px 24px -12px color-mix(in oklch, var(--foreground) 25%, transparent);
+  }
+}
+
+/* ---- Example card (components/example-card.tsx): the home dialog. Card selectors only. ---- */
+/* Fixed size per breakpoint, never moves; a swap fades the new layer in over the old (WAAPI). */
+.ec {
+  position: relative;
+  z-index: 20;
+  order: 1;
+  display: flex;
+  flex-direction: column;
+  /* Fixed per breakpoint and viewport, never measured: fits the screen, the body scrolls. */
+  height: min(21rem, calc(100dvh - 6rem));
+  margin-inline: 1rem;
+  overflow: hidden;
+  contain: layout paint;
+  border: 1px solid var(--globe-coast);
+  border-radius: var(--radius-lg);
+  background: var(--background);
+  box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+  font-variant-numeric: tabular-nums;
+}
+@media (min-width: 1024px) {
+  .ec {
+    position: absolute;
+    top: 0.5rem;
+    left: max(1rem, calc((100% - 72rem) / 2 + 1rem));
+    width: 28rem;
+    height: min(26rem, calc(100dvh - 3.5rem - 2rem));
+    margin: 0;
+  }
+}
+.ec-layers {
+  position: relative;
+  flex: 1 1 auto;
+  min-height: 0;
+}
+.ec-layer {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  contain: strict;
+  padding: 1.25rem 0.5rem 0 1.25rem;
+  background: var(--background);
+}
+.ec-layer[data-front] {
+  z-index: 1;
+}
+.ec-eyebrow {
+  flex: none;
+  /* Fixed line box + containment: a longer byline never nudges the body (CLS 0 on swaps). */
+  height: 1.25rem;
+  line-height: 1.25rem;
+  contain: layout paint;
+  overflow: hidden;
+  font-size: 0.75rem;
+  letter-spacing: 0.1em;
+  text-overflow: ellipsis;
+  text-transform: uppercase;
+  white-space: nowrap;
+  color: var(--muted-foreground);
+}
+.ec-headline {
+  font-size: 1.625rem;
+  line-height: 1.08;
+  text-wrap: balance;
+}
+.ec-facts {
+  flex: none;
+  display: grid;
+  gap: 0.375rem;
+  margin-top: 0.75rem;
+  font-size: 0.875rem;
+  color: var(--muted-foreground);
+}
+.ec li:not([hidden]) {
+  display: flex;
+  gap: 0.5rem;
+}
+.ec-dot {
+  flex: none;
+  width: 0.25rem;
+  height: 0.25rem;
+  margin-top: 0.5rem;
+  border-radius: 9999px;
+  background: var(--primary);
+}
+/* The only scrolling part: thin themed scrollbar (gutter reserved, so nothing shifts), faint at
+   rest (touch has no hover), ink on a sand track on hover/focus; scroll never chains to the page
+   or the globe. */
+.ec-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  margin-top: 0.5rem;
+  padding: 0 0.5rem 0.75rem 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-gutter: stable;
+}
+/* Chromium/Safari: exact 6 px via ::-webkit-scrollbar (ignored if scrollbar-color is set, so the
+   standard properties go to Firefox only). */
+@supports (-moz-appearance: none) {
+  .ec-body {
+    scrollbar-width: thin;
+    scrollbar-color: color-mix(in oklch, var(--foreground) 22%, transparent) transparent;
+  }
+  .ec-body:hover,
+  .ec-body:focus-within {
+    scrollbar-color: color-mix(in oklch, var(--foreground) 45%, transparent) color-mix(in oklch, var(--globe-coast) 35%, transparent);
+  }
+}
+@supports not (-moz-appearance: none) {
+  .ec-body::-webkit-scrollbar {
+    width: 6px;
+  }
+  .ec-body::-webkit-scrollbar-track {
+    border-radius: 9999px;
+    background: transparent;
+  }
+  .ec-body::-webkit-scrollbar-thumb {
+    border-radius: 9999px;
+    background: color-mix(in oklch, var(--foreground) 22%, transparent);
+  }
+  .ec-body:hover::-webkit-scrollbar-track,
+  .ec-body:focus-within::-webkit-scrollbar-track {
+    background: color-mix(in oklch, var(--globe-coast) 35%, transparent);
+  }
+  .ec-body:hover::-webkit-scrollbar-thumb,
+  .ec-body:focus-within::-webkit-scrollbar-thumb {
+    background: color-mix(in oklch, var(--foreground) 45%, transparent);
+  }
+}
+.ec-why {
+  margin-top: 0.75rem;
+}
+.ec-details {
+  display: grid;
+  gap: 0.5rem;
+  border-top: 1px solid var(--border);
+  padding-top: 0.5rem;
+}
+.ec-foot {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  height: 2.75rem;
+  padding: 0 0.75rem 0.25rem 1.25rem;
+  border-top: 1px solid color-mix(in oklch, var(--border) 70%, transparent);
+}
+.ec-footleft {
+  display: flex;
+  flex: 1 1 auto;
+  align-items: center;
+  min-width: 0;
+  overflow: hidden;
+}
+/* Fixed-width controls, same pixels in every view; labels change, neighbours never move. */
+.ec-ctl {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  gap: 0.25rem;
+  width: 4.5rem;
+  height: 1.875rem;
+  border-radius: calc(var(--radius) * 0.8);
+  color: var(--muted-foreground);
+  font-size: 0.8125rem;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.ec-ctl[data-pressed] {
+  background: color-mix(in oklch, var(--primary) 14%, var(--background));
+  color: var(--primary);
+}
+/* "Preview": a quiet tag while a hovered/tapped example is showing (the story's is the default). */
+.ec-tag {
+  position: absolute;
+  top: 1.05rem;
+  right: 1rem;
+  z-index: 3;
+  padding: 0 0.5rem;
+  border-radius: 9999px;
+  background: color-mix(in oklch, var(--globe-coast) 30%, var(--background));
+  color: var(--muted-foreground);
+  font-size: 0.6875rem;
+  letter-spacing: 0.08em;
+  line-height: 1.25rem;
+  text-transform: uppercase;
+}
+.ec[data-active] .ec-eyebrow {
+  padding-right: 5rem;
+}
+.ec-ctl:hover:not(:disabled) {
+  background: color-mix(in oklch, var(--globe-coast) 22%, transparent);
+  color: var(--foreground);
+}
+.ec-ctl:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+.ec-ctl:focus-visible {
+  outline: 2px solid color-mix(in oklch, var(--primary) 60%, transparent);
+  outline-offset: 1px;
+}
+.ec-navdot {
+  width: 0.375rem;
+  height: 0.375rem;
+  border-radius: 9999px;
+}
+.ec-track {
+  display: block;
+  height: 0.375rem;
+  overflow: hidden;
+  border-radius: 9999px;
+  background: var(--muted);
+}
+.ec-bar {
+  display: block;
+  width: 100%;
+  height: 100%;
+  border-radius: 9999px;
+  transform-origin: left;
+  transition: transform 300ms ease-out;
+}
+@media (prefers-reduced-motion: reduce) {
+  .ec-bar {
+    transition: none;
+  }
+}
+/* "All examples" list: an opaque layer over the example layers, which hide once it has faded in
+   (and show at once on close, under the fading list), so no frame is ever empty. */
+.ec-listlayer {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  background: var(--background);
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transition: visibility 0s 150ms;
+}
+.ec-listlayer[data-open] {
+  opacity: 1;
+  visibility: visible;
+  pointer-events: auto;
+  transition: none;
+}
+.ec[data-list] .ec-layer {
+  visibility: hidden;
+  pointer-events: none;
+  transition: visibility 0s 150ms;
+}
+.ec-list {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+}
+.ec-listhead {
+  flex: none;
+  display: grid;
+  gap: 0.625rem;
+  padding: 1.125rem 1.25rem 0.625rem;
+}
+.ec-listtitle {
+  font-family: var(--font-heading);
+  font-size: 1.375rem;
+  line-height: 1.1;
+}
+.ec-search {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  height: 2rem;
+  padding: 0 0.625rem;
+  border: 1px solid var(--globe-coast);
+  border-radius: calc(var(--radius) * 0.8);
+  background: color-mix(in oklch, var(--background) 70%, white);
+}
+.ec-search:focus-within {
+  border-color: color-mix(in oklch, var(--foreground) 45%, var(--globe-coast));
+  box-shadow: 0 0 0 3px color-mix(in oklch, var(--globe-coast) 35%, transparent);
+}
+.ec-search input {
+  flex: 1;
+  min-width: 0;
+  background: transparent;
+  font-size: 0.8125rem;
+  outline: none;
+}
+.ec-search input::-webkit-search-cancel-button {
+  filter: grayscale(1) opacity(0.6);
+}
+.ec-listwrap {
+  position: relative;
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  border-top: 1px solid var(--border);
+}
+.ec-listbody {
+  margin-top: 0;
+  padding: 0;
+}
+.ec-spacer {
+  position: relative;
+  contain: strict;
+  width: 100%;
+}
+.ec-group {
+  position: absolute;
+  inset-inline: 0;
+  top: 0;
+  display: flex;
+  align-items: center;
+  height: 28px;
+  padding: 0 1.25rem;
+  border-bottom: 1px solid var(--border);
+  background: var(--background);
+  color: var(--muted-foreground);
+  font-size: 0.6875rem;
+  font-weight: 500;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  font-variant-numeric: tabular-nums;
+}
+/* The section you're in stays pinned above the window (drawn once, not per row). */
+.ec-sticky {
+  z-index: 1;
+  right: 6px;
+  pointer-events: none;
+}
+.ec-row {
+  position: absolute;
+  inset-inline: 0;
+  top: 0;
+  display: grid;
+  align-content: center;
+  gap: 0.125rem;
+  padding: 0 1.25rem 0 1.5rem;
+  border-bottom: 1px solid color-mix(in oklch, var(--border) 70%, transparent);
+  cursor: pointer;
+  contain: strict;
+  content-visibility: auto;
+  contain-intrinsic-size: auto 58px;
+}
+.ec-row:hover,
+.ec-row[data-active] {
+  background: color-mix(in oklch, var(--globe-coast) 22%, var(--background));
+}
+.ec-row[data-current] {
+  box-shadow: inset 2px 0 0 var(--primary);
+}
+.ec-fanbar {
+  position: absolute;
+  left: 0.75rem;
+  top: 50%;
+  width: 3px;
+  height: 28px;
+  margin-top: -14px;
+  border-radius: 9999px;
+  transform-origin: bottom;
+}
+.ec-row1 {
+  display: flex;
+  align-items: baseline;
+  gap: 0.5rem;
+  min-width: 0;
+  font-size: 0.875rem;
+}
+.ec-act {
+  overflow: hidden;
+  font-weight: 500;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ec-chip {
+  flex: none;
+  padding: 0 0.375rem;
+  border-radius: 9999px;
+  background: color-mix(in oklch, var(--globe-coast) 30%, transparent);
+  color: var(--muted-foreground);
+  font-size: 0.6875rem;
+  line-height: 1.25rem;
+}
+.ec-now {
+  flex: none;
+  color: var(--primary);
+  font-size: 0.6875rem;
+  font-weight: 500;
+}
+.ec-city {
+  flex: none;
+  margin-left: auto;
+  color: var(--muted-foreground);
+  font-size: 0.75rem;
+}
+.ec-row2 {
+  overflow: hidden;
+  color: var(--muted-foreground);
+  font-size: 0.75rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ec-none {
+  padding: 1rem 1.25rem;
+  color: var(--muted-foreground);
+  font-size: 0.875rem;
+}
+@media (max-width: 1023px) {
+  .ec-row {
+    contain-intrinsic-size: auto 52px;
+  }
+  .ec-now {
+    display: none;
+  }
+  .ec-listhead {
+    padding: 0.875rem 1rem 0.5rem;
+  }
+  .ec-listtitle {
+    font-size: 1.125rem;
+  }
+}
+/* ---- end example card ---- */
+
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
   }
 }

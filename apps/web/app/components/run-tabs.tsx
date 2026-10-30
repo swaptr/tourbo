@@ -8,7 +8,7 @@ export function RunTabs({ runId }: { runId: string }) {
     { to: `/plan/${runId}/prep`, label: "Show notes" },
     { to: `/plan/${runId}/pipeline`, label: "Venue emails" },
     { to: `/plan/${runId}/live`, label: "Ticket sales" },
-    { to: `/plan/${runId}/compare`, label: "With vs without Qloo" },
+    { to: `/plan/${runId}/compare`, label: "With vs without fan data" },
   ];
   return (
     <nav className="flex gap-1 overflow-x-auto border-b text-sm [scrollbar-width:none]">
@@ -20,7 +20,7 @@ export function RunTabs({ runId }: { runId: string }) {
           className={({ isActive }) =>
             cn(
               "-mb-px shrink-0 border-b-2 px-3 py-2",
-              isActive ? "border-indigo-600 font-medium" : "border-transparent text-muted-foreground hover:text-foreground",
+              isActive ? "border-primary font-medium" : "border-transparent text-muted-foreground hover:text-foreground",
             )
           }
         >

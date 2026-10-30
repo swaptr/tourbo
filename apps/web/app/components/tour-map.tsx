@@ -1,5 +1,6 @@
 import "maplibre-gl/dist/maplibre-gl.css";
 import workerUrl from "maplibre-gl/dist/maplibre-gl-worker.mjs?url";
+import { tokenColor } from "~/lib/css-color";
 import { useEffect, useRef } from "react";
 
 import type { CityPlan } from "@tourbo/core/shared/types.ts";
@@ -66,14 +67,14 @@ export function TourMap({ stops }: { stops: CityPlan[] }) {
           type: "line",
           source: "route",
           layout: { "line-join": "round", "line-cap": "round" },
-          paint: { "line-color": "#4f46e5", "line-width": 2.5, "line-dasharray": [2, 1.5] },
+          paint: { "line-color": tokenColor("primary"), "line-width": 2.5, "line-dasharray": [2, 1.5] },
         });
       });
 
       stops.forEach((stop, i) => {
         const el = document.createElement("div");
         el.className =
-          "flex size-6 items-center justify-center rounded-full bg-indigo-600 text-xs font-semibold text-white shadow ring-2 ring-white";
+          "flex size-6 items-center justify-center rounded-full bg-primary text-xs font-semibold text-primary-foreground shadow ring-2 ring-background";
         el.textContent = String(i + 1);
         const popup = new maplibre.Popup({ offset: 14, closeButton: false }).setText(
           `${stop.city.name}${stop.venue ? ` — ${stop.venue.name}` : ""}${stop.date ? ` (${stop.date})` : ""}`,

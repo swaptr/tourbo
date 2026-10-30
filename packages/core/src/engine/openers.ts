@@ -5,6 +5,7 @@ import {
   type CityScore,
   type Opener,
 } from "../shared/types.ts";
+import { discipline } from "../disciplines/index.ts";
 import { noopEmit, type Emit } from "./trace.ts";
 
 const CANDIDATES = 8;
@@ -85,15 +86,19 @@ const cleanArtists = (entities: QlooEntity[], headlinerId: string) =>
 // Comedians: similar people (urn:entity:person) — mostly fellow comics and creators (probe:
 // Zakir Khan → Abhishek Upmanyu, Anubhav Singh Bassi); no musician filter applies.
 export async function openerCandidates(artist: Artist): Promise<OpenerCandidate[]> {
-  const comedian = artist.kind === "comedian";
-  const { entities = [] } = await insights(comedian ? "urn:entity:person" : "urn:entity:artist", {
+  const d = discipline(artist.kind);
+  const { entities = [] } = await insights(d.peerType, {
     "signal.interests.entities": artist.id,
     "filter.exclude.entities": artist.id,
     ...(artist.popularity ? { "filter.popularity.max": artist.popularity } : {}),
     take: 20,
   });
   const peers = new Set(artist.peers.map((p) => p.id));
-  const pool = comedian ? dedupeArtists(entities.filter((e) => e.entity_id !== artist.id)) : cleanArtists(entities, artist.id);
+  // Qloo person descriptions are often empty; occupation tags ("Visual Artist", "Illustrator") carry the signal.
+  const described = (e: QlooEntity) =>
+    !d.peerPattern ||
+    d.peerPattern.test([e.name, e.properties?.description ?? "", ...(e.tags ?? []).filter((t) => t.type?.includes("occupation")).map((t) => t.name)].join(" "));
+  const pool = d.musicFilter ? cleanArtists(entities, artist.id) : dedupeArtists(entities.filter((e) => e.entity_id !== artist.id && described(e)));
   return pool
     .filter((e) => !peers.has(e.entity_id))
     .slice(0, CANDIDATES)
@@ -178,8 +183,8 @@ export async function pickOpeners(
         ),
       ),
     ),
-    // Location-signal people include politicians and actors, so comedians skip the local-act step.
-    (artist.kind === "comedian" ? Promise.resolve(cities.map(() => [] as QlooEntity[])) : localActs(artist, cities)).then((acts) =>
+    // Location-signal people include politicians and actors, so only music disciplines look for local acts.
+    (!discipline(artist.kind).localScene ? Promise.resolve(cities.map(() => [] as QlooEntity[])) : localActs(artist, cities)).then((acts) =>
       Promise.all(
         cities.map((city, ci) =>
           candidates.length ? localOpener(artist, city, acts[ci], minAffinity).catch(() => undefined) : undefined,

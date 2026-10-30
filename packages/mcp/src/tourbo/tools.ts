@@ -4,7 +4,7 @@ import { z } from "zod";
 
 import { critique } from "@tourbo/core/critic/critic.ts";
 import { cityBrief } from "@tourbo/core/engine/brief.ts";
-import { citiesNear, seedCities } from "@tourbo/core/engine/cities.ts";
+import { citiesNear, findCity as findCityByName, seedCities } from "@tourbo/core/engine/cities.ts";
 import { defaultCapacity, estimateDemand, legCosts, median, optimise, REGION_DEFAULTS } from "@tourbo/core/engine/economics.ts";
 import { ALL_REGIONS, findMarkets, resolveMarketSignal } from "@tourbo/core/engine/markets.ts";
 import { openerCandidates, pickOpeners } from "@tourbo/core/engine/openers.ts";
@@ -19,9 +19,30 @@ import type { Emit } from "@tourbo/core/engine/trace.ts";
 import { findVenues, roomType } from "@tourbo/core/engine/venues.ts";
 import { accessFor } from "@tourbo/core/engine/access.ts";
 import { actsForVenue } from "@tourbo/core/engine/reverse.ts";
-import { locationQuery, Plan, Region, REGION_NAMES, type Artist, type City, type CityScore } from "@tourbo/core/shared/types.ts";
+import { locationQuery, PerformerKind, Plan, Region, REGION_NAMES, type Artist, type City, type CityScore } from "@tourbo/core/shared/types.ts";
+import { DISCIPLINES, discipline } from "@tourbo/core/disciplines/index.ts";
+import { personas, ROLEPLAY_INSTRUCTIONS } from "@tourbo/core/engine/rehearsal.ts";
+import { cached, DAY, hashKey } from "@tourbo/core/cache/index.ts";
+import { qlooErrorCount } from "@tourbo/core/qloo/client.server.ts";
+import { addItem, attachRun, createProject, deleteItem, getProject, ItemKind, listProjects, projectMarkdown, setItemDone } from "@tourbo/core/projects/projects.server.ts";
 
-const kind = z.enum(["musician", "comedian"]).default("musician").describe("musician (Qloo artist) or comedian (Qloo person)");
+const kind = PerformerKind.default("musician").describe(
+  `Discipline: ${PerformerKind.options.join(", ")}. See tourbo_disciplines for spaces, revenue and how each resolves in Qloo.`,
+);
+
+// Public view of the registry (tool + tourbo://disciplines resource).
+export const disciplineCatalog = () =>
+  Object.values(DISCIPLINES).map((d) => ({
+    key: d.key,
+    label: d.label,
+    resolvesAs: d.entityTypes,
+    spaces: [...new Set(d.spaces.map((s) => s.label))],
+    support: d.support,
+    revenue: d.revenue,
+    stayDays: d.stayDays,
+    sceneTagExamples: d.scene,
+    verified: d.verified,
+  }));
 const region = Region.describe(`Tour region: ${Region.options.map((r) => `${r} = ${REGION_NAMES[r]}`).join(", ")}`);
 const actId = z.string().describe("Qloo entity id of the act, from tourbo_resolve_act");
 const peerIds = z.array(z.string()).max(5).default([]).describe('Qloo ids of "sounds like" acts blended into the fan signal');
@@ -42,10 +63,10 @@ const dropNulls = (v: unknown): unknown =>
 
 const r1 = (n?: number) => (n === undefined ? undefined : Math.round(n * 100) / 100);
 
+// Seed list first, then any world city (GeoNames table) by name or "City, Country".
 function findCity(regionId: Region, name: string): City {
-  const cities = seedCities(regionId);
-  const city = cities.find((c) => c.name.toLowerCase() === name.toLowerCase() || c.query?.toLowerCase() === name.toLowerCase());
-  if (!city) throw new Error(`Unknown city "${name}" in ${REGION_NAMES[regionId]}. Choose one of: ${cities.map((c) => c.name).join(", ")}`);
+  const city = findCityByName(regionId, name);
+  if (!city) throw new Error(`Unknown city "${name}". Use a name from tourbo_score_cities, or "City, Country".`);
   return city;
 }
 
@@ -57,19 +78,120 @@ async function act(id: string, peers: string[], k: Artist["kind"]): Promise<Arti
 
 const compactScore = (c: CityScore) => ({
   city: c.city.name,
+  lat: r1(c.city.lat),
+  lon: r1(c.city.lon),
   score: c.score,
+  scoreParts: { reach: c.reach, lean: c.lean, formula: "score = 60% reach (how many fans) + 40% lean (how strongly the city leans to the act), each 0–100 across these candidates" },
   heatmapCells: c.cells,
   fanIndex: c.fanIndex,
   thinData: c.thinData,
   hotspots: c.hotspots.map((h) => ({ geohash: h.geohash, lat: h.lat, lon: h.lon, affinity: r1(h.affinity), popularity: r1(h.popularity) })),
 });
 
-export const TOURBO_TOOLS: ToolDef[] = [
+// Read-only, Qloo-derived tools: results cached 1 day per exact input (namespace tool:<name>).
+// Not cached when any Qloo request failed during the run (engines degrade quietly on errors) or
+// the tool threw. A cache hit replays no progress events.
+export const CACHED_TOOLS = new Set(["tourbo_score_cities", "tourbo_city_detail", "tourbo_openers", "tourbo_city_brief"]);
+export const TOOL_TTL = DAY;
+
+export function withCache(tool: ToolDef): ToolDef {
+  return {
+    ...tool,
+    run: (input, emit) => {
+      let degraded = false;
+      return cached(
+        hashKey(input),
+        async () => {
+          const errors = qlooErrorCount();
+          const value = await tool.run(input, emit);
+          degraded = qlooErrorCount() !== errors;
+          return value;
+        },
+        { ns: `tool:${tool.name}`, ttl: TOOL_TTL, cacheable: () => !degraded },
+      );
+    },
+  };
+}
+
+const TOOLS: ToolDef[] = [
+  {
+    name: "tourbo_project_create",
+    readOnly: false,
+    title: "Create a tour project",
+    description:
+      "Start a project for one tour or show: a small notebook for notes, to-dos, setlist or bit drafts and saved city briefs that tour plans attach to. Returns the project id. Projects are stored on this Tourbo server (shared with its website).",
+    input: z.object({ title: z.string().min(1).max(120), artist: z.string().max(120).optional(), kind: kind.optional() }),
+    run: async ({ title, artist, kind: k }) => createProject({ title, artist, kind: k }),
+  },
+  {
+    name: "tourbo_project_list",
+    title: "List tour projects",
+    description: "Recent tour projects with item and plan counts.",
+    input: z.object({ limit: z.number().int().min(1).max(50).default(20) }),
+    run: async ({ limit }) => ({ projects: await listProjects(limit) }),
+  },
+  {
+    name: "tourbo_project_get",
+    title: "Get a tour project",
+    description:
+      "One project with its items and attached tour plans, plus the same content as clean markdown (paste it into Notion, Asana or a doc).",
+    input: z.object({ project_id: z.string() }),
+    run: async ({ project_id }) => {
+      const p = await getProject(project_id);
+      if (!p) return { found: false, hint: "No project with that id. Call tourbo_project_list." };
+      return { found: true, project: p, markdown: projectMarkdown(p) };
+    },
+  },
+  {
+    name: "tourbo_project_update",
+    readOnly: false,
+    title: "Update a project item",
+    description: "Tick a to-do done (or not), or delete one item. Other items are untouched.",
+    input: z.object({ project_id: z.string(), item_id: z.string(), done: z.boolean().optional(), delete: z.boolean().default(false) }),
+    run: async ({ project_id, item_id, done, delete: del }) => {
+      if (del) await deleteItem(project_id, item_id);
+      else if (done !== undefined) await setItemDone(project_id, item_id, done);
+      else throw new Error("Pass done or delete.");
+      return { ok: true, item_id, ...(del ? { deleted: true } : { done }) };
+    },
+  },
+  {
+    name: "tourbo_project_add",
+    readOnly: false,
+    title: "Add to a tour project",
+    description:
+      "Add a note, to-do, setlist / bit draft or city brief to a project (optionally for one city), or attach a tour plan by its run id (the id in /plan/<id>). Save show notes or a tourbo_city_brief summary here so they're there next time.",
+    input: z.object({
+      project_id: z.string(),
+      kind: ItemKind.optional().describe("note | todo | setlist | brief; omit when only attaching a plan"),
+      text: z.string().max(8000).optional(),
+      city: z.string().max(80).optional(),
+      run_id: z.string().optional().describe("Attach this tour plan to the project"),
+    }),
+    run: async ({ project_id, kind: itemKind, text, city, run_id }) => {
+      if (!run_id && !(itemKind && text)) throw new Error("Pass kind + text, or run_id.");
+      const out: Record<string, unknown> = {};
+      if (run_id) {
+        await attachRun(project_id, run_id);
+        out.attached = run_id;
+      }
+      if (itemKind && text) out.item = await addItem(project_id, { kind: itemKind, text, city });
+      return out;
+    },
+  },
+  {
+    name: "tourbo_disciplines",
+    title: "List disciplines",
+    description:
+      "Every kind of act Tourbo plans for (singer, comedian, DJ, dancer, poet, painter, author, podcaster): which Qloo entity types it resolves as, the spaces it books, the support act, revenue models, stay length per city, scene tags to try when the act isn't in Qloo, and the probe that verified it. Most painters, dancers and poets are not Qloo entities: resolve with peers, or use tourbo_find_markets with scene tags.",
+    input: z.object({}),
+    run: async () => ({ disciplines: disciplineCatalog() }),
+  },
   {
     name: "tourbo_resolve_act",
     title: "Resolve an act",
     description:
-      "Look up a musician or comedian in Qloo and return its id, popularity and genres. Pass `peers` (comparable acts) for unknown or niche acts: their fans are blended into the signal. Call first.",
+      "Look up an act (any discipline) in Qloo and return its id, popularity and genres. Pass `peers` (comparable acts) for unknown or niche acts: their fans are blended into the signal. Call first.",
     input: z.object({
       name: z.string(),
       kind,
@@ -98,10 +220,12 @@ export const TOURBO_TOOLS: ToolDef[] = [
         .describe("Only score cities within radius_km of this point (topped up with the nearest if too few)"),
     }),
     run: async ({ act_id, peer_ids, region: rg, shows, near }, emit) => {
-      const cities = near ? citiesNear({ lat: near.lat, lon: near.lon, radiusKm: near.radius_km }, Math.ceil(shows * 1.5)).cities : seedCities(rg);
+      const area = near && citiesNear({ lat: near.lat, lon: near.lon, radiusKm: near.radius_km }, Math.ceil(shows * 1.5));
+      const cities = area ? area.cities : seedCities(rg);
       const scores = await scoreCities([act_id, ...peer_ids], cities, emit);
       const short = shortlist(scores, shows);
-      return { region: rg, medianFanIndex: median(scores.map((s) => s.fanIndex ?? 0)), shortlist: short.map((c) => c.city.name), cities: scores.map(compactScore) };
+      // With `near`, the region (money profile) is the circle's, whatever was passed.
+      return { region: area ? area.region : rg, medianFanIndex: median(scores.map((s) => s.fanIndex ?? 0)), shortlist: short.map((c) => c.city.name), cities: scores.map(compactScore) };
     },
   },
   {
@@ -195,14 +319,26 @@ export const TOURBO_TOOLS: ToolDef[] = [
     },
   },
   {
+    name: "tourbo_rehearsal_panel",
+    title: "Rehearsal panel personas",
+    description:
+      "Simulated audience members for one city, each a small slice of that city's Qloo brief (the superfan, the scene regular, the born-and-raised local, the plus-one). Role-play them against a draft set or setlist to see which lines land: every reaction must cite a name from that persona's slice. Returns personas plus instructions; this server does no inference. A rehearsal, not a prediction.",
+    input: z.object({ act_id: actId, peer_ids: peerIds, kind, region, city: cityName }),
+    run: async ({ act_id, peer_ids, kind: k, region: rg, city }) => {
+      const c = findCity(rg, city);
+      const brief = await cityBrief({ signal: [act_id, ...peer_ids], city: locationQuery(c), kind: k });
+      return { city: c.name, personas: personas(brief, c.name), instructions: ROLEPLAY_INSTRUCTIONS, label: "Rehearsal with simulated fans from Qloo data, not a prediction" };
+    },
+  },
+  {
     name: "tourbo_route",
     title: "Route a tour",
     description:
       "Order cities into a tour (nearest neighbour + 2-opt from the home base) and assign dates (≤500 km per drive day, flights over 1200 km, a day off every 4 shows). Returns stops with dates, legs in km and total km.",
-    input: z.object({ region, cities: z.array(cityName).min(1).max(20), start_date: z.iso.date(), home_base: cityName.optional() }),
-    run: async ({ region: rg, cities, start_date, home_base }) => {
+    input: z.object({ region, cities: z.array(cityName).min(1).max(20), start_date: z.iso.date(), home_base: cityName.optional(), kind: kind.optional() }),
+    run: async ({ region: rg, cities, start_date, home_base, kind: k }) => {
       const picks = cities.map((name: string) => ({ city: findCity(rg, name), score: 0, cells: 0, hotspots: [], thinData: false }));
-      const route = routeTour(picks, start_date, home_base ? findCity(rg, home_base) : undefined);
+      const route = routeTour(picks, start_date, home_base ? findCity(rg, home_base) : undefined, discipline(k).stayDays);
       return { stops: route.stops.map((s) => ({ date: s.date, city: s.city.city.name })), legs: route.legs, totalKm: route.totalKm };
     },
   },
@@ -388,3 +524,5 @@ export const TOURBO_TOOLS: ToolDef[] = [
     },
   },
 ];
+
+export const TOURBO_TOOLS: ToolDef[] = TOOLS.map((t) => (CACHED_TOOLS.has(t.name) ? withCache(t) : t));

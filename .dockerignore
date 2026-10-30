@@ -5,4 +5,4 @@ README.md
 .env
 .env.*
 compose.yaml
-vendor
+.data

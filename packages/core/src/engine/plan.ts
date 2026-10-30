@@ -5,10 +5,11 @@ import {
   type TourParams,
 } from "../shared/types.ts";
 import { fanTaste, angleFacts } from "./angles.ts";
-import { candidateCities, seedCities } from "./cities.ts";
+import { candidateCities, findCity } from "./cities.ts";
 import { openerCandidates, pickOpeners } from "./openers.ts";
 import { resolvePerformer, signalIds } from "./resolve.ts";
 import { routeTour } from "./routing.ts";
+import { discipline } from "../disciplines/index.ts";
 import { scoreCities, shortlist } from "./score.ts";
 import { noopEmit, type Emit } from "./trace.ts";
 import { findVenues } from "./venues.ts";
@@ -21,14 +22,13 @@ export async function buildPlan(params: TourParams, emit: Emit = noopEmit): Prom
   emit("decision", `Resolved ${artist.name}`, { id: artist.id, popularity: artist.popularity, peers: artist.peers.map((p) => p.name) });
   const signal = signalIds(artist);
 
-  const seeds = seedCities(params.region);
   const scores = await scoreCities(signal, candidateCities(params), emit);
   const candidates = shortlist(scores, params.shows);
   const picks = candidates.slice(0, params.shows);
   emit("decision", `Picked ${picks.map((c) => `${c.city.name} ${c.score}`).join(", ")}`);
 
-  const home = seeds.find((c) => c.name.toLowerCase() === params.homeBase?.toLowerCase());
-  const route = routeTour(picks, params.startDate, home);
+  const home = params.homeBase ? findCity(params.region, params.homeBase) : undefined;
+  const route = routeTour(picks, params.startDate, home, discipline(artist.kind).stayDays);
 
   const [openers, fans, venues] = await Promise.all([
     openerCandidates(artist).then((c) => pickOpeners(artist, c, picks, emit)),

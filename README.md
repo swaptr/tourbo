@@ -21,11 +21,30 @@ Labels and promoters already route tours for big acts. A singer with a 300-perso
 4. **Venue emails:** one inquiry per venue with the fan numbers. Replies are classified; a pass promotes the backup room. An offer is checked against your lowest fee and the planned show (deterministic), then Claude drafts an accept, a counter or a polite walk-away for you to send.
 5. **Ticket sales:** enter tickets sold; Tourbo says whether the show is on track and what to do (shift promo, lean on the opener, smaller room, raise the price). After the show, log attendance; the next plan calibrates your draw from it.
 6. **For venues** (`/explore`): a bar enters its name and gets acts its crowd likes, with local fans. Also "where do acts like me win?" across regions by comparable acts or genre (e.g. qawwali).
-7. **Your own Claude** (`/connect`): open Claude Code in this repo and Tourbo's tools are there (`.mcp.json`); or add the stdio server anywhere; or use the token-gated hosted endpoint.
+7. **Any discipline:** the same tools plan a painter's gallery run (two-week stays, sales per visitor), a DJ's club nights, a poet's bookstore readings (`tourbo_disciplines`, story 9).
+8. **Your own Claude** (`/connect`): open Claude Code in this repo and Tourbo's tools are there (`.mcp.json`); or add the stdio server anywhere; or use the token-gated hosted endpoint.
 
 ## Why it fails without Qloo
 
 An LLM alone names "big music cities". It can't say where *this* act's fans cluster block by block, which rooms near them that crowd likes, which local acts share the audience, or what the city's audience loves right now. The "With vs without Qloo" tab shows the same model planning blind; the show-notes page shows the generic draft next to the grounded one.
+
+## Backtest: agreement with real bookers' picks
+
+Eight real 2024–25 tours of mid-size acts (city lists from setlist.fm, Songkick or the tour announcement; sources in `tests/stories/backtest.json`). For each, N = the real stops that are in Tourbo's city list; the score is how many of Tourbo's top N cities by Qloo fan score were real stops. It measures agreement with experienced bookers, not accuracy: a real route isn't proof of the best cities. "Claude alone" is the same model picking N cities from the same list with no data.
+
+| Tour | Real stops in our city list | Tourbo (Qloo) | Claude alone | Random pick |
+| --- | --- | --- | --- | --- |
+| MJ Lenderman, Manning Fireworks Tour 2024-25 (North American dates) | 27 | 74% | 70% | 49% |
+| Wednesday, Bleeds Tour 2025 (fall North American leg) | 15 | 47% | 53% | 27% |
+| Jessica Pratt, Here in the Pitch Tour 2024 (summer North American leg) | 14 | 57% | 50% | 25% |
+| Joe Pera, The PERAs Tour 2024 | 21 | 67% | 57% | 38% |
+| Black Country, New Road, Forever Howlong Tour 2025 (autumn UK/Ireland/Europe leg) | 17 | 71% | 82% | 65% |
+| English Teacher, 2025 UK + Ireland Tour | 7 | 86% | 57% | 27% |
+| Prateek Kuhad, Silhouettes India Tour 2024 | 10 | 70% | 70% | 63% |
+| Samay Raina, Still Alive & Unfiltered India Tour 2025 | 7 | 71% | 100% | 44% |
+| **Mean (8 tours)** | | **68%** | **67%** | 42% |
+
+Read plainly: on *which* cities, Qloo scoring agrees with bookers about as often as Claude's own knowledge of these well-known acts, and far above chance. Its edge is elsewhere: it works for acts Claude has never heard of (story 4, act-less painters), explains each pick with numbers, and the rooms, openers and show notes come from the same data. Small sample; `npm run backtest` re-runs it (`npm run test:stories` checks the Qloo column hasn't regressed).
 
 ## How it uses Qloo
 
@@ -81,34 +100,39 @@ flowchart LR
 
 ## Run locally
 
-Node 22+ and Docker.
+Node 22+. No Docker needed: without `DATABASE_URL`, the app starts a local Postgres 17 itself (data in `.data/postgres`, git-ignored, port 5434) and stops it on exit.
 
 ```bash
 npm install
 cp .env.example .env     # set QLOO_API_KEY and ANTHROPIC_API_KEY
-npm run dev              # starts Postgres (docker compose) + http://localhost:3000
+npm run dev              # http://localhost:3000
 ```
 
 - `npm run test:stories`: the user stories against live Qloo (no LLM); `STORY_LLM=1` adds a full Claude run (app must be running).
 - `npm run mcp`: the MCP server on stdio. `npm run test -w @tourbo/mcp`: MCP smoke test.
 - `npm run plan:demo -- "<artist>" [na|eu|in] [shows] [musician|comedian]`: engine only. `npm run agent:demo -- …`: full agent in the terminal.
-- Docker: `docker compose --profile app up -d --build web` runs the production image with Postgres.
+- `npm run cities:seed`: loads the world city table (GeoNames, ~34k cities) so any circle on the map works; without it the hand-picked seed list is used.
+- `npm run examples:prewarm`: builds the home-page examples (150+ acts, every continent) into Postgres (`--dry-run` estimates the fan-data calls first; `--rebuild` redoes them from the cache).
+- `npm run examples:export`: writes the landing page's static bundle to `apps/web/public/landing/`. The landing page reads only these files. The bundle is committed, so a deploy from git serves it as is; re-run and commit after the examples change.
+- `npm run db:import -- [source-url] [--replace]`: one-off copy of another Postgres (default: the old Docker one, `postgres://tourbo:tourbo@localhost:5433/tourbo`) into the local one. Reads the source only.
+- Docker (optional): `docker compose --profile app up -d --build web` runs the production image with Postgres. To use the compose Postgres from npm scripts, set `DATABASE_URL=postgres://tourbo:tourbo@localhost:5433/tourbo`.
 
 | Variable | Required | Notes |
 | --- | --- | --- |
 | `QLOO_API_KEY` | yes | |
 | `ANTHROPIC_API_KEY` | yes (website agent) | not needed for the MCP server |
-| `DATABASE_URL` | no | default: the compose Postgres |
+| `DATABASE_URL` | no | your own Postgres; unset = the local one in `.data/postgres` |
 | `MCP_TOKENS` | no | comma-separated bearer tokens; enables `/mcp` |
 | `PUBLIC_URL` | no | shown in the Connect page snippets |
+| `DEMO_DISCIPLINES` | no | disciplines the website offers (default `musician,comedian`; `all` for every one) |
 | `RESEND_API_KEY`, `RESEND_WEBHOOK_SECRET`, `OUTREACH_*` | no | email; sends are simulated without a key |
 
 ## Limits
 
 - Qloo has no capacity, price or sales data: capacities, draw and profit are estimates (formula shown on each card), calibrated once you log past shows.
-- Demo disciplines: musicians and comedians. The model is designed to extend to dancers, poets, visual artists, authors and podcasters (PLAN §16).
+- Disciplines: one registry (`packages/core/src/disciplines/`) covers singers, comedians, DJs, dancers, poets, visual artists, authors and podcasters: Qloo entity types, spaces, support act, prices, extra sales per head, stay length and show-notes prompt. The website offers musicians and comedians by default (`DEMO_DISCIPLINES`); MCP accepts all. Most painters, dancers and poets aren't Qloo entities, so they plan from comparable acts.
 - Runs are in-process: a restart mid-run shows "interrupted" with a retry button.
 
 ## License
 
-MIT. Qloo responses are cached server-side only and never committed.
+MIT. Qloo responses are cached server-side only and never committed. City data: [GeoNames](https://www.geonames.org/), CC BY 4.0.

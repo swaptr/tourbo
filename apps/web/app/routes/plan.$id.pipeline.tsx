@@ -102,12 +102,12 @@ export default function Pipeline({ loaderData, actionData }: Route.ComponentProp
   return (
     <main className="container mx-auto space-y-6 px-4 py-8">
       <div>
-        <h1 className="font-heading text-2xl font-semibold tracking-tight">{loaderData.artistName}: venue emails</h1>
+        <h1 className="font-heading text-2xl tracking-tight">{loaderData.artistName}: venue emails</h1>
         <p className="mt-1 max-w-3xl text-sm text-muted-foreground">
-          Claude drafts one email per venue; you approve before anything is sent. When a venue replies with an offer, Tourbo
+          Tourbo drafts one email per venue; you approve before anything is sent. When a venue replies with an offer, Tourbo
           checks it against your lowest fee and drafts an accept, a counter or a polite no.{" "}
           <span className="text-xs">
-            Demo sandbox: emails go to <span className="font-mono">{mode.inbox}</span>
+            Demo sandbox: emails go to <span className="font-medium">{mode.inbox}</span>
             {mode.sending === "simulated" && " (simulated, no email key)"}, never to a real venue.
           </span>
         </p>
@@ -159,7 +159,7 @@ function OutreachCard({ item, busy }: { item: Outreach; busy: boolean }) {
   return (
     <Card size="sm">
       <CardHeader>
-        <CardTitle className="text-sm">{item.venueName}</CardTitle>
+        <CardTitle className="text-base">{item.venueName}</CardTitle>
         <CardDescription>{item.city}</CardDescription>
       </CardHeader>
       <CardContent className="space-y-2 text-xs">
@@ -211,9 +211,9 @@ function OutreachCard({ item, busy }: { item: Outreach; busy: boolean }) {
 }
 
 const DECISION: Record<string, string> = {
-  accept: "bg-emerald-100 text-emerald-900",
-  counter: "bg-amber-100 text-amber-900",
-  walk_away: "bg-red-100 text-red-900",
+  accept: "bg-success/15 text-success",
+  counter: "bg-warning/15 text-warning",
+  walk_away: "bg-destructive/15 text-destructive",
 };
 
 const terms = (o: { deal: string; guarantee?: number | null; split?: number | null; price?: number | null; capacity?: number | null }) =>

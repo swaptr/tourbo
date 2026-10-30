@@ -56,6 +56,8 @@ export async function scoreCities(
       score: Math.round(100 * (0.6 * footprint[i] + 0.4 * overIndex[i])),
       cells: m.cells.length,
       fanIndex: Math.round(m.weighted * 10) / 10,
+      reach: Math.round(100 * footprint[i]),
+      lean: Math.round(100 * overIndex[i]),
       hotspots: hotspots(m.cells),
       thinData: m.cells.length < THIN_CELLS,
     }))

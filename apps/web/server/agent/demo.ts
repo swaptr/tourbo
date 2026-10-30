@@ -4,7 +4,7 @@ import { closeDb } from "@tourbo/core/db/client.server.ts";
 import { qlooCacheHits, qlooCallCount } from "@tourbo/core/qloo/client.server.ts";
 import { TourParams } from "@tourbo/core/shared/types.ts";
 import { orchestrate } from "./orchestrator.server.ts";
-import { usageSummary } from "./usage.ts";
+import { cacheSummary, usageSummary } from "./usage.ts";
 
 const [artist = "Japanese Breakfast", region = "na", shows = "6", kind = "musician", peers = "", promo = ""] = process.argv.slice(2);
 const params = TourParams.parse({
@@ -31,5 +31,6 @@ try {
     `${Math.round(performance.now() - started)} ms, ${qlooCallCount()} Qloo calls, ${qlooCacheHits()} cached`,
   );
   console.error(JSON.stringify(usageSummary()));
+  console.error(`cache: ${JSON.stringify(cacheSummary())}`);
   await closeDb();
 }

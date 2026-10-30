@@ -1,5 +1,6 @@
 import "maplibre-gl/dist/maplibre-gl.css";
 import workerUrl from "maplibre-gl/dist/maplibre-gl-worker.mjs?url";
+import { tokenColor } from "~/lib/css-color";
 import { useEffect, useMemo, useRef, useState } from "react";
 
 import { distanceKm } from "@tourbo/core/shared/geo.ts";
@@ -68,8 +69,8 @@ export function AreaPicker({ cities, value, onChange }: { cities: SeedCity[]; va
           // Compact attribution starts expanded; collapse it so it doesn't cover the map on phones.
           container.current?.querySelector(".maplibregl-ctrl-attrib")?.classList.remove("maplibregl-compact-show");
           map.addSource("area", { type: "geojson", data: circle(latest.current.value) });
-          map.addLayer({ id: "area-fill", type: "fill", source: "area", paint: { "fill-color": "#4f46e5", "fill-opacity": 0.08 } });
-          map.addLayer({ id: "area-line", type: "line", source: "area", paint: { "line-color": "#4f46e5", "line-width": 1.5 } });
+          map.addLayer({ id: "area-fill", type: "fill", source: "area", paint: { "fill-color": tokenColor("primary"), "fill-opacity": 0.08 } });
+          map.addLayer({ id: "area-line", type: "line", source: "area", paint: { "line-color": tokenColor("primary"), "line-width": 1.5 } });
           map.addSource("cities", { type: "geojson", data: cityPoints(cities, latest.current.insideNames) });
           map.addLayer({
             id: "cities",
@@ -77,8 +78,8 @@ export function AreaPicker({ cities, value, onChange }: { cities: SeedCity[]; va
             source: "cities",
             paint: {
               "circle-radius": ["case", ["==", ["get", "inside"], 1], 5, 3],
-              "circle-color": ["case", ["==", ["get", "inside"], 1], "#4f46e5", "#a1a1aa"],
-              "circle-stroke-color": "#fff",
+              "circle-color": ["case", ["==", ["get", "inside"], 1], tokenColor("primary"), tokenColor("muted-foreground")],
+              "circle-stroke-color": tokenColor("background"),
               "circle-stroke-width": 1.5,
             },
           });
@@ -88,7 +89,7 @@ export function AreaPicker({ cities, value, onChange }: { cities: SeedCity[]; va
             source: "cities",
             filter: ["==", ["get", "inside"], 1],
             layout: { "text-field": ["get", "name"], "text-font": ["Noto Sans Regular"], "text-size": 11, "text-offset": [0, 1.1], "text-anchor": "top" },
-            paint: { "text-color": "#3730a3", "text-halo-color": "#fff", "text-halo-width": 1.2 },
+            paint: { "text-color": tokenColor("foreground"), "text-halo-color": tokenColor("background"), "text-halo-width": 1.2 },
           });
         });
         map.on("click", (e) => latest.current.onChange({ ...latest.current.value, lat: e.lngLat.lat, lon: e.lngLat.lng }));

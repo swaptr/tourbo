@@ -1,4 +1,5 @@
 import Anthropic from "@anthropic-ai/sdk";
+import { discipline } from "@tourbo/core/disciplines/index.ts";
 import { zodOutputFormat } from "@anthropic-ai/sdk/helpers/zod";
 
 import { Baseline, REGION_NAMES, type TourParams } from "@tourbo/core/shared/types.ts";
@@ -21,7 +22,7 @@ export async function planBaseline(params: TourParams): Promise<Baseline> {
     messages: [
       {
         role: "user",
-        content: `Plan a ${params.shows}-city ${region} ${params.kind === "comedian" ? "stand-up comedy" : "concert"} tour for ${params.artist}, starting ${params.startDate}${
+        content: `Plan a ${params.shows}-city ${region} ${discipline(params.kind).noun} tour for ${params.artist}, starting ${params.startDate}${
           params.homeBase ? ` from ${params.homeBase}` : ""
         }, in rooms of ${params.roomMin}–${params.roomMax} capacity. For each stop in tour order give the city, a venue, a local opener and why.`,
       },

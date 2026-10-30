@@ -1,4 +1,4 @@
-import { ArrowLeft, ArrowRight, Check, LoaderCircle, MapPin, Mic, Music, Sparkles } from "lucide-react";
+import { ArrowLeft, ArrowRight, BookOpen, Check, Disc3, Footprints, LoaderCircle, MapPin, Mic, Music, Palette, Podcast, Sparkles, type LucideIcon } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { Form, redirect, useFetcher, useNavigation, useSearchParams } from "react-router";
 import { z } from "zod";
@@ -9,7 +9,11 @@ import { Input } from "~/components/ui/input";
 import { Label } from "~/components/ui/label";
 import { cn } from "~/lib/utils";
 import { startRun } from "../../server/agent/orchestrator.server";
-import { allSeedCities, citiesNear } from "@tourbo/core/engine/cities.ts";
+import { getWebEnv } from "../../server/env.server";
+import { attachRun } from "@tourbo/core/projects/projects.server.ts";
+import { discipline, DISCIPLINES } from "@tourbo/core/disciplines/index.ts";
+import { citiesNear, topCities } from "@tourbo/core/engine/cities.ts";
+import { ensureWorld } from "@tourbo/core/engine/world.server.ts";
 import { Area, TourParams, type PerformerKind } from "@tourbo/core/shared/types.ts";
 import type { Route } from "./+types/start";
 import type { loader as resolveLoader } from "./api.resolve";
@@ -19,9 +23,11 @@ export function meta({}: Route.MetaArgs) {
 }
 
 export async function loader() {
-  const cities: SeedCity[] = allSeedCities().map((c) => ({ name: c.name, lat: c.lat, lon: c.lon, region: c.region }));
+  await ensureWorld(); // world cities when seeded (npm run cities:seed); the seed list otherwise
+  const cities: SeedCity[] = topCities(1200).map((c) => ({ name: c.name, lat: c.lat, lon: c.lon, region: c.region }));
   const start = new Date(Date.now() + 60 * 86_400_000).toISOString().slice(0, 10);
-  return { cities, start };
+  const enabled = getWebEnv().DEMO_DISCIPLINES;
+  return { cities, start, enabled, more: Object.keys(DISCIPLINES).length - enabled.length };
 }
 
 const ROOMS = {
@@ -35,6 +41,7 @@ export async function action({ request }: Route.ActionArgs) {
   const form = Object.fromEntries(await request.formData());
   const area = Area.safeParse({ lat: form.lat, lon: form.lon, radiusKm: form.radiusKm });
   if (!area.success) return { error: "Pick where you want to play on the map." };
+  await ensureWorld();
   const near = citiesNear(area.data, 0);
   if (near.inside < 2) return { error: "Fewer than two cities are inside your circle. Make it bigger or move it." };
   const room = ROOMS[form.room as Room] ?? ROOMS.club;
@@ -54,19 +61,29 @@ export async function action({ request }: Route.ActionArgs) {
     money: { promoBudget: money("promoBudget"), minGuarantee: money("minGuarantee") },
     jobs: form.jobs,
   });
+  if (parsed.success && !getWebEnv().DEMO_DISCIPLINES.includes(parsed.data.kind))
+    return { error: `This demo site doesn't plan for that kind of act yet. Go back to step 1 and pick another, or use Tourbo from your own AI assistant.` };
   if (!parsed.success) return { error: `Something in the form isn't right: ${z.prettifyError(parsed.error).split("\n")[0]}` };
   try {
-    return redirect(`/plan/${await startRun(parsed.data)}`);
+    const id = await startRun(parsed.data);
+    // Started from a project: file the plan there (a failure here never blocks the plan).
+    if (form.project) await attachRun(String(form.project), id).catch(() => {});
+    return redirect(`/plan/${id}`);
   } catch {
     return { error: "We couldn't start the planner. Is the database running? Try again in a moment." };
   }
 }
 
-const DISCIPLINES: { kind?: PerformerKind; label: string; hint: string; icon: typeof Music }[] = [
-  { kind: "musician", label: "Musician", hint: "Singer, band, DJ, producer", icon: Music },
-  { kind: "comedian", label: "Comedian", hint: "Stand-up, storyteller, host", icon: Mic },
-  { label: "Dancer, poet, painter, author…", hint: "Coming soon", icon: Sparkles },
-];
+const ICONS: Record<PerformerKind, LucideIcon> = {
+  musician: Music,
+  comedian: Mic,
+  dj: Disc3,
+  dancer: Footprints,
+  poet: Sparkles,
+  visual_artist: Palette,
+  author: BookOpen,
+  podcaster: Podcast,
+};
 
 const STEPS = ["You", "Who", "Where", "When", "Jobs"];
 const DRAFT_KEY = "tourbo:start";
@@ -84,6 +101,7 @@ type State = {
   promoBudget: string;
   minGuarantee: string;
   jobs: { prep: boolean; outreach: boolean };
+  project?: string; // started from a project page
 };
 
 export default function Start({ loaderData, actionData }: Route.ComponentProps) {
@@ -91,8 +109,9 @@ export default function Start({ loaderData, actionData }: Route.ComponentProps) 
   const step = Math.min(Math.max(Number(params.get("step") ?? 0), 0), STEPS.length - 1);
   const go = (n: number) => setParams({ step: String(n) }, { preventScrollReset: false });
   const [s, setS] = useState<State>({
-    kind: "musician",
+    kind: loaderData.enabled[0] ?? "musician",
     artist: params.get("artist") ?? "",
+    project: params.get("project") ?? undefined,
     confirmed: false,
     peers: "",
     notInQloo: false,
@@ -114,7 +133,7 @@ export default function Start({ loaderData, actionData }: Route.ComponentProps) 
   useEffect(() => {
     try {
       const saved = JSON.parse(sessionStorage.getItem(DRAFT_KEY) ?? "null") as Partial<State> | null;
-      if (saved) setS((prev) => ({ ...prev, ...saved, artist: params.get("artist") ?? saved.artist ?? prev.artist }));
+      if (saved) setS((prev) => ({ ...prev, ...saved, artist: params.get("artist") ?? saved.artist ?? prev.artist, project: params.get("project") ?? saved.project }));
     } catch {}
     setRestored(true);
   }, []);
@@ -135,8 +154,8 @@ export default function Start({ loaderData, actionData }: Route.ComponentProps) 
             <span
               className={cn(
                 "flex size-6 shrink-0 items-center justify-center rounded-full border text-[11px] font-medium",
-                i < step && "border-indigo-600 bg-indigo-600 text-white",
-                i === step && "border-indigo-600 text-indigo-700",
+                i < step && "border-primary bg-primary text-primary-foreground",
+                i === step && "border-primary text-primary",
                 i > step && "text-muted-foreground",
               )}
             >
@@ -151,27 +170,35 @@ export default function Start({ loaderData, actionData }: Route.ComponentProps) 
       {step === 0 && (
         <Step title="What do you do?" subtitle="Tourbo plans differently for a band than for a comic: rooms, openers, prices, what to say on stage.">
           <div className="grid gap-3 sm:grid-cols-3">
-            {DISCIPLINES.map((d) => (
-              <button
-                key={d.label}
-                type="button"
-                disabled={!d.kind}
-                onClick={() => {
-                  set({ kind: d.kind!, confirmed: false });
-                  go(1);
-                }}
-                className={cn(
-                  "flex flex-col items-start gap-2 rounded-xl border p-4 text-left transition",
-                  d.kind ? "hover:border-indigo-400 hover:bg-indigo-50/50" : "cursor-not-allowed opacity-50",
-                  d.kind === s.kind && "border-indigo-500 ring-2 ring-indigo-500/20",
-                )}
-              >
-                <d.icon className="size-5 text-indigo-600" />
-                <span className="font-medium">{d.label}</span>
-                <span className="text-sm text-muted-foreground">{d.hint}</span>
-              </button>
-            ))}
+            {loaderData.enabled.map((kind) => {
+              const d = DISCIPLINES[kind];
+              const Icon = ICONS[kind];
+              return (
+                <button
+                  key={kind}
+                  type="button"
+                  onClick={() => {
+                    set({ kind, confirmed: false });
+                    go(1);
+                  }}
+                  className={cn(
+                    "flex flex-col items-start gap-2 rounded-xl border p-4 text-left transition hover:border-primary/50 hover:bg-primary/10",
+                    kind === s.kind && "border-primary ring-2 ring-primary/25",
+                  )}
+                >
+                  <Icon className="size-5 text-primary" />
+                  <span className="font-medium">{d.label}</span>
+                  <span className="text-sm text-muted-foreground">{d.hint}</span>
+                </button>
+              );
+            })}
           </div>
+          {loaderData.more > 0 && (
+            <p className="text-sm text-muted-foreground">
+              Dancer, poet, painter, author, DJ or podcaster? This demo site plans for {loaderData.enabled.map((k) => DISCIPLINES[k].label.toLowerCase()).join(" and ")} acts; the same
+              planner handles every discipline <a href="/connect" className="underline">from your own AI assistant</a>.
+            </p>
+          )}
         </Step>
       )}
 
@@ -187,7 +214,7 @@ export default function Start({ loaderData, actionData }: Route.ComponentProps) 
               <Label htmlFor="near">Or start near</Label>
               <select
                 id="near"
-                className="h-9 rounded-lg border bg-transparent px-2.5 text-sm"
+                className="h-9 rounded-lg border border-input bg-background px-2.5 text-sm"
                 value=""
                 onChange={(e) => {
                   const c = loaderData.cities.find((x) => x.name === e.target.value);
@@ -210,7 +237,7 @@ export default function Start({ loaderData, actionData }: Route.ComponentProps) 
                 step={50}
                 value={s.area.radiusKm}
                 onChange={(e) => set({ area: { ...s.area, radiusKm: Number(e.target.value) } })}
-                className="accent-indigo-600"
+                className="accent-primary"
               />
             </div>
           </div>
@@ -253,7 +280,7 @@ export default function Start({ loaderData, actionData }: Route.ComponentProps) 
                   key={r}
                   type="button"
                   onClick={() => set({ room: r })}
-                  className={cn("rounded-xl border p-3 text-left", s.room === r ? "border-indigo-500 ring-2 ring-indigo-500/20" : "hover:border-indigo-300")}
+                  className={cn("rounded-xl border p-3 text-left", s.room === r ? "border-primary ring-2 ring-primary/25" : "hover:border-primary/50")}
                 >
                   <span className="block text-sm font-medium">{ROOMS[r].label}</span>
                   <span className="text-xs text-muted-foreground">{ROOMS[r].hint}</span>
@@ -279,10 +306,11 @@ export default function Start({ loaderData, actionData }: Route.ComponentProps) 
       )}
 
       {step === 4 && (
-        <Step title="What should Tourbo do for you?" subtitle="Claude does these jobs for you while you watch. Nothing is sent to a venue until you approve it.">
+        <Step title="What should Tourbo do for you?" subtitle="Tourbo does these jobs for you while you watch. Nothing is sent to a venue until you approve it.">
           <Form method="post" className="space-y-5">
             <input type="hidden" name="kind" value={s.kind} />
             <input type="hidden" name="artist" value={s.artist} />
+            {s.project && <input type="hidden" name="project" value={s.project} />}
             <input type="hidden" name="peers" value={s.peers} />
             <input type="hidden" name="notInQloo" value={String(s.notInQloo)} />
             <input type="hidden" name="lat" value={s.area.lat} />
@@ -299,11 +327,13 @@ export default function Start({ loaderData, actionData }: Route.ComponentProps) 
               <Job
                 checked={s.jobs.prep}
                 onChange={(prep) => set({ jobs: { ...s.jobs, prep } })}
-                title={s.kind === "comedian" ? "Write material notes for every night" : "Write show notes for every night"}
+                title={s.kind === "comedian" ? "Write material notes for every night" : s.kind === "musician" ? "Write show notes for every night" : `Write ${discipline(s.kind).noun} notes for every stop`}
                 body={
                   s.kind === "comedian"
                     ? "Local openers, bit premises and crowd-work topics likely to land in each city, built from what that city's audience loves, plus a sponsor ask."
-                    : "Opening line, setlist nods to local acts, banter and a crowd moment for each city, built from what that city's audience loves, plus a sponsor ask."
+                    : s.kind === "musician"
+                      ? "Opening line, setlist nods to local acts, banter and a crowd moment for each city, built from what that city's audience loves, plus a sponsor ask."
+                      : "Opening words, what to show or perform and in what order, a local nod and a crowd moment for each city, built from what that city's audience loves, plus a sponsor ask."
                 }
               />
               <Job
@@ -338,7 +368,7 @@ function Step({ title, subtitle, children }: { title: string; subtitle: string; 
   return (
     <section className="space-y-5">
       <div>
-        <h1 className="font-heading text-2xl font-semibold tracking-tight sm:text-3xl">{title}</h1>
+        <h1 className="font-heading text-2xl tracking-tight sm:text-3xl">{title}</h1>
         <p className="mt-1.5 text-muted-foreground">{subtitle}</p>
       </div>
       {children}
@@ -362,8 +392,8 @@ function Nav({ onBack, onNext, nextDisabled, nextLabel = "Continue" }: { onBack:
 function Job({ title, body, checked, disabled, onChange }: { title: string; body: string; checked: boolean; disabled?: boolean; onChange?: (v: boolean) => void }) {
   return (
     <li>
-      <label className={cn("flex gap-3 rounded-xl border p-3", checked && "border-indigo-300 bg-indigo-50/40", !disabled && "cursor-pointer")}>
-        <input type="checkbox" className="mt-1 accent-indigo-600" checked={checked} disabled={disabled} onChange={(e) => onChange?.(e.target.checked)} />
+      <label className={cn("flex gap-3 rounded-xl border p-3", checked && "border-primary/50 bg-primary/5", !disabled && "cursor-pointer")}>
+        <input type="checkbox" className="mt-1 accent-primary" checked={checked} disabled={disabled} onChange={(e) => onChange?.(e.target.checked)} />
         <span>
           <span className="block text-sm font-medium">{title}</span>
           <span className="text-sm text-muted-foreground">{body}</span>
@@ -373,7 +403,7 @@ function Job({ title, body, checked, disabled, onChange }: { title: string; body
   );
 }
 
-// "Is this you?": confirm the Qloo match, or plan from acts you sound like.
+// "Is this you?": confirm the fan-data match, or plan from acts you sound like.
 function WhoStep({ s, set, onBack, onNext }: { s: State; set: (p: Partial<State>) => void; onBack: () => void; onNext: () => void }) {
   const lookup = useFetcher<typeof resolveLoader>();
   const notMe = s.notInQloo;
@@ -396,16 +426,16 @@ function WhoStep({ s, set, onBack, onNext }: { s: State; set: (p: Partial<State>
 
   return (
     <Step
-      title={s.kind === "comedian" ? "What's your stage name?" : "What's your act called?"}
-      subtitle="Tourbo looks you up on Qloo to see where your fans are. New or not on Qloo yet? Tell us who you sound like instead."
+      title={s.kind === "comedian" || s.kind === "poet" ? "What's your stage name?" : s.kind === "visual_artist" || s.kind === "author" ? "What name do you work under?" : "What's your act called?"}
+      subtitle="Tourbo looks you up to see where your fans are. New or not listed yet? Tell us who you sound like instead."
     >
       <div className="grid gap-1.5">
         <Label htmlFor="artist">Name</Label>
-        <Input id="artist" autoFocus autoComplete="off" value={s.artist} onChange={(e) => set({ artist: e.target.value })} placeholder={s.kind === "comedian" ? "e.g. Zakir Khan" : "e.g. Japanese Breakfast"} />
+        <Input id="artist" autoFocus autoComplete="off" value={s.artist} onChange={(e) => set({ artist: e.target.value })} placeholder={`e.g. ${discipline(s.kind).example}`} />
       </div>
       {looking && (
         <p className="flex items-center gap-2 text-sm text-muted-foreground">
-          <LoaderCircle className="size-4 animate-spin" /> Looking you up on Qloo…
+          <LoaderCircle className="size-4 animate-spin" /> Looking you up…
         </p>
       )}
       {data && !data.ok && <p className="text-sm text-destructive">{data.error}</p>}
@@ -414,7 +444,7 @@ function WhoStep({ s, set, onBack, onNext }: { s: State; set: (p: Partial<State>
           {data.act.image ? <img src={data.act.image} alt="" className="size-12 rounded-lg object-cover" /> : <div className="size-12 rounded-lg bg-muted" />}
           <div className="min-w-0 flex-1">
             <p className="font-medium">{data.act.name}</p>
-            <p className="truncate text-sm text-muted-foreground">{data.act.genres.join(" · ") || "On Qloo"}</p>
+            <p className="truncate text-sm text-muted-foreground">{data.act.genres.join(" · ") || "Found you"}</p>
           </div>
           <Button type="button" variant="ghost" size="sm" onClick={() => setNotMe(true)}>
             Not me
@@ -422,9 +452,9 @@ function WhoStep({ s, set, onBack, onNext }: { s: State; set: (p: Partial<State>
         </div>
       )}
       {needPeers && (
-        <div className="space-y-3 rounded-xl border border-amber-300 bg-amber-50/50 p-3">
+        <div className="space-y-3 rounded-xl border border-warning/50 bg-warning/10 p-3">
           <p className="text-sm">
-            {notMe ? "No problem." : `We couldn't find “${name}” on Qloo.`} Who do you sound like? Tourbo will plan from their fans.
+            {notMe ? "No problem." : `We couldn't find “${name}” yet.`} Who do you sound like? Tourbo will plan from their fans.
           </p>
           {!notMe && data?.suggestions && data.suggestions.length > 0 && (
             <p className="text-sm text-muted-foreground">

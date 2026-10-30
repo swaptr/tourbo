@@ -1,16 +1,15 @@
 import { qlooGet } from "../qloo/client.server.ts";
 import { searchEntities, type QlooEntity } from "../qloo/api.server.ts";
+import { discipline, DISCIPLINES } from "../disciplines/index.ts";
 import type { Artist, PerformerKind } from "../shared/types.ts";
 
-export const ENTITY_TYPE: Record<PerformerKind, "urn:entity:artist" | "urn:entity:person"> = {
-  musician: "urn:entity:artist",
-  comedian: "urn:entity:person",
-};
+// Qloo entity types the act resolves as, in order.
+export const entityTypes = (kind: PerformerKind = "musician") => discipline(kind).entityTypes;
 
 function toArtist(top: QlooEntity, kind: PerformerKind): Artist {
   const image = (top.properties?.image as { url?: string } | undefined)?.url;
   const tags = (top.tags ?? [])
-    .filter((tag) => tag.type === "urn:tag:genre" || (kind === "comedian" && tag.type?.startsWith("urn:tag:genre")))
+    .filter((tag) => tag.type === "urn:tag:genre" || (kind !== "musician" && tag.type?.startsWith("urn:tag:genre")))
     .flatMap((tag) => {
       const id = tag.tag_id ?? tag.id;
       return id ? [{ id, name: tag.name }] : [];
@@ -23,7 +22,7 @@ const norm = (s: string) => s.normalize("NFKD").replace(/[\u0300-\u036f]/g, "").
 // Search is fuzzy (an unknown name still returns somebody), so only accept a hit whose name
 // matches the query; otherwise the act is treated as not in Qloo and planned from peers.
 export async function resolveArtist(query: string, kind: PerformerKind = "musician"): Promise<Artist | undefined> {
-  const results = await searchEntities(query, { types: [ENTITY_TYPE[kind]], take: 5 });
+  const results = await searchEntities(query, { types: entityTypes(kind), take: 5 });
   const q = norm(query);
   // Name matches: exact, or the name plus a qualifier ("Zakir Khan, Comedian"). Qloo keeps
   // empty duplicates with no popularity, so the most popular match wins.
@@ -61,12 +60,14 @@ export async function artistById(id: string, kind: PerformerKind = "musician"): 
   const list = Array.isArray(res.results) ? res.results : (res.results?.entities ?? []);
   const top = list.find((e) => e.entity_id === id);
   if (!top) return undefined;
-  const isPerson = top.types?.includes("urn:entity:person") && !top.types?.includes("urn:entity:artist");
-  return toArtist(top, isPerson ? "comedian" : kind);
+  // Keep the asked discipline when the entity type fits it; otherwise infer from the type.
+  const fits = discipline(kind).entityTypes.some((t) => top.types?.includes(t));
+  const inferred = Object.values(DISCIPLINES).find((d) => d.entityTypes.some((t) => top.types?.includes(t)))?.key;
+  return toArtist(top, fits ? kind : (inferred ?? kind));
 }
 
 // Autocomplete for the home form.
 export async function searchArtists(query: string, take = 6, kind: PerformerKind = "musician") {
-  const results = await searchEntities(query, { types: [ENTITY_TYPE[kind]], take });
+  const results = await searchEntities(query, { types: entityTypes(kind), take });
   return results.map((entity) => ({ id: entity.entity_id, name: entity.name }));
 }

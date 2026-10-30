@@ -16,6 +16,6 @@ export async function loader({ request }: Route.LoaderArgs) {
       suggestions: suggestions.filter((s) => s.id !== act?.id).map((s) => s.name),
     };
   } catch {
-    return { ok: false as const, act: undefined, suggestions: [], error: "Qloo didn't answer. Try again in a moment." };
+    return { ok: false as const, act: undefined, suggestions: [], error: "We couldn't look you up just now. Try again in a moment." };
   }
 }

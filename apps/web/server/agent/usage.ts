@@ -1,3 +1,5 @@
+import { cacheStats } from "@tourbo/core/cache/index.ts";
+
 // Token + cost accounting per process (per run when used from the demo CLI).
 // $ per 1M tokens: [input, output, cache read, cache write 5m]
 const PRICES: Record<string, [number, number, number, number]> = {
@@ -31,3 +33,6 @@ export function usageSummary() {
     return { model, ...t, cost: Math.round(cost * 10000) / 10000 };
   });
 }
+
+// Cache hit/miss/stale counters per namespace (qloo, tool:<name>, snapshot).
+export const cacheSummary = () => cacheStats();

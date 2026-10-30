@@ -20,6 +20,18 @@ const CITY_TYPES: InsightsType[] = [
 const SPOT_TAGS = ["urn:tag:category:place:restaurant", "urn:tag:category:place:bar"];
 const TAKE = 5;
 
+// Never build banter or local nods on politicians, officials, the military, crime or religion
+// leaders: matched on the entity's tags and description (Qloo has no single "politician" type).
+const SENSITIVE = /\b(politic\w*|president|prime minister|minister|mayor|senator|congress\w*|parliament\w*|governor|legislat\w*|diplomat|military|dictator|terror\w*|criminal|murder\w*|cleric|imam|pope|bishop|rabbi)\b/i;
+export function sensitive(e: QlooEntity): boolean {
+  const text = [
+    ...(e.tags ?? []).map((t) => `${t.name ?? ""} ${t.id ?? ""}`),
+    JSON.stringify(e.properties?.short_descriptions ?? e.properties?.short_description ?? ""),
+    String(e.properties?.description ?? ""),
+  ].join(" ");
+  return SENSITIVE.test(text);
+}
+
 // Combining artist + city signals barely changes results (Chicago ≈ Austin, verified
 // 2026-10-29), so the angle mixes three sources instead.
 export async function fanTaste(artistId: Ids): Promise<Reference[]> {
@@ -40,7 +52,7 @@ export async function cityCulture(city: string): Promise<Reference[]> {
         type,
         { "signal.location.query": city, take: TAKE },
         { allowUnlisted: ["signal.location.query"] },
-      ).then((r) => refs(r.entities, type)),
+      ).then((r) => refs((r.entities ?? []).filter((e) => !sensitive(e)), type)),
     ),
   );
   return lists.flat();

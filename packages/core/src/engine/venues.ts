@@ -7,32 +7,20 @@ import {
 import { signalParams, type FanSignal } from "./score.ts";
 import { noopEmit, type Emit } from "./trace.ts";
 import type { PerformerKind } from "../shared/types.ts";
+import { discipline, spaceLabel } from "../disciplines/index.ts";
 
-export const VENUE_TAGS = [
-  "urn:tag:category:place:live_music_venue",
-  "urn:tag:category:place:concert_hall",
-  "urn:tag:category:place:night_club",
-  "urn:tag:category:place:bar",
-];
-
-// Comedy rooms: the comedy_club category tag works (Chicago 8+, Mumbai thin, probe 2026-10-29);
-// bars and theatres-with-bars cover the rest of the stand-up circuit.
-export const COMEDY_TAGS = [
-  "urn:tag:category:place:comedy_club",
-  "urn:tag:genre:place:comedy_club",
-  "urn:tag:category:place:bar",
-  "urn:tag:category:place:concert_hall",
-];
-
-export const venueTags = (kind: PerformerKind = "musician") => (kind === "comedian" ? COMEDY_TAGS : VENUE_TAGS);
+// Place tags per discipline (registry); comedy_club works in Chicago 8+, Mumbai thin (probe 2026-10-29).
+export const venueTags = (kind: PerformerKind = "musician") => discipline(kind).spaces.map((s) => s.tag);
 
 // Room type shown to the act and used by the economics model.
-export function roomType(tag: string) {
-  if (tag.includes("comedy_club")) return "comedy club";
-  if (tag.endsWith(":bar")) return "bar";
-  if (tag.endsWith(":night_club")) return "club";
-  if (tag.endsWith(":concert_hall")) return "hall / theatre";
-  return "music venue";
+export const roomType = spaceLabel;
+
+// Festivals, fairs and one-off events show up as places ("Yerba Buena Gardens Festival") but
+// aren't bookable rooms: drop them before the agent or the deterministic pick sees them.
+const EVENT = /\b(festival|fest|fair|parade|carnival|expo|exposition|conference|awards?|marathon|tournament|championship)\b/i;
+export function isEvent(entity: QlooEntity) {
+  const tags = (entity.tags ?? []).map((t) => t.tag_id ?? t.id ?? "").join(" ");
+  return EVENT.test(entity.name) || /:festival\b|:event_venue_temporary/.test(tags);
 }
 
 const RADII_M = [1500, 3000, 6000];
@@ -86,7 +74,7 @@ export async function findVenues(
     );
     results.forEach(({ entities = [] }, i) => {
       const tag = tags[i];
-      const open = entities.filter((e) => e.properties?.is_closed !== true);
+      const open = entities.filter((e) => e.properties?.is_closed !== true && !isEvent(e));
       emit("qloo_call", `${city.city.name}: ${open.length} venues (${short(tag)}, ${step.label})`, {
         city: city.city.name,
         tag,

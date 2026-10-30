@@ -4,7 +4,7 @@ Stages follow PLAN.md §11. Deadline **2026-10-30 11:45pm EDT**. Stage 4 = minim
 
 ## Blockers
 - [x] Qloo API key in `.env` → `npm run qloo:ping` passes
-- [ ] Anthropic API key / credits
+- [x] Anthropic API key / credits
 - [x] Email provider: Resend (send `POST /emails`; inbound `email.received` webhook, svix-signed, body via `GET /emails/receiving/{id}`, `<id>.resend.app` receiving domain). Docs checked 2026-10-29
 - [ ] Resend account: `RESEND_API_KEY`, receiving domain → `OUTREACH_REPLY_DOMAIN`, webhook `/webhooks/email` → `RESEND_WEBHOOK_SECRET` (until then sends are simulated)
 
@@ -102,16 +102,16 @@ Stages follow PLAN.md §11. Deadline **2026-10-30 11:45pm EDT**. Stage 4 = minim
 - [x] Docker image ships `scripts/` + `server/` so `npm run qloo:prewarm` runs from the Render shell (tested in container)
 
 ## Stretch
-- [ ] Comedians (`urn:entity:person`)
-- [ ] MCP server exposing `plan_tour`
+- [x] Comedians (`urn:entity:person`)
+- [x] MCP server exposing `plan_tour`
 - [ ] Book tours (`urn:entity:book`)
 
 ## Extended scope — all performers + Muse (PLAN §13)
 - [x] Verify performer + city combined signal → weak (Chicago ≈ Austin); use city-only culture + artist-weighted local places
-- [ ] Performer type: artist | comedian (person); per-type venue tags + opener logic
-- [ ] Per-city set notes: local references with Qloo scores; LLM drafts bits/banter citing them
-- [ ] Qloo-off comparison for set notes (generic vs grounded)
-- [ ] Muse mode: city/tour cultural brief + draft material to rehearse
+- [x] Performer type: artist | comedian (person); per-type venue tags + opener logic
+- [x] Per-city set notes: local references with Qloo scores; LLM drafts bits/banter citing them
+- [x] Qloo-off comparison for set notes (generic vs grounded)
+- [x] Muse mode: city/tour cultural brief + draft material to rehearse
 - [ ] Autonomous background research: refresh upcoming stops' notes (trending, new references)
 
 ## Local scene (from 20-city survey, PLAN §13)
@@ -123,45 +123,58 @@ Stages follow PLAN.md §11. Deadline **2026-10-30 11:45pm EDT**. Stage 4 = minim
 - [ ] Thin-venue cities (Lagos, Delhi, Mexico City, Barcelona): widen venue tags
 
 ## Small-act direction (PLAN §14, proposed; agentic first)
-- [ ] Profit-seeking loop: alternatives (city, room type, price, deal, support/headline/skip), re-score, stop on flat gains, explain; venue-type fit lever; comedy-room workaround
-- [ ] Promo spend decision: budget split by hotspot, geo-ad drafts, re-allocate on ticket pace
-- [ ] Outreach negotiation: counter guarantee vs door split within limits, accept/decline, re-plan on pass
-- [ ] Local sponsor matching → asks; accepted deals as revenue
-- [ ] Material prep critic loop (Qloo city brief + web search → drafts → grounding critic → revise); optional rehearsal panel; Qloo-off contrast
-- [ ] "Acts like you" market finder: performer type, comparable-act blend, own-data upload, genre-tag heatmaps (verify qawwali tier-2), act × city fit score
-- [ ] Keeps working after the plan: pre-stop refresh, ticket pace → actions
-- [ ] MCP server: `plan_tour`, `prep_city`
-- [ ] Post-show learning loop
-- [ ] Lower: show setup (local opener, date clash), reverse mode; after the Qloo layer: venue access (airport, train/bus, transit, load-in) via OSM/GTFS
+- [x] Profit-seeking loop: alternatives (city, room type, price, deal, support/headline/skip), re-score, stop on flat gains, explain; venue-type fit lever; comedy-room workaround
+- [x] Promo spend decision: budget split by hotspot, geo-ad drafts, re-allocate on ticket pace
+- [x] Outreach negotiation: counter guarantee vs door split within limits, accept/decline, re-plan on pass
+- [x] Local sponsor matching → asks; accepted deals as revenue
+- [x] Material prep critic loop (Qloo city brief → drafts → grounding critic → revise); Qloo-off contrast. Not done: web search, rehearsal panel
+- [x] "Acts like you" market finder: performer type, comparable-act blend, genre-tag heatmaps, act × city fit score. Not done: own-data upload
+- [x] Keeps working after the plan: pre-stop refresh, ticket pace → actions
+- [x] MCP server: `plan_tour` (tool + prompt), `prep_city` as `tourbo_city_brief`
+- [x] Post-show learning loop
+- [ ] Lower (done: local opener, reverse mode `tourbo_acts_for_venue`, venue access `tourbo_venue_access`; open: date clash, GTFS load-in): show setup (local opener, date clash), reverse mode; after the Qloo layer: venue access (airport, train/bus, transit, load-in) via OSM/GTFS
 
 ## Architecture v2: MCP server + hosted web app (PLAN §15, proposed)
-- [ ] A. npm workspaces: `packages/core`, `packages/mcp`, `apps/web`; imports, scripts, Dockerfile, render.yaml, CLAUDE.md
-- [ ] B. TS port of the 9 harness Qloo workflows (+ capabilities) on `qlooGet()`; contract test vs vendored harness
-- [ ] C. `tourbo_*` domain tools over core (stateless, compact structured output)
-- [ ] D. Transports: stdio bin, in-memory (hosted), Streamable HTTP `/mcp` behind tokens; MCP Inspector + Claude Desktop test
-- [ ] E. Agent on `mcpTools()` via in-memory client; trace via MCP notifications; parity check
+- [x] A. npm workspaces: `packages/core`, `packages/mcp`, `apps/web`; imports, scripts, Dockerfile, render.yaml, CLAUDE.md
+- [x] B. TS port of the 9 harness Qloo workflows (+ capabilities) on `qlooGet()`; harness copy removed from repo (port carries its MIT notice)
+- [x] C. `tourbo_*` domain tools over core (stateless, compact structured output)
+- [x] D. Transports: stdio bin, in-memory (hosted), Streamable HTTP `/mcp` behind tokens; MCP Inspector + Claude Desktop test
+- [x] E. Agent on `mcpTools()` via in-memory client; trace via MCP notifications; parity check
 - [ ] F. Publish `@tourbo/mcp`; README Claude Desktop config
 
-## Any artist (PLAN §16, proposed)
-- [ ] Discipline registry `packages/core/src/disciplines/`: entity types, signal, space tags, peer type, revenue, run, prep, verified
-- [ ] `PerformerKind` → `Discipline`; `TourParams.kind` / `Artist.kind` → `discipline` (accept `kind` alias for old runs)
-- [ ] Move musician + comedian into the registry; no behaviour change (check `plan:demo` Japanese Breakfast + Zakir Khan)
-- [ ] `resolve.ts`: entity types from profile; `artistById` infers discipline
-- [ ] `venues.ts`: space tags + room labels + default capacities from profile
-- [ ] `openers.ts`: peer type + filter from profile ("support" copy outside music)
-- [ ] Act-less mode: genre/scene tags + comparable acts → blended heatmap demand, `basis: "scene"`
-- [ ] Economics: per-discipline prices; revenue models `exhibition`, `workshop`, `commission`, `merch`
-- [ ] Routing: `run.unit` day | week, stay length per stop
-- [ ] Worker: base prompt + per-discipline prep/exclusion fragment
-- [ ] MCP: `kind` → `discipline`; `tourbo_disciplines` tool + `tourbo://disciplines` resource; `plan_tour` prompt arg
-- [ ] `DEMO_DISCIPLINES` env (default `musician`); discipline picker only when > 1 enabled
-- [ ] Probe DJs: club/lounge tags, 2 sample DJs, techno/house tag heatmaps
-- [ ] Probe dancers: theatre/dance_studio/performing_arts tags, kathak/contemporary tag heatmaps
-- [ ] Probe poets/theatre: theatre/cafe/bookstore tags, poetry/slam tags
-- [ ] Probe visual artists: art_gallery/museum tags in 3+ cities, street/contemporary art tags, famous painters as `person`
-- [ ] Probe authors: `book` heatmaps, author search, bookstore/library tags
-- [ ] Probe podcasters: `podcast` heatmaps for 2 shows, theatre tags
-- [ ] Demo: one painter run (act-less) via CLI/MCP to show it's agnostic
+## Home page, cache, local dev (PLAN §18 Q7/Q8, 2026-10-30)
+- [x] Home examples data: 322 complete examples, 130 acts, 6 continents (`examples:prewarm` → `examples:export`); honest compare pairs + `exampleProblem()` checks; venue headlines are decisions ("book X over Y")
+- [x] Globe home page: one docked dialog (‹ Prev · All · Next ›), virtualised "All" list, hover intent (no flip while tracing), continent-by-continent play order, terrain relief with land clip, pop-ups on peaks
+- [x] Terrain baked in the browser from the JSON bundle (worker, prebake next 3, LRU, cancel stale, 128 on phones, main-thread fallback in slices); PNGs removed; bundle 9.2 → 5.0 MB
+- [x] Landing bundle committed (`apps/web/public/landing/`); raw fan-data responses still never committed
+- [x] Q8 cache layer (`packages/core/src/cache`, tiers via `CACHE_TIERS`); production default = no cache (live app + MCP always fresh, only the landing page is pre-baked)
+- [x] Q8 static landing: `/` prerendered with the first example inline, CDN cache headers, pre-compressed assets; 1,000-visit load test = 0 DB / fan-data / AI calls
+- [x] npm scripts without Docker: local Postgres (`embedded-postgres`, `.data/postgres`) when `DATABASE_URL` is unset; `npm run db:import` copies the old Docker DB (done, verified)
+- [x] ~~Q4 auth (Better Auth)~~ dropped: hackathon organisers rejected adding authentication
+- [ ] Globe agent final pass: slow-drag fix, drag/zoom controls overhaul, look (shadows, coast haze), nearby examples as flat surfaces, CLS 0, flaky hover tests (in progress)
+- [ ] Dance gate: 2 of 3 dancer acts (Dance Theatre of Harlem, Pilobolus) blocked by the fan-data monthly quota (0 left, resets ~Nov 28; raise requested on Discord); home bundle status stays "incomplete" until then
+- [ ] Desktop perf budget: main thread 4.4 ms/frame (target < 4); 4× throttled long tasks
+
+## Any artist (PLAN §16, built 2026-10-30)
+- [x] Discipline registry `packages/core/src/disciplines/`: entity types, space tags, peer type + filter, prices, per-head sales, stay length, prep prompt, room rules, verified probe note
+- [x] `PerformerKind` widened to 8 disciplines (field name stays `kind`, so old runs load unchanged)
+- [x] Musician + comedian moved into the registry; no behaviour change (`plan:demo` Japanese Breakfast + Zakir Khan: same cities and openers)
+- [x] `resolve.ts`: entity types from profile; `artistById` infers discipline
+- [x] `venues.ts`: space tags + room labels + default capacities from profile
+- [x] `openers.ts`: peer type + filter (occupation tags) from profile; card label uses the discipline's support name
+- [x] Act-less mode: comparable acts as peers (resolve) or scene tags (`tourbo_find_markets`); `basis: "scene"` label not added
+- [x] Economics: per-discipline prices (`ticketFactor`) + per-head sales (books, prints, workshops); `exhibition` (visitors over the stay, entry split, sales net of commission) and `commission` (flat fee, 3 days on site) deals for visual artists
+- [x] Routing: stay length per stop (`stayDays`, painters 14, dancers 2)
+- [x] Worker + show notes: per-discipline room rules and prep prompt (music and comedy prompts unchanged)
+- [x] MCP: `kind` enum from the registry; `tourbo_disciplines` tool + `tourbo://disciplines` resource; `plan_tour` prompt covers every discipline
+- [x] `DEMO_DISCIPLINES` env (default `musician,comedian`, `all` for every one); onboarding tiles from it, others pointed to MCP
+- [x] Probe DJs: night_club / lounge 20/20/20 rooms, Peggy Gou resolves, techno tag heatmap ranks cities (one sample DJ, not two)
+- [x] Probe dancers: performing_arts_theater 20/20/18, dance_school 10/16/11; contemporary tag heatmap
+- [x] Probe poets/theatre: book_store / cafe 20/20/20, poetry tag heatmap
+- [x] Probe visual artists: art_gallery 20/20/16, museum 20/20/9, street_art tag + Banksy as a peer
+- [x] Probe authors: book heatmap (Normal People 1/26 EU cities thin) beats the author as a person (22/26 thin): add the book as a peer; book_store / library tags
+- [x] Probe podcasters: podcast heatmaps (My Favorite Murder, Call Her Daddy: 0/55 NA cities thin), theatre tags
+- [x] Demo: painter run (act-less, Banksy as peer) via `plan:demo`, `agent:demo` (Claude picks Hayward Gallery, De Hallen, Belvedere) and story test 9
 
 ## UX v2: stories-first (2026-10-29)
 - [x] `STORIES.md` (7 user stories + per-change checklist); CLAUDE.md north-star section

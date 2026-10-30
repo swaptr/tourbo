@@ -1,7 +1,8 @@
 import pLimit from "p-limit";
 
+import { cached, nsStats } from "../cache/index.ts";
 import { getEnv } from "../env.server.ts";
-import { cacheKey, readCache, writeCache } from "./cache.server.ts";
+import { cacheKey, QLOO_NS, QLOO_TTL } from "./cache.server.ts";
 
 export type QlooParams = Record<
   string,
@@ -27,33 +28,36 @@ const TIMEOUT_MS = 15_000;
 const limit = pLimit(8);
 
 let callCount = 0;
-let cacheHits = 0;
+let errorCount = 0;
 export const qlooCallCount = () => callCount;
-export const qlooCacheHits = () => cacheHits;
+// Failed requests (after retries). Callers caching derived results skip caching if this moved.
+export const qlooErrorCount = () => errorCount;
+// Requests answered without calling Qloo (fresh or stale cache, or joined an identical in-flight call).
+export const qlooCacheHits = () => {
+  const s = nsStats(QLOO_NS);
+  return s.hit + s.stale + s.coalesced;
+};
 
 // Qloo is GET-only with query-string params; arrays become comma-separated lists.
-export function qlooGet<T = unknown>(
+// Cached 7 days (namespace "qloo"); errors throw and null bodies are returned but never stored.
+export async function qlooGet<T = unknown>(
   path: string,
   params: QlooParams = {},
 ): Promise<T> {
-  return limit(() => request<T>(path, params));
-}
-
-async function request<T>(path: string, params: QlooParams): Promise<T> {
-  const { QLOO_API_KEY, QLOO_BASE_URL } = getEnv();
-  const url = new URL(path, QLOO_BASE_URL);
+  const url = new URL(path, getEnv().QLOO_BASE_URL);
   for (const [key, value] of Object.entries(params)) {
     if (value === undefined) continue;
     url.searchParams.set(key, Array.isArray(value) ? value.join(",") : String(value));
   }
+  return cached(cacheKey(url), () =>
+      limit(() => request<T>(url)).catch((error) => {
+        errorCount++;
+        throw error;
+      }), { ns: QLOO_NS, ttl: QLOO_TTL });
+}
 
-  const key = cacheKey(url);
-  const cached = await readCache<T>(key);
-  if (cached !== undefined) {
-    cacheHits++;
-    return cached;
-  }
-
+async function request<T>(url: URL): Promise<T> {
+  const { QLOO_API_KEY } = getEnv();
   for (let attempt = 0; ; attempt++) {
     callCount++;
     const res = await fetch(url, {
@@ -61,10 +65,7 @@ async function request<T>(path: string, params: QlooParams): Promise<T> {
       signal: AbortSignal.timeout(TIMEOUT_MS),
     });
     const body = await res.json().catch(() => null);
-    if (res.ok) {
-      await writeCache(key, url, body);
-      return body as T;
-    }
+    if (res.ok) return body as T;
 
     const retryable = res.status === 429 || res.status >= 500;
     if (!retryable || attempt >= MAX_RETRIES) {

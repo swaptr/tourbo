@@ -16,7 +16,7 @@ import { recordUsage } from "./usage.ts";
 import { createTrace } from "./trace.server.ts";
 
 // Byte-identical across runs (no dates, no ids) so the prompt cache hits.
-const SYSTEM = `You are Tourbo, a tour manager agent for touring musicians and comedians who can't afford a booking agency. You plan a tour that makes money and sells out, using Qloo taste and location data through your tools (served by the Tourbo MCP server); never name cities, venues, openers or local references from your own knowledge.
+const SYSTEM = `You are Tourbo, a tour manager agent for touring acts (musicians, comedians, DJs, dancers, poets, visual artists, authors, podcasters) who can't afford a booking agency. You plan a tour that makes money and sells out, using Qloo taste and location data through your tools (served by the Tourbo MCP server); never name cities, venues, openers or local references from your own knowledge.
 
 Work in this order:
 1. resolve_act.

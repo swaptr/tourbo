@@ -7,7 +7,8 @@ import { Button } from "~/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "~/components/ui/card";
 import { Input } from "~/components/ui/input";
 import { Label } from "~/components/ui/label";
-import { REGION_NAMES, Region, type Region as RegionT } from "@tourbo/core/shared/types.ts";
+import { DISCIPLINES } from "@tourbo/core/disciplines/index.ts";
+import { PerformerKind, REGION_NAMES, Region, type Region as RegionT } from "@tourbo/core/shared/types.ts";
 import { connectMcp } from "../../server/mcp.server";
 import type { Route } from "./+types/explore";
 
@@ -30,7 +31,7 @@ type Acts = {
 };
 
 const list = (v: FormDataEntryValue | null) => String(v ?? "").split(",").map((s) => s.trim()).filter(Boolean);
-const kindOf = (v: FormDataEntryValue | null) => (v === "comedian" ? "comedian" : "musician");
+const kindOf = (v: FormDataEntryValue | null) => PerformerKind.catch("musician").parse(v);
 
 // Both tools run through the Tourbo MCP server, exactly as an external agent would call them.
 export async function action({ request }: Route.ActionArgs) {
@@ -67,8 +68,11 @@ const selectClass = "h-8 w-full rounded-lg border border-input bg-transparent px
 function KindSelect() {
   return (
     <select name="kind" className={selectClass} defaultValue="musician">
-      <option value="musician">Musicians</option>
-      <option value="comedian">Comedians</option>
+      {Object.values(DISCIPLINES).map((d) => (
+        <option key={d.key} value={d.key}>
+          {d.label}
+        </option>
+      ))}
     </select>
   );
 }
@@ -81,10 +85,10 @@ export default function Explore() {
   return (
     <main className="container mx-auto max-w-5xl space-y-8 px-4 py-12">
       <div>
-        <h1 className="font-heading text-3xl font-semibold tracking-tight">For venues and new acts</h1>
+        <h1 className="font-heading text-3xl tracking-tight">For venues and new acts</h1>
         <p className="mt-2 max-w-3xl text-muted-foreground">
-          Two questions small acts and small rooms ask before any tour exists. Both answers come from Qloo through the
-          same MCP tools your own agent can call.
+          Two questions small acts and small rooms ask before any tour exists. Both answers come from fan data through the
+          same tools your own AI assistant can call.
         </p>
       </div>
 

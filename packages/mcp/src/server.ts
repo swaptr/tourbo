@@ -4,7 +4,8 @@ import { z } from "zod";
 import type { Emit } from "@tourbo/core/engine/trace.ts";
 
 import { runWorkflow, WORKFLOW_INPUTS, WORKFLOW_META, type Workflow } from "./qloo/workflows.ts";
-import { TOURBO_TOOLS, type ToolDef } from "./tourbo/tools.ts";
+import { ensureWorld } from "@tourbo/core/engine/world.server.ts";
+import { disciplineCatalog, TOURBO_TOOLS, type ToolDef } from "./tourbo/tools.ts";
 
 export const SERVER_INFO = { name: "tourbo", title: "Tourbo", version: "0.1.0" };
 
@@ -38,9 +39,10 @@ const result = (value: unknown, isError = false) => {
 function registerTourbo(server: McpServer, tool: ToolDef) {
   server.registerTool(
     tool.name,
-    { title: tool.title, description: tool.description, inputSchema: tool.input, annotations: { readOnlyHint: true, openWorldHint: true, idempotentHint: true } },
+    { title: tool.title, description: tool.description, inputSchema: tool.input, annotations: { readOnlyHint: tool.readOnly ?? true, openWorldHint: true, idempotentHint: tool.readOnly ?? true } },
     async (input: unknown, ctx: ServerContext) => {
       try {
+        await ensureWorld(); // world city index (no-op after the first call; seeds if the DB is down)
         return result(await tool.run(input, progressEmit(ctx)));
       } catch (error) {
         return result({ error: (error as Error).message }, true);
@@ -85,14 +87,20 @@ function registerQloo(server: McpServer) {
 
 export function createTourboServer(opts: { toolsets?: Toolset[] } = {}) {
   const toolsets = opts.toolsets ?? ["tourbo", "qloo"];
-  const server = new McpServer(SERVER_INFO, { capabilities: { tools: {}, prompts: {} }, instructions: INSTRUCTIONS });
+  const server = new McpServer(SERVER_INFO, { capabilities: { tools: {}, prompts: {}, resources: {} }, instructions: INSTRUCTIONS });
   if (toolsets.includes("tourbo")) for (const tool of TOURBO_TOOLS) registerTourbo(server, tool);
   if (toolsets.includes("qloo")) registerQloo(server);
+  server.registerResource(
+    "disciplines",
+    "tourbo://disciplines",
+    { title: "Tourbo disciplines", description: "Kinds of act Tourbo plans for and how each maps to Qloo", mimeType: "application/json" },
+    async (uri) => ({ contents: [{ uri: uri.href, mimeType: "application/json", text: JSON.stringify(disciplineCatalog(), null, 2) }] }),
+  );
   server.registerPrompt(
     "plan_tour",
     {
       title: "Plan a tour",
-      description: "Plan a profitable tour for a musician or comedian, with venues, money verdicts and per-city show notes.",
+      description: "Plan a profitable tour for any act (singer, comedian, DJ, dancer, poet, painter, author, podcaster), with venues, money verdicts and per-city show notes.",
       argsSchema: z.object({ act: z.string(), region: z.string().default("na"), shows: z.string().default("6"), kind: z.string().default("musician") }),
     },
     ({ act, region, shows, kind }) => ({
@@ -101,7 +109,7 @@ export function createTourboServer(opts: { toolsets?: Toolset[] } = {}) {
           role: "user",
           content: {
             type: "text",
-            text: `Plan a ${shows}-show tour for the ${kind} "${act}" in region ${region}, starting about 3 months from today. Use the Tourbo tools: score cities, check venues and show economics for the strongest ones (drop or downgrade loss-making stops), route it, then give me per-city show notes from tourbo_city_brief. Cite the Qloo numbers.`,
+            text: `Plan a ${shows}-show tour for the ${kind} "${act}" in region ${region}, starting about 3 months from today. Use the Tourbo tools (tourbo_disciplines first if the act isn't a musician or comedian; if the act isn't in Qloo, plan from comparable acts as peers): score cities, check venues and show economics for the strongest ones (drop or downgrade loss-making stops), route it, then give me per-city show notes from tourbo_city_brief. Cite the Qloo numbers.`,
           },
         },
       ],

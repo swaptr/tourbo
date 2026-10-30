@@ -3,8 +3,9 @@
 Tour manager for small acts: Qloo finds the fans, the Tourbo MCP server turns that into tour tools, Claude decides and writes. Product vision + user stories: `STORIES.md`. Architecture plan: `PLAN.md`.
 
 ## North star (re-check after every major change)
-- Read `STORIES.md` before UI/UX or flow changes. After each major change, answer its checklist: can Maya finish story 1 from the screen alone; is it clear where Qloo, the MCP server and Claude come in; does every state (empty, loading, partial, failed, done) look intentional; do the story tests pass.
+- Read `STORIES.md` before UI/UX or flow changes. After each major change, answer its checklist: can Maya finish story 1 from the screen alone; does the UI speak only as Tourbo; does every state (empty, loading, partial, failed, done) look intentional; do the story tests pass.
 - Simple beats complete: one primary action per screen, advanced options collapsed, plain words (no "fanIndex", "heatmap cells" in primary UI; put numbers behind "why?").
+- Vendor-neutral UI: never name Qloo, Claude/Anthropic or the underlying tech in visible UI; say "Tourbo", "fan data", "your AI assistant". Keep the numbers (labelled "fan data") behind "why?". Vendor and client names only on `/connect` (setup) and in README/Devpost.
 - Every error: one plain sentence with what to do next, plus retry where sensible. Never a stack trace or blank page.
 
 ## Code layout (npm workspaces)
@@ -19,24 +20,31 @@ Tour manager for small acts: Qloo finds the fans, the Tourbo MCP server turns th
 - shadcn components: `npx shadcn@latest add <name>` (run in `apps/web`) → `apps/web/app/components/ui/`. Import via `~/components/ui/...`.
 
 ## Commands (repo root)
-- `npm run dev` — starts Postgres (docker compose) + dev server on http://localhost:3000
+- `npm run dev` — dev server on http://localhost:3000 (no Docker; see Database)
 - `npm run build` / `npm start` — production build / serve
 - `npm run typecheck`
-- `npm run test:stories` — story tests (live Qloo, no LLM); `STORY_LLM=1 npm run test:stories` adds full Claude runs
+- `npm run test:stories` — all story tests (live Qloo, no LLM); `STORY_LLM=1 npm run test:stories` adds full Claude runs. One file: `node --env-file-if-exists=.env --test tests/stories/<file>` (the npm script always runs every file)
 - `npm run mcp` — Tourbo MCP server on stdio (Claude Code picks it up from `.mcp.json`)
 - `npm run test -w @tourbo/mcp` — MCP smoke test
 - `npm run qloo:ping` / `qloo:probe` (raw output in /tmp only) / `qloo:prewarm`
+- `npm run examples:export` — DB → static landing bundle (`apps/web/public/landing/`); run before `build`/Docker. `npm run landing:load` — load check of the prerendered `/`
 - `npm run plan:demo -- "<artist>" [na|eu|in] [shows] [kind] [peers]` — deterministic engine, plan JSON
 - `npm run agent:demo -- "<artist>" [na|eu|in] [shows] [kind] [peers] [promo]` — full agent run (needs `ANTHROPIC_API_KEY`)
 - Scripts run with Node's built-in TS support: relative imports need `.ts` extensions; erasable syntax only (no enums/parameter properties)
 
-## Docker
-- `compose.yaml` holds every service: `postgres` (127.0.0.1:5433, user/pass/db `tourbo`) and `web` (profile `app`: `docker compose --profile app up -d --build web`). Add new services there, not as ad-hoc containers.
-- `DATABASE_URL` defaults to that Postgres; schema auto-applies on first use.
+## Database
+- `DATABASE_URL` set: that Postgres. Unset: `db()` starts embedded Postgres 17 (`embedded-postgres`, `packages/core/src/db/embedded.server.ts`) on 127.0.0.1:5434, data in `.data/postgres` (git/docker-ignored); the first process to need it stops it on exit, others reuse it. Schema auto-applies on first use.
+- `npm run db:import -- [source-url] [--replace]` — copy another Postgres (default the old Docker one on :5433) into the active DB; source is read-only.
+- No npm script calls Docker.
+
+## Docker (optional)
+- `compose.yaml` holds every service: `postgres` (127.0.0.1:5433, user/pass/db `tourbo`) and `web` (profile `app`: `docker compose --profile app up -d --build web`). Add new services there, not as ad-hoc containers. Use the compose Postgres from npm scripts via `DATABASE_URL=postgres://tourbo:tourbo@localhost:5433/tourbo`.
 
 ## Secrets
-- `.env` (git- and docker-ignored) loaded via `node --env-file-if-exists`. Template: `.env.example`. Never commit keys or Qloo responses. Never put a Qloo key or MCP token in a published MCP config.
+- `.env` (git- and docker-ignored) loaded via `node --env-file-if-exists`. Template: `.env.example`. Never commit keys or raw Qloo responses (the processed landing bundle `apps/web/public/landing/` from `examples:export` is committed; it is what the deployed home page serves). Never put a Qloo key or MCP token in a published MCP config.
 
 ## Rules
 - Speed over ceremony: no premature abstraction.
 - Check current official docs for the pinned version before using any library API.
+- Production: no fan-data or tool-result cache (`CACHE_TIERS` unset + `NODE_ENV=production` = none); the live app and MCP always call fresh. Only the landing page is pre-baked (static bundle).
+- No auth: the hackathon organisers rejected adding authentication (PLAN Q4 dropped).

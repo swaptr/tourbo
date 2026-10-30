@@ -1,3 +1,4 @@
+import { discipline, ROOM_CAPACITY } from "../disciplines/index.ts";
 import type { PerformerKind, Region } from "../shared/types.ts";
 
 // Show economics. Qloo has no capacity, price or sales data, so every number here is an
@@ -5,12 +6,16 @@ import type { PerformerKind, Region } from "../shared/types.ts";
 // the city's relative Qloo fan demand, plus regional cost defaults. Formulas are returned
 // with the result so the act can see (and override) every assumption.
 
-export type Deal = "door_split" | "guarantee" | "versus" | "bar_deal";
+export type Deal = "door_split" | "guarantee" | "versus" | "bar_deal" | "exhibition" | "commission";
 export const DEALS: Deal[] = ["door_split", "guarantee", "versus", "bar_deal"];
+// exhibition: visitors over the whole stay pay entry (often 0), split 50/50 with the space; the act
+// earns mostly from sales per visitor (perHeadSales, already net of the space's commission).
+// commission: a flat fee (mural, live painting) with no draw model.
+const EXHIBITION_ENTRY_SHARE = 0.5;
 
 type RegionDefaults = {
   currency: string;
-  ticket: Record<PerformerKind, number>; // reference ticket price
+  ticket: { musician: number; comedian: number }; // reference ticket price; other disciplines scale musician by ticketFactor
   nutPerCap: number; // venue running cost per capacity seat, taken off the door
   perKm: number; // ground travel per km for the party
   flight: number; // per person, legs > 1200 km
@@ -24,12 +29,22 @@ export const REGION_DEFAULTS: Record<Region, RegionDefaults> = {
   na: { currency: "USD", ticket: { musician: 25, comedian: 30 }, nutPerCap: 6, perKm: 0.6, flight: 250, lodging: 120, perDiem: 40, openerFee: 150, barPerHead: 3 },
   eu: { currency: "EUR", ticket: { musician: 22, comedian: 25 }, nutPerCap: 5, perKm: 0.5, flight: 150, lodging: 100, perDiem: 35, openerFee: 120, barPerHead: 2.5 },
   in: { currency: "INR", ticket: { musician: 999, comedian: 799 }, nutPerCap: 150, perKm: 20, flight: 6000, lodging: 3500, perDiem: 1200, openerFee: 5000, barPerHead: 120 },
+  // Rough regional defaults for world cities (USD unless the region has one dominant currency).
+  latam: { currency: "USD", ticket: { musician: 18, comedian: 15 }, nutPerCap: 3, perKm: 0.4, flight: 180, lodging: 60, perDiem: 25, openerFee: 80, barPerHead: 1.5 },
+  africa: { currency: "USD", ticket: { musician: 15, comedian: 12 }, nutPerCap: 2.5, perKm: 0.4, flight: 220, lodging: 60, perDiem: 25, openerFee: 70, barPerHead: 1.2 },
+  asia: { currency: "USD", ticket: { musician: 35, comedian: 30 }, nutPerCap: 6, perKm: 0.5, flight: 160, lodging: 90, perDiem: 35, openerFee: 150, barPerHead: 3 },
+  oceania: { currency: "AUD", ticket: { musician: 45, comedian: 40 }, nutPerCap: 9, perKm: 0.8, flight: 250, lodging: 160, perDiem: 60, openerFee: 250, barPerHead: 4 },
 };
 
 const ELASTICITY = 1.1; // demand falls ~1.1% per 1% price rise around the reference price
 const TICKET_FEES = 0.1;
-const SPLIT: Record<Deal, number> = { door_split: 0.7, guarantee: 0, versus: 0.8, bar_deal: 0 };
-const ROOM_DEFAULT_CAPACITY: Record<string, number> = { bar: 120, "comedy club": 200, club: 400, "music venue": 500, "hall / theatre": 1200 };
+const SPLIT: Record<Deal, number> = { door_split: 0.7, guarantee: 0, versus: 0.8, bar_deal: 0, exhibition: EXHIBITION_ENTRY_SHARE, commission: 0 };
+const ROOM_DEFAULT_CAPACITY: Record<string, number> = { ...ROOM_CAPACITY, bar: 120, "comedy club": 200, club: 400, "music venue": 500, "hall / theatre": 1200 };
+
+export function refPrice(region: Region, kind: PerformerKind) {
+  const t = REGION_DEFAULTS[region].ticket;
+  return kind === "musician" || kind === "comedian" ? t[kind] : round(t.musician * discipline(kind).ticketFactor);
+}
 const FREE_ENTRY_BOOST = 1.4; // free-entry bar shows draw more walk-ins
 
 export type Demand = {
@@ -104,7 +119,8 @@ export function costsFor(region: Region, c: Costs, promo = 0) {
 
 export function evaluate(region: Region, kind: PerformerKind, demand: Demand, s: Scenario, c: Costs): Outcome {
   const d = REGION_DEFAULTS[region];
-  const ref = d.ticket[kind];
+  const ref = refPrice(region, kind);
+  if (s.deal === "exhibition" || s.deal === "commission") return evaluateStay(region, kind, demand, s, c, ref);
   const promoLift = s.promo ? 1 + Math.min(0.35, (s.promo / Math.max(ref, 1)) / Math.max(demand.draw, 1) * 2) : 1;
   const wanted = s.deal === "bar_deal" ? demand.draw * FREE_ENTRY_BOOST : demand.draw * (s.price / ref) ** -ELASTICITY;
   const tickets = Math.max(0, Math.min(s.capacity, round(wanted * promoLift)));
@@ -118,8 +134,10 @@ export function evaluate(region: Region, kind: PerformerKind, demand: Demand, s:
     : s.deal === "versus" ? Math.max(s.guarantee ?? 0, doorShare)
     : s.deal === "bar_deal" ? tickets * d.barPerHead
     : doorShare;
+  // Merch, books, prints or workshop seats per attendee (0 for music and comedy).
+  const sales = tickets * ref * discipline(kind).perHeadSales;
   const { total, breakdown } = costsFor(region, c, s.promo);
-  const profit = round(artistTake + (s.sponsor ?? 0) - total);
+  const profit = round(artistTake + sales + (s.sponsor ?? 0) - total);
   // Lowest ticket price at which this show breaks even for the act on a door split.
   const breakEvenPrice = s.deal === "door_split" || s.deal === "versus" ? breakEven(demand, ref, s, c, region, total - (s.sponsor ?? 0)) : undefined;
   return {
@@ -127,12 +145,53 @@ export function evaluate(region: Region, kind: PerformerKind, demand: Demand, s:
     tickets,
     sellThrough: s.capacity ? Math.round((tickets / s.capacity) * 100) / 100 : 0,
     gross: round(gross),
-    artistTake: round(artistTake),
+    artistTake: round(artistTake + sales),
     costs: total,
     profit,
     // Bar deal: the venue keeps ~60% of bar spend (≈5× the artist's per-head share) and runs lighter.
     venueProfit: round(s.deal === "bar_deal" ? tickets * d.barPerHead * 5 * 0.6 - artistTake - nut * 0.5 : net - nut - artistTake),
     breakEvenPrice,
+    costBreakdown: breakdown,
+  };
+}
+
+// Multi-day stays: visitors accumulate over the stay (√days, a show's word of mouth fades), the
+// space holds capacity × days, lodging and per diem run for every day.
+function evaluateStay(region: Region, kind: PerformerKind, demand: Demand, s: Scenario, c: Costs, ref: number): Outcome {
+  const d = REGION_DEFAULTS[region];
+  const prof = discipline(kind);
+  const days = Math.max(1, prof.stayDays);
+  // A commission takes ~3 days on site, not the whole stay; its fee follows the region's music price, not entry.
+  const { total, breakdown } = costsFor(region, { ...c, nights: Math.max(c.nights, s.deal === "commission" ? 3 : days) }, s.promo);
+  if (s.deal === "commission") {
+    const fee = round(refPrice(region, "musician") * (prof.commission ?? 0));
+    return {
+      scenario: { ...s, price: 0, guarantee: fee },
+      tickets: 0,
+      sellThrough: 1, // booked work; no draw involved
+      gross: 0,
+      artistTake: fee,
+      costs: total,
+      profit: round(fee + (s.sponsor ?? 0) - total),
+      venueProfit: 0,
+      costBreakdown: breakdown,
+    };
+  }
+  const promoLift = s.promo ? 1 + Math.min(0.35, (s.promo / Math.max(ref, 1)) / Math.max(demand.draw, 1) * 2) : 1;
+  const perDay = s.price > 0 ? demand.draw * (s.price / ref) ** -ELASTICITY : demand.draw * FREE_ENTRY_BOOST;
+  const visitors = Math.max(0, Math.min(s.capacity * days, round(perDay * Math.sqrt(days) * promoLift)));
+  const gross = visitors * s.price;
+  const entry = gross * (1 - TICKET_FEES) * EXHIBITION_ENTRY_SHARE;
+  const sales = visitors * ref * prof.perHeadSales;
+  return {
+    scenario: s,
+    tickets: visitors,
+    sellThrough: Math.round((visitors / Math.max(1, s.capacity * days)) * 100) / 100, // share of the space's visitor capacity over the stay
+    gross: round(gross),
+    artistTake: round(entry + sales),
+    costs: total,
+    profit: round(entry + sales + (s.sponsor ?? 0) - total),
+    venueProfit: round(gross * (1 - TICKET_FEES) - entry + sales * 0.7), // the space's commission on sales
     costBreakdown: breakdown,
   };
 }
@@ -172,13 +231,15 @@ export function optimise(opts: {
   minGuarantee?: number;
 }): Recommendation {
   const d = REGION_DEFAULTS[opts.region];
-  const ref = d.ticket[opts.kind];
+  const ref = refPrice(opts.region, opts.kind);
   const prices = opts.price ? [opts.price] : [0.6, 0.8, 1, 1.2, 1.5, 1.8].map((f) => round(ref * f));
   const rooms = opts.rooms.length ? opts.rooms : [{ name: "default room", capacity: ROOM_DEFAULT_CAPACITY["music venue"] }];
   const outcomes: (Outcome & { room: string })[] = [];
   for (const room of rooms) {
-    for (const deal of DEALS) {
-      for (const price of deal === "bar_deal" ? [0] : prices) {
+    for (const deal of discipline(opts.kind).deals ?? DEALS) {
+      if (deal === "commission" && room !== rooms[0]) continue; // one fee per city, not per room
+      const dealPrices = deal === "bar_deal" || deal === "commission" ? [0] : deal === "exhibition" ? [0, round(ref * 0.5), ref] : prices;
+      for (const price of dealPrices) {
         const guarantee = deal === "guarantee" || deal === "versus" ? round(Math.max(opts.minGuarantee ?? 0, demand0(opts.demand, room.capacity) * ref * 0.35)) : undefined;
         const o = evaluate(opts.region, opts.kind, opts.demand, { deal, price, capacity: room.capacity, guarantee, promo: opts.promo, sponsor: opts.sponsor }, opts.costs);
         // A venue won't sign a guarantee it expects to lose money on.
@@ -191,13 +252,16 @@ export function optimise(opts: {
   outcomes.sort((a, b) => score(b) - score(a));
   const best = outcomes[0];
   const verdict: Verdict =
-    best.profit >= 0 && best.sellThrough >= 0.6 ? "headline"
+    best.profit >= 0 && (best.sellThrough >= 0.6 || best.scenario.deal === "exhibition" || best.scenario.deal === "commission") ? "headline"
     : best.profit >= 0 ? "co-headline"
     : opts.demand.relDemand >= 0.5 ? "support slot"
     : "skip";
   const fmt = (n: number) => `${d.currency} ${n.toLocaleString("en-US")}`;
+  const days = discipline(opts.kind).stayDays;
   const why =
-    verdict === "headline" ? `${best.tickets} tickets (${Math.round(best.sellThrough * 100)}% of ${best.scenario.capacity}) on a ${best.scenario.deal.replace("_", " ")} nets ${fmt(best.profit)}.`
+    best.scenario.deal === "commission" ? `A commissioned piece (mural or live painting) pays ${fmt(best.artistTake)} flat and nets ${fmt(best.profit)} after 3 days' costs.`
+    : best.scenario.deal === "exhibition" && best.profit >= 0 ? `~${best.tickets} visitors over ${days} days (${best.scenario.price ? `${fmt(best.scenario.price)} entry` : "free entry"}); sales per visitor net ${fmt(best.profit)}.`
+    : verdict === "headline" ? `${best.tickets} tickets (${Math.round(best.sellThrough * 100)}% of ${best.scenario.capacity}) on a ${best.scenario.deal.replace("_", " ")} nets ${fmt(best.profit)}.`
     : verdict === "co-headline" ? `Profitable (${fmt(best.profit)}) but only ${Math.round(best.sellThrough * 100)}% full; share the bill to fill the room.`
     : verdict === "support slot" ? `Best case loses ${fmt(-best.profit)}; demand ×${opts.demand.relDemand} is real, so open for a bigger act here instead.`
     : `Best case loses ${fmt(-best.profit)} on weak demand (×${opts.demand.relDemand}); skip or play online.`;

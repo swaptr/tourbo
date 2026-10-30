@@ -23,6 +23,11 @@ test("Dev: the project .mcp.json starts Tourbo and exposes its tools", async () 
   const { tools } = await client.listTools();
   const names = tools.map((t) => t.name);
   for (const n of ["tourbo_resolve_act", "tourbo_score_cities", "tourbo_show_economics", "tourbo_assess_offer", "tourbo_plan_tour"]) assert.ok(names.includes(n), n);
+  // Project tools write; everything else only reads.
+  for (const n of ["tourbo_project_create", "tourbo_project_add", "tourbo_project_update"]) assert.equal(tools.find((t) => t.name === n)?.annotations?.readOnlyHint, false, n);
+  for (const n of ["tourbo_project_get", "tourbo_project_list", "tourbo_disciplines", "tourbo_score_cities"]) assert.equal(tools.find((t) => t.name === n)?.annotations?.readOnlyHint, true, n);
+  const { resources } = await client.listResources();
+  assert.ok(resources.some((r) => r.uri === "tourbo://disciplines"));
   const { prompts } = await client.listPrompts();
   assert.ok(prompts.some((p) => p.name === "plan_tour"));
   await client.close();

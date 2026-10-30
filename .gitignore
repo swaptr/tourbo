@@ -15,3 +15,7 @@ node_modules/
 build/
 .react-router/
 *.tsbuildinfo
+
+
+# local embedded Postgres (db/embedded.server.ts)
+/.data/

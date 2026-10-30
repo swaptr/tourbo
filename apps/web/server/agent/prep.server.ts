@@ -1,4 +1,5 @@
 import Anthropic from "@anthropic-ai/sdk";
+import { discipline } from "@tourbo/core/disciplines/index.ts";
 import { zodOutputFormat } from "@anthropic-ai/sdk/helpers/zod";
 import { z } from "zod";
 
@@ -9,6 +10,7 @@ import type { CityPlan, Plan } from "@tourbo/core/shared/types.ts";
 import { connectMcp } from "../mcp.server.ts";
 import { WORKER_MODEL } from "./models.ts";
 import { getRun } from "./runs.server.ts";
+import type { Rehearsal } from "./rehearsal.server.ts";
 import { recordUsage } from "./usage.ts";
 
 // Show prep for one stop: brief (MCP) → draft → grounding critic → revise, plus a Qloo-off draft
@@ -43,10 +45,9 @@ export type ShowPrep = {
   generic?: Draft;
   steps: PrepStep[];
   createdAt: string;
+  rehearsal?: Rehearsal; // set by rehearse(); a rewrite clears it
 };
 
-const MUSIC = `You prepare one night of a touring musician's show. Sections: opening (first words on stage), setlist (where to place songs, a cover or nod to a local act, encore idea), banter (between-song lines), crowd (a call-and-response or moment with the room), staging (room setup: stage, sound, merch table, door time, sized to the venue and expected crowd), sponsor (a concrete co-promo ask to one sponsor candidate), avoid (what not to do or say here).`;
-const COMEDY = `You prepare one night of a touring stand-up comedian's show. Sections: opening (first 30 seconds, a local hook), material (premises or angles for new local bits, not finished jokes), crowd (crowd-work topics likely to land with this audience), banter (tag lines between bits), staging (room setup: mic, lights, seating, door time, opener slot length, sized to the venue and expected crowd), sponsor (a concrete co-promo ask to one sponsor candidate), avoid (topics likely to fall flat or offend here).`;
 const RULES = `Use ONLY the Qloo city brief you are given for local references: what the act's fans love (fanTaste), what the city loves (cityCulture), the local scene (localArtists), spots the act's fans go to (localSpots), city brands the fans rank highest (sponsors) and concepts the fans over-index on (fanTags). Every non-staging/avoid item must list in refs the exact names it uses, copied from the brief (the act, city, venue and opener from the show are allowed too). Never use a local name, place, team, show or brand that is not in the brief, including in avoid items. Only cite a ref you actually name in the text; don't attach refs for decoration. Write plainly, specific to this city and room; no generic filler.`;
 
 const GENERIC = `Use your own general knowledge of the city; no data is provided. List any names you use in refs.`;
@@ -79,8 +80,8 @@ export function critique(draft: Draft, brief: CityBrief, planNames: string[] = [
   const issues: string[] = [];
   draft.items.forEach((item, i) => {
     const bad = item.refs.filter((r) => !known.has(normalizeRef(r)));
-    if (bad.length) issues.push(`item ${i + 1} (${item.section}) cites ${bad.map((b) => `"${b}"`).join(", ")}, which is not in the Qloo brief`);
-    if (!item.refs.length && !UNGROUNDED_OK.has(item.section)) issues.push(`item ${i + 1} (${item.section}) has no Qloo reference`);
+    if (bad.length) issues.push(`item ${i + 1} (${item.section}) cites ${bad.map((b) => `"${b}"`).join(", ")}, which is not in the city brief`);
+    if (!item.refs.length && !UNGROUNDED_OK.has(item.section)) issues.push(`item ${i + 1} (${item.section}) has no fan-data reference`);
     const text = normalizeRef(item.text);
     const unused = item.refs.filter((r) => known.has(normalizeRef(r)) && !facts.has(normalizeRef(r)) && !text.includes(normalizeRef(r)));
     if (unused.length) issues.push(`item ${i + 1} (${item.section}) cites ${unused.map((u) => `"${u}"`).join(", ")} without using it in the text`);
@@ -129,16 +130,17 @@ export async function prepareShow(runId: string, stopIndex: number, opts: { cont
     await mcp.close().catch(() => {});
   }
   const total = Object.values(briefPayload(brief)).reduce((n, list) => n + list.length, 0);
-  steps.push({ kind: "mcp", message: `tourbo_city_brief: ${total} Qloo references for ${stop.city.name}` });
+  steps.push({ kind: "mcp", message: `${total} references for ${stop.city.name}` });
 
-  const system = `${plan.artist.kind === "comedian" ? COMEDY : MUSIC}\n${RULES}`;
+  const prepPrompt = discipline(plan.artist.kind).prep;
+  const system = `${prepPrompt}\n${RULES}`;
   const show = showPayload(plan, stop);
   const [draft, generic] = await Promise.all([
     draftPrep(system, { show, brief: briefPayload(brief) }),
-    opts.contrast === false ? undefined : draftPrep(`${plan.artist.kind === "comedian" ? COMEDY : MUSIC}\n${GENERIC}`, { show }).catch(() => undefined),
+    opts.contrast === false ? undefined : draftPrep(`${prepPrompt}\n${GENERIC}`, { show }).catch(() => undefined),
   ]);
   steps.push({ kind: "draft", message: `drafted ${draft.items.length} items` });
-  if (generic) steps.push({ kind: "contrast", message: `Qloo-off draft: ${generic.items.length} items from model knowledge only` });
+  if (generic) steps.push({ kind: "contrast", message: `${generic.items.length} items from general knowledge only` });
 
   const planNames = [plan.artist.name, stop.city.name, stop.venue?.name, stop.opener?.name].filter((n): n is string => !!n);
   const issues = critique(draft, brief, planNames);

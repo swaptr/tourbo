@@ -4,6 +4,7 @@ import { z } from "zod";
 
 import type { Emit } from "@tourbo/core/engine/trace.ts";
 import type { AngleFacts, Artist, Evidence, Opener, Reference, Venue } from "@tourbo/core/shared/types.ts";
+import { discipline, type Discipline } from "@tourbo/core/disciplines/index.ts";
 import { WORKER_MODEL } from "./models.ts";
 import { recordUsage } from "./usage.ts";
 
@@ -49,6 +50,20 @@ Write a short fit note and one or two lines of promo copy that use at least one 
 
 Every claim must be backed by an evidence item whose ref is copied exactly from the input (an item name, or a metric like "heatmap cells") and whose value quotes the Qloo number when there is one. Do not invent venues, references or numbers.`;
 
+// Other disciplines: same rules, rooms and support act from the registry (one prompt per discipline, still cacheable).
+const otherSystem = (d: Discipline) => `You plan one city of a ${d.noun} tour for a touring ${d.label.toLowerCase()}. You receive Qloo data only: space candidates (with Qloo popularity and affinity to the act's fans, and a space type), the act's fan taste, the city's culture, local spots, city brands the fans like, and a suggested ${d.support}.
+
+Pick the space and a backup:
+- ${d.rooms} List every exclusion with a short reason.
+- Prefer spaces whose size fits the requested range, then higher affinity.${d.stayDays > 1 ? ` The act stays about ${d.stayDays} days per city.` : ""}
+- Qloo has no capacity data. Estimate the chosen space's capacity from its name, type and description; it will be shown as an estimate.
+
+Write a short fit note and one or two lines of promo copy that use at least one local reference from the city culture or local spots.
+
+Every claim must be backed by an evidence item whose ref is copied exactly from the input (an item name, or a metric like "heatmap cells") and whose value quotes the Qloo number when there is one. Do not invent spaces, references or numbers.`;
+
+const systemFor = (kind: Artist["kind"]) => (kind === "comedian" ? COMEDY_SYSTEM : kind === "musician" ? SYSTEM : otherSystem(discipline(kind)));
+
 export type WorkerInput = {
   artist: Artist;
   sponsors?: Reference[];
@@ -81,7 +96,7 @@ export async function planCityWithWorker(input: WorkerInput, emit: Emit): Promis
       model: WORKER_MODEL,
       max_tokens: 8000,
       output_config: { effort: "low", format: zodOutputFormat(WorkerOutput) },
-      system: input.artist.kind === "comedian" ? COMEDY_SYSTEM : SYSTEM,
+      system: systemFor(input.artist.kind),
       messages: [{ role: "user", content: JSON.stringify(compact(input)) }],
     });
   // parse() throws when the output doesn't match the schema (e.g. truncated JSON); retry once,

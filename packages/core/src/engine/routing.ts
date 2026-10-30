@@ -22,6 +22,7 @@ export function routeTour(
   picks: CityScore[],
   startDate: string,
   home?: City,
+  stayDays = 1, // exhibitions and residencies stay several days per city
 ): Route {
   if (!picks.length) return { stops: [], legs: [], totalKm: 0 };
   const order = twoOpt(nearestNeighbour(picks, home), home);
@@ -34,7 +35,7 @@ export function routeTour(
       const prev = order[i - 1].city;
       const km = haversineKm(prev, city.city);
       legs.push({ from: prev.name, to: city.city.name, km: Math.round(km) });
-      day = addDays(day, travelDays(km) + (i % SHOWS_BEFORE_OFF === 0 ? 1 : 0));
+      day = addDays(day, stayDays > 1 ? stayDays - 1 + travelDays(km) : travelDays(km) + (i % SHOWS_BEFORE_OFF === 0 ? 1 : 0));
     }
     stops.push({ city, date: day.toISOString().slice(0, 10) });
   });

@@ -1,7 +1,7 @@
 import { betaZodTool } from "@anthropic-ai/sdk/helpers/beta/zod";
 import { z } from "zod";
 
-import { seedCities } from "@tourbo/core/engine/cities.ts";
+import { findCity } from "@tourbo/core/engine/cities.ts";
 import type { Recommendation } from "@tourbo/core/engine/economics.ts";
 import type { Emit } from "@tourbo/core/engine/trace.ts";
 import {
@@ -54,8 +54,7 @@ export function createContext(params: TourParams, emit: Emit, mcp: McpSession, p
   return { params, emit, mcp, pastShows, cities: new Map(), critiques: 0 };
 }
 
-const cityOf = (region: TourParams["region"], name: string): City | undefined =>
-  seedCities(region).find((c) => c.name.toLowerCase() === name.toLowerCase());
+const cityOf = (region: TourParams["region"], name: string): City | undefined => findCity(region, name);
 
 const num = (n?: number | null) => (typeof n === "number" ? n : undefined);
 const toVenue = (v: DetailVenue): Venue => ({
@@ -315,6 +314,7 @@ export function createTools(ctx: RunContext) {
           region: params.region,
           cities: input.cities,
           start_date: params.startDate,
+          kind,
           ...(home ? { home_base: home } : {}),
         });
         ctx.legs = route.legs;

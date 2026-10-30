@@ -7,6 +7,7 @@ import { valueFromExpressContext } from "~/context";
 import { mcpHttp } from "./mcp.server.ts";
 
 export const app = express();
+app.disable("x-powered-by");
 
 // Remote MCP endpoint (Streamable HTTP, bearer tokens): same tools the hosted agent uses.
 app.all("/mcp", mcpHttp);
@@ -21,3 +22,7 @@ app.use(
     },
   }),
 );
+
+// The build-time prerender (react-router.config.ts) loads build/server/index.js as a server build,
+// so this entry also exports the build itself next to `app`.
+export * from "virtual:react-router/server-build";

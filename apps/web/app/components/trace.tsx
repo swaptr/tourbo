@@ -1,20 +1,22 @@
 import { Brain, Database, LifeBuoy, ShieldCheck, Sparkles, Wrench, type LucideIcon } from "lucide-react";
+import { neutral } from "~/lib/neutral";
 import { useEffect, useRef } from "react";
 
 import { cn } from "~/lib/utils";
 import type { TraceEvent } from "@tourbo/core/shared/types.ts";
 
 const KINDS: Record<TraceEvent["kind"], { icon: LucideIcon; label: string; className: string }> = {
-  thinking_summary: { icon: Brain, label: "thinking", className: "text-violet-600 dark:text-violet-400" },
-  tool_call: { icon: Wrench, label: "tool", className: "text-sky-600 dark:text-sky-400" },
-  qloo_call: { icon: Database, label: "qloo", className: "text-emerald-600 dark:text-emerald-400" },
-  repair: { icon: LifeBuoy, label: "repair", className: "text-amber-600 dark:text-amber-400" },
-  critic: { icon: ShieldCheck, label: "critic", className: "text-rose-600 dark:text-rose-400" },
+  thinking_summary: { icon: Brain, label: "thinking", className: "text-chart-5" },
+  tool_call: { icon: Wrench, label: "tool", className: "text-info" },
+  qloo_call: { icon: Database, label: "fan data", className: "text-success" },
+  repair: { icon: LifeBuoy, label: "repair", className: "text-warning" },
+  critic: { icon: ShieldCheck, label: "critic", className: "text-primary " },
   decision: { icon: Sparkles, label: "decision", className: "text-foreground" },
 };
 
-// Qloo numbers worth surfacing as chips.
+// Fan-data numbers worth surfacing as chips.
 const CHIP_KEYS = ["cells", "results", "popularity", "cacheRead"] as const;
+const CHIP_LABEL: Record<(typeof CHIP_KEYS)[number], string> = { cells: "fan areas", results: "results", popularity: "popularity", cacheRead: "cached" };
 
 export function Trace({ events, live }: { events: TraceEvent[]; live: boolean }) {
   const end = useRef<HTMLDivElement>(null);
@@ -37,9 +39,9 @@ function TraceRow({ event }: { event: TraceEvent }) {
   const Icon = kind.icon;
   const data = event.data ?? {};
   const chips = CHIP_KEYS.flatMap((key) =>
-    typeof data[key] === "number" ? [`${key} ${formatNumber(data[key] as number)}`] : [],
+    typeof data[key] === "number" ? [`${CHIP_LABEL[key]} ${formatNumber(data[key] as number)}`] : [],
   );
-  if (typeof data.step === "string") chips.push(data.step);
+  if (typeof data.step === "string") chips.push(neutral(data.step));
   const issues = Array.isArray(data.issues) ? (data.issues as { city?: string; detail: string }[]) : [];
   const input = event.kind === "tool_call" ? (data.input as Record<string, unknown> | undefined) : undefined;
 
@@ -51,13 +53,13 @@ function TraceRow({ event }: { event: TraceEvent }) {
           className={cn(
             "[overflow-wrap:anywhere]",
             event.kind === "thinking_summary" && "line-clamp-4 text-muted-foreground italic",
-            event.kind === "tool_call" && "font-mono text-xs",
+            event.kind === "tool_call" && "text-xs",
           )}
-          title={event.kind === "thinking_summary" ? event.message : undefined}
+          title={event.kind === "thinking_summary" ? neutral(event.message) : undefined}
         >
-          {event.message}
+          {neutral(event.message)}
           {input && Object.keys(input).length > 0 && (
-            <span className="text-muted-foreground"> {JSON.stringify(input)}</span>
+            <span className="text-muted-foreground"> {neutral(JSON.stringify(input))}</span>
           )}
         </p>
         {chips.length > 0 && (
@@ -72,7 +74,7 @@ function TraceRow({ event }: { event: TraceEvent }) {
             {issues.map((issue, i) => (
               <li key={i}>
                 {issue.city && <span className="font-medium text-foreground">{issue.city}: </span>}
-                {issue.detail}
+                {neutral(issue.detail)}
               </li>
             ))}
           </ul>
@@ -86,7 +88,7 @@ export function Chip({ children, className }: { children: React.ReactNode; class
   return (
     <span
       className={cn(
-        "inline-flex items-center rounded-md bg-emerald-50 px-1.5 py-0.5 font-mono text-[11px] text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300",
+        "inline-flex items-center rounded-md bg-muted px-1.5 py-0.5 text-[11px] text-foreground num",
         className,
       )}
     >

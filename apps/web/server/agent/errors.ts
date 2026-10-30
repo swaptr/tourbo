@@ -1,5 +1,9 @@
+// Thrown with a message that is already one plain sentence for the user.
+export class PlainError extends Error {}
+
 // One plain sentence per failure, with what to do next. Raw messages go to logs/trace data only.
 export function friendlyError(error: unknown): string {
+  if (error instanceof PlainError) return error.message;
   const m = error instanceof Error ? error.message : String(error);
   if (/anthropic|api[_ ]?key|authentication|401/i.test(m) && !/qloo/i.test(m)) return "The AI planner isn't set up on this server (Anthropic key missing or invalid).";
   if (/artist not found|not in qloo|no .* named/i.test(m)) return "We couldn't find that act on Qloo. Add one to three acts you sound like and try again.";

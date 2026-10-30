@@ -53,10 +53,10 @@ export async function action({ params, request }: Route.ActionArgs) {
 }
 
 const STATUS_STYLE: Record<Pace["status"], string> = {
-  ahead: "bg-emerald-100 text-emerald-900",
-  "on track": "bg-sky-100 text-sky-900",
-  behind: "bg-amber-100 text-amber-900",
-  "well behind": "bg-red-100 text-red-900",
+  ahead: "bg-success/15 text-success",
+  "on track": "bg-info/15 text-info",
+  behind: "bg-warning/15 text-warning",
+  "well behind": "bg-destructive/15 text-destructive",
 };
 
 export default function Live({ loaderData }: Route.ComponentProps) {
@@ -64,14 +64,14 @@ export default function Live({ loaderData }: Route.ComponentProps) {
   return (
     <main className="container mx-auto space-y-6 px-4 py-8">
       <div>
-        <h1 className="font-heading text-2xl font-semibold tracking-tight">{artistName}: after booking</h1>
+        <h1 className="font-heading text-2xl tracking-tight">{artistName}: after booking</h1>
         <p className="mt-1 max-w-3xl text-sm text-muted-foreground">
           Tell Tourbo how ticket sales are going and it says whether each show is on track and what to do next. After a show,
           log how many came: your next plan uses it instead of guessing your draw.
         </p>
       </div>
       <RunTabs runId={id} />
-      {!stops.length && <p className="text-sm text-muted-foreground">The plan isn't ready yet.</p>}
+      {!stops.length && <p className="text-sm text-muted-foreground">The plan isn't ready yet. Check back here once it's done.</p>}
       <div className="grid gap-4 md:grid-cols-2">
         {stops.map((s, i) =>
           s.skip ? null : (
@@ -159,7 +159,7 @@ function StopLive({
               Save result
             </Button>
           </log.Form>
-          {log.data && "saved" in log.data && <p className="mt-1.5 text-xs text-emerald-700">Saved. Your next plan calibrates your draw from it.</p>}
+          {log.data && "saved" in log.data && <p className="mt-1.5 text-xs text-success">Saved. Your next plan calibrates your draw from it.</p>}
           {log.data && "error" in log.data && <p className="mt-1.5 text-xs text-destructive">{log.data.error}</p>}
         </details>
       </CardContent>

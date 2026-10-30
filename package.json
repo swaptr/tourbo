@@ -7,7 +7,6 @@
     "apps/*"
   ],
   "scripts": {
-    "predev": "docker compose up -d --wait postgres >/dev/null 2>&1 || echo 'Postgres not started (is Docker running?). Plans need it: docker compose up -d'",
     "dev": "npm run dev -w @tourbo/web",
     "build": "npm run build -w @tourbo/web",
     "start": "npm run start -w @tourbo/web",
@@ -18,10 +17,21 @@
     "plan:demo": "npm run plan:demo -w @tourbo/core --",
     "agent:demo": "npm run agent:demo -w @tourbo/web --",
     "mcp": "npm run start -w @tourbo/mcp",
-    "test:stories": "node --env-file-if-exists=.env --test --test-concurrency=1 tests/stories/*.test.ts"
+    "test:stories": "node --env-file-if-exists=.env --test --test-concurrency=1 tests/stories/*.test.ts",
+    "perf:home": "node tests/perf/home.ts",
+    "landing:load": "npm run landing:load -w @tourbo/web --",
+    "backtest": "npm run backtest -w @tourbo/web",
+    "cities:seed": "npm run cities:seed -w @tourbo/core --",
+    "db:import": "npm run db:import -w @tourbo/core --",
+    "examples:prewarm": "npm run examples:prewarm -w @tourbo/web --",
+    "examples:export": "npm run examples:export -w @tourbo/web --"
   },
   "devDependencies": {
-    "typescript": "^5.9.3",
-    "@types/node": "^22"
+    "@types/node": "^22",
+    "playwright-core": "^1.64.1",
+    "typescript": "^5.9.3"
+  },
+  "allowScripts": {
+    "@embedded-postgres/linux-x64@17.10.0-beta.17": true
   }
 }
