@@ -21,6 +21,7 @@
     "perf:home": "node tests/perf/home.ts",
     "landing:load": "npm run landing:load -w @tourbo/web --",
     "backtest": "npm run backtest -w @tourbo/web",
+    "db:apply": "npm run db:apply -w @tourbo/core",
     "cities:seed": "npm run cities:seed -w @tourbo/core --",
     "db:import": "npm run db:import -w @tourbo/core --",
     "kinds:set": "npm run kinds:set -w @tourbo/core --",

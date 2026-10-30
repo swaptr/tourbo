@@ -37,6 +37,7 @@ Recommendation engine for touring artists, grounded in Qloo taste data: per city
 
 ## Database
 - `DATABASE_URL` set: that Postgres. Unset: `db()` starts embedded Postgres 17 (`embedded-postgres`, `packages/core/src/db/embedded.server.ts`) on 127.0.0.1:5434, data in `.data/postgres` (git/docker-ignored); the first process to need it stops it on exit, others reuse it. Schema auto-applies on first use.
+- `npm run db:apply` — apply the schema (tables, row level security) to `DATABASE_URL` and exit; CI runs it before each deploy
 - `npm run db:import -- [source-url] [--replace]` — copy another Postgres (default the old Docker one on :5433) into the active DB; source is read-only.
 - No npm script calls Docker.
 
