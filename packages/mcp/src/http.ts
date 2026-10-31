@@ -15,15 +15,15 @@ export type McpHttpOptions = {
   noAuth?: boolean;
   rateLimit?: RateLimit; // tool calls per token and per IP; unset = unlimited
   sharedTokens?: string[]; // published tokens: limited per IP only, so one visitor can't lock out the rest; no project tools, no edits to website-owned plans
-  sharedDailyCalls?: number; // tool calls per day across all shared tokens (default 5000)
+  sharedDailyCalls?: number; // tool calls per day across all shared tokens (default 20000)
   trustProxy?: boolean; // client IP from X-Forwarded-For (behind a proxy / load balancer)
   allowedOrigins?: string[]; // browser origins allowed to call; none by default
   allowedHosts?: string[]; // Host header allowlist (DNS-rebinding guard); unset = any host
   toolsets?: Toolset[];
 };
 
-export const HOSTED_RATE_LIMIT: RateLimit = { calls: 60, windowMs: 10 * 60_000 };
-const SHARED_DAILY_CALLS = 5000;
+export const HOSTED_RATE_LIMIT: RateLimit = { calls: 200, windowMs: 10 * 60_000 };
+const SHARED_DAILY_CALLS = 20_000;
 const MAX_BODY = 4 * 1024 * 1024;
 
 // "60/10m" | "60" (per 10 minutes) → RateLimit; anything else → undefined.
@@ -56,7 +56,8 @@ function send(res: ServerResponse, status: number, error: string, headers: Recor
 
 // Client IP behind one trusted proxy: the right-most X-Forwarded-For entry (the one the proxy
 // appended); earlier entries are whatever the client sent.
-export const clientIp = (xff: string | string[] | null | undefined) => String(xff ?? "").split(",").map((s) => s.trim()).filter(Boolean).at(-1) ?? "";
+export const clientIp = (xff: string | string[] | null | undefined, cf?: string | string[] | null) =>
+  String(cf ?? "").trim() || (String(xff ?? "").split(",").map((s) => s.trim()).filter(Boolean).at(-1) ?? "");
 
 // Fixed-window counters; old windows are dropped as they are touched or when the map grows.
 // Returns ms to wait (0 = allowed and counted).
@@ -136,7 +137,7 @@ export function createMcpHttpHandler(opts: McpHttpOptions) {
 
     const isShared = !!token && tokenMatches(token, opts.sharedTokens ?? []);
     if (calls && requests) {
-      const fwd = opts.trustProxy ? clientIp(req.headers["x-forwarded-for"]) : "";
+      const fwd = opts.trustProxy ? clientIp(req.headers["x-forwarded-for"], req.headers["cf-connecting-ip"]) : "";
       const perToken = token && !isShared;
       const keys = [`ip:${fwd || req.socket.remoteAddress || "?"}`, ...(perToken ? [`token:${token}`] : [])];
       const wait = Math.max(requests(keys, 1), calls(keys, countCalls(parsed)));

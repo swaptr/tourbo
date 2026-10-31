@@ -196,8 +196,8 @@ export default function Connect({ loaderData }: Route.ComponentProps) {
                   <TabsContent value="ours" className="max-w-prose rounded-md text-muted-foreground outline-none focus-visible:ring-3 focus-visible:ring-ring/50">
                     Nothing to install: your assistant talks to this Tourbo.{" "}
                     {publicToken
-                      ? "The setup below already has the shared demo token in it. Each connection gets 60 tool calls every 10 minutes."
-                      : "You need a token: ask whoever runs this Tourbo for one. Each token gets 60 tool calls every 10 minutes."}
+                      ? "The setup below already has the shared demo token in it. Each connection gets 200 tool calls every 10 minutes."
+                      : "You need a token: ask whoever runs this Tourbo for one. Each token gets 200 tool calls every 10 minutes."}
                   </TabsContent>
                   <TabsContent value="own" className="grid gap-3 rounded-md outline-none focus-visible:ring-3 focus-visible:ring-ring/50">
                     <p className="max-w-prose text-muted-foreground">{OWN_NOTE}</p>

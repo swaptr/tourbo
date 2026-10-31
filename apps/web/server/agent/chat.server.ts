@@ -24,7 +24,7 @@ import { recordUsage } from "./usage.ts";
 // run_steps ("chat", "history"); writes are owner-only (api.chat.ts). Token care: the cheap model,
 // low effort, cached system prompt + tools, at most MAX_ITER model calls per question and a daily cap.
 
-export const CHAT_LIMITS = { perRunPerDay: 30, perIpPerDay: 15, maxIter: 6, history: 12, maxChars: 500, maxTokens: 4000 } as const;
+export const CHAT_LIMITS = { perRunPerDay: 60, perIpPerDay: 40, maxIter: 6, history: 12, maxChars: 500, maxTokens: 4000 } as const;
 const DEBUG = false; // log rejected replies and why (server log only)
 const MODEL = WORKER_MODEL; // claude-haiku-5-5 (models.ts: the user chose cost)
 

@@ -24,7 +24,7 @@ Options:
 Environment:
   QLOO_API_KEY       your Qloo API key (required for fan data; tools still list without it)
   MCP_TOKENS         HTTP: comma-separated bearer tokens; clients send Authorization: Bearer <token>
-  MCP_RATE_LIMIT     HTTP: tool calls per token and per IP, e.g. 60/10m (default 60/10m; "off" = none)
+  MCP_RATE_LIMIT     HTTP: tool calls per token and per IP, e.g. 200/10m (default 200/10m; "off" = none)
   MCP_ALLOWED_ORIGINS  HTTP: comma-separated browser origins allowed to call (default none)
   MCP_TRUST_PROXY    HTTP: 1 = take the client IP from X-Forwarded-For
   DATABASE_URL       Postgres for the tourbo_project_* tools (optional)

@@ -77,7 +77,7 @@ From the Tourbo repo: `docker compose --profile mcp up -d --build mcp` (reads `Q
 | `--version`, `--help` | |
 | `QLOO_API_KEY` | your key; without it tools still list and each call says to set it |
 | `MCP_TOKENS` | HTTP bearer tokens, comma-separated |
-| `MCP_RATE_LIMIT` | HTTP tool calls per token and per IP, e.g. `60/10m` (default), `off` |
+| `MCP_RATE_LIMIT` | HTTP tool calls per token and per IP, e.g. `200/10m` (default), `off` |
 | `MCP_ALLOWED_ORIGINS` | browser origins allowed to call (default none; CORS is off) |
 | `MCP_TRUST_PROXY=1` | client IP from `X-Forwarded-For` |
 | `DATABASE_URL` | Postgres for the `tourbo_project_*` tools; without it they say projects need it |
@@ -85,7 +85,7 @@ From the Tourbo repo: `docker compose --profile mcp up -d --build mcp` (reads `Q
 
 ## Hosted
 
-The Tourbo web app serves the same server at `https://<host>/mcp` with its own key, behind bearer tokens and a per-token and per-IP rate limit (60 tool calls per 10 minutes). The public deployment takes the shared demo token `tourbo-demo`:
+The Tourbo web app serves the same server at `https://<host>/mcp` with its own key, behind bearer tokens and a per-token and per-IP rate limit (200 tool calls per 10 minutes). The public deployment takes the shared demo token `tourbo-demo`:
 
 ```sh
 claude mcp add --transport http tourbo https://tourbo-30ec.onrender.com/mcp --header "Authorization: Bearer tourbo-demo"

@@ -98,7 +98,7 @@ Where it's headed:
 
 ## Use Tourbo from your AI assistant
 
-**Hosted (nothing to install, no Qloo key):** point your assistant at `https://tourbo-30ec.onrender.com/mcp` with the shared demo token `tourbo-demo`. Each IP gets 60 tool calls every 10 minutes.
+**Hosted (nothing to install, no Qloo key):** point your assistant at `https://tourbo-30ec.onrender.com/mcp` with the shared demo token `tourbo-demo`. Each IP gets 200 tool calls every 10 minutes.
 
 ```bash
 claude mcp add --transport http tourbo https://tourbo-30ec.onrender.com/mcp --header "Authorization: Bearer tourbo-demo"
