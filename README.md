@@ -98,18 +98,6 @@ Where it's headed:
 
 ## Use Tourbo from your AI assistant
 
-**Self-hosted, with your own Qloo key (Node 22+):**
-
-```bash
-claude mcp add --env QLOO_API_KEY=<your-key> --transport stdio tourbo -- npx -y @tourbo/mcp
-```
-
-Claude Desktop (`claude_desktop_config.json`), Cursor (`.cursor/mcp.json`) and most other clients:
-
-```json
-{ "mcpServers": { "tourbo": { "command": "npx", "args": ["-y", "@tourbo/mcp"], "env": { "QLOO_API_KEY": "<your-key>" } } } }
-```
-
 **Hosted (nothing to install, no Qloo key):** point your assistant at `https://tourbo-30ec.onrender.com/mcp` with the shared demo token `tourbo-demo`. Each IP gets 60 tool calls every 10 minutes.
 
 ```bash
@@ -120,6 +108,18 @@ Cursor (`.cursor/mcp.json`), Gemini CLI and other Streamable HTTP clients:
 
 ```json
 { "mcpServers": { "tourbo": { "url": "https://tourbo-30ec.onrender.com/mcp", "headers": { "Authorization": "Bearer tourbo-demo" } } } }
+```
+
+**Self-hosted, with your own Qloo key (Node 22+):**
+
+```bash
+claude mcp add --env QLOO_API_KEY=<your-key> --transport stdio tourbo -- npx -y @tourbo/mcp
+```
+
+Claude Desktop (`claude_desktop_config.json`), Cursor (`.cursor/mcp.json`) and most other clients:
+
+```json
+{ "mcpServers": { "tourbo": { "command": "npx", "args": ["-y", "@tourbo/mcp"], "env": { "QLOO_API_KEY": "<your-key>" } } } }
 ```
 
 Every client's setup is on [`/connect`](https://tourbo-30ec.onrender.com/connect). Never put your own Qloo key in a config you share. More options (HTTP mode, Docker, VS Code) are in [`packages/mcp/README.md`](packages/mcp/README.md).
@@ -150,7 +150,8 @@ npm run dev              # http://localhost:3000
 | `QLOO_API_KEY` | yes | |
 | `ANTHROPIC_API_KEY` | for the website | not needed for the MCP server |
 | `DATABASE_URL` | no | your own Postgres; unset = local one in `.data/postgres` |
-| `MCP_TOKENS` | no | comma-separated bearer tokens; turns on `/mcp` |
+| `MCP_TOKENS` | no | comma-separated private bearer tokens; turns on `/mcp` |
+| `MCP_PUBLIC_TOKEN` | no | one shared demo token for `/mcp`, shown on the Connect page, limited per IP |
 | `PUBLIC_URL` | no | shown in the Connect page snippets |
 | `DEMO_DISCIPLINES` | no | kinds of act the website offers (default `all`) |
 | `RESEND_API_KEY`, `RESEND_WEBHOOK_SECRET`, `OUTREACH_*` | no | email; sends are simulated without a key |
