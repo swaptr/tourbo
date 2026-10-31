@@ -14,6 +14,16 @@ const app = express();
 app.disable("x-powered-by");
 // Render sits one proxy hop in front: req.protocol (and so request.url in loaders) reads https from it.
 app.set("trust proxy", 1);
+// Basic security headers: no framing, no MIME sniffing, origin-only referrers, HTTPS pinned in
+// production. No script CSP (the app, map tiles and workers load as they are).
+app.use((_req, res, next) => {
+  res.setHeader("X-Frame-Options", "DENY");
+  res.setHeader("Content-Security-Policy", "frame-ancestors 'none'");
+  res.setHeader("X-Content-Type-Options", "nosniff");
+  res.setHeader("Referrer-Policy", "strict-origin-when-cross-origin");
+  if (!DEVELOPMENT) res.setHeader("Strict-Transport-Security", "max-age=31536000");
+  next();
+});
 app.get("/healthz", (req, res) => {
   // Dev only: /healthz?cache = cache hit/miss/stale counters per namespace.
   if (DEVELOPMENT && "cache" in req.query) return res.json({ status: "ok", cache: /** @type {any} */ (globalThis).__tourboCacheStats?.() ?? {} });

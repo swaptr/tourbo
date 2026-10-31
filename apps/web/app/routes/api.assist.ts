@@ -4,6 +4,7 @@ import { ASSIST_TASKS } from "@tourbo/core/assist/assist.ts";
 import { runAssist } from "../../server/agent/assist.server";
 import { apiError } from "../../server/agent/errors";
 import { checkOwner, ownerKeyOf, UUID } from "../../server/owner.server";
+import { aiAllowed } from "../../server/limits.server";
 import type { Route } from "./+types/api.assist";
 
 // POST /api/assist { task, input, profileId? } (+ X-Owner-Key of the profile or the run).
@@ -17,6 +18,7 @@ export async function action({ request }: Route.ActionArgs) {
   const body = Body.safeParse(await request.json().catch(() => null));
   if (!body.success) return Response.json({ error: "That request didn't look right. Reload the page and try again." }, { status: 400 });
   const { task, input, profileId } = body.data;
+  if (!aiAllowed(request)) return Response.json({ error: "You've asked for a lot of drafts this hour. Try again in a little while." }, { status: 429 });
   try {
     const key = ownerKeyOf(request);
     const profileOk = profileId ? (await checkOwner("profile", profileId, key, true)) === "ok" : false;

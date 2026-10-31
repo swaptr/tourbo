@@ -19,7 +19,7 @@ import { LimitNotice } from "~/components/state";
 import { ERROR_TEXT, limitKindOf } from "@tourbo/core/shared/errors.ts";
 import { activeLimits } from "../server/agent/errors";
 import { installOwnerFetch } from "~/lib/work";
-import { ownerGuard } from "../server/owner.server";
+import { CHECK_FAILED, ownerGuard } from "../server/owner.server";
 import { actKinds, registryKinds } from "@tourbo/core/disciplines/labels.server.ts";
 import "./app.css";
 import geist from "@fontsource-variable/geist/files/geist-latin-wght-normal.woff2?url";
@@ -41,7 +41,7 @@ export const links: Route.LinksFunction = () => [
 export const middleware: Route.MiddlewareFunction[] = [
   async ({ request }, next) => {
     const refused = await ownerGuard(request);
-    if (refused) throw data(refused, { status: 403, statusText: "Forbidden" });
+    if (refused) throw data(refused, refused === CHECK_FAILED ? { status: 503, statusText: "Service Unavailable" } : { status: 403, statusText: "Forbidden" });
     return next();
   },
 ];

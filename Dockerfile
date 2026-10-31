@@ -33,6 +33,9 @@ COPY apps/web/package.json apps/web/server.js apps/web/
 COPY apps/web/scripts apps/web/scripts
 COPY apps/web/server apps/web/server
 COPY --from=build-env /app/apps/web/build apps/web/build
+# Unprivileged at runtime; .data (embedded Postgres / file cache when used) stays writable.
+RUN mkdir -p /app/.data && chown node:node /app/.data
+USER node
 WORKDIR /app/apps/web
 EXPOSE 3000
 CMD ["node", "server.js"]

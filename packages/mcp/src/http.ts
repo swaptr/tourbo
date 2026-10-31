@@ -14,7 +14,8 @@ export type McpHttpOptions = {
   tokens: string[]; // accepted bearer tokens; empty + noAuth = open
   noAuth?: boolean;
   rateLimit?: RateLimit; // tool calls per token and per IP; unset = unlimited
-  sharedTokens?: string[]; // published tokens: limited per IP only, so one visitor can't lock out the rest
+  sharedTokens?: string[]; // published tokens: limited per IP only, so one visitor can't lock out the rest; no project tools, no edits to website-owned plans
+  sharedDailyCalls?: number; // tool calls per day across all shared tokens (default 5000)
   trustProxy?: boolean; // client IP from X-Forwarded-For (behind a proxy / load balancer)
   allowedOrigins?: string[]; // browser origins allowed to call; none by default
   allowedHosts?: string[]; // Host header allowlist (DNS-rebinding guard); unset = any host
@@ -22,6 +23,7 @@ export type McpHttpOptions = {
 };
 
 export const HOSTED_RATE_LIMIT: RateLimit = { calls: 60, windowMs: 10 * 60_000 };
+const SHARED_DAILY_CALLS = 5000;
 const MAX_BODY = 4 * 1024 * 1024;
 
 // "60/10m" | "60" (per 10 minutes) → RateLimit; anything else → undefined.
@@ -52,8 +54,13 @@ function send(res: ServerResponse, status: number, error: string, headers: Recor
   res.end(JSON.stringify({ error }));
 }
 
+// Client IP behind one trusted proxy: the right-most X-Forwarded-For entry (the one the proxy
+// appended); earlier entries are whatever the client sent.
+export const clientIp = (xff: string | string[] | null | undefined) => String(xff ?? "").split(",").map((s) => s.trim()).filter(Boolean).at(-1) ?? "";
+
 // Fixed-window counters; old windows are dropped as they are touched or when the map grows.
-function limiter(limit: RateLimit) {
+// Returns ms to wait (0 = allowed and counted).
+export function limiter(limit: RateLimit) {
   const hits = new Map<string, { n: number; reset: number }>();
   return (keys: string[], cost: number): number => {
     const now = Date.now();
@@ -87,6 +94,10 @@ const countCalls = (body: unknown) =>
 // The /mcp handler: (req, res) for node:http or Express (mount it before any body parser).
 export function createMcpHttpHandler(opts: McpHttpOptions) {
   const mcp = toNodeHandler(createMcpHandler(() => createTourboServer({ toolsets: opts.toolsets })));
+  // Published tokens get a server without the project tools and without edits to website-owned
+  // plans, so nobody's saved work is reachable with a token anyone can read.
+  const shared = toNodeHandler(createMcpHandler(() => createTourboServer({ toolsets: opts.toolsets, publicOnly: true })));
+  const sharedDay = limiter({ calls: opts.sharedDailyCalls ?? SHARED_DAILY_CALLS, windowMs: 86_400_000 });
   const calls = opts.rateLimit && limiter(opts.rateLimit);
   // Every request (initialize, list, …) counts against a looser budget so floods stop too.
   const requests = opts.rateLimit && limiter({ calls: opts.rateLimit.calls * 10, windowMs: opts.rateLimit.windowMs });
@@ -123,9 +134,10 @@ export function createMcpHttpHandler(opts: McpHttpOptions) {
       }
     }
 
+    const isShared = !!token && tokenMatches(token, opts.sharedTokens ?? []);
     if (calls && requests) {
-      const fwd = opts.trustProxy ? String(req.headers["x-forwarded-for"] ?? "").split(",")[0]?.trim() : "";
-      const perToken = token && !opts.sharedTokens?.includes(token);
+      const fwd = opts.trustProxy ? clientIp(req.headers["x-forwarded-for"]) : "";
+      const perToken = token && !isShared;
       const keys = [`ip:${fwd || req.socket.remoteAddress || "?"}`, ...(perToken ? [`token:${token}`] : [])];
       const wait = Math.max(requests(keys, 1), calls(keys, countCalls(parsed)));
       if (wait) {
@@ -135,7 +147,12 @@ export function createMcpHttpHandler(opts: McpHttpOptions) {
       }
     }
 
-    await mcp(req, res, parsed);
+    if (isShared && countCalls(parsed) && sharedDay(["shared"], countCalls(parsed))) {
+      send(res, 429, "The public demo token is out of tool calls for today: try again tomorrow, or run your own copy (see /connect).", { "retry-after": "3600" });
+      return;
+    }
+
+    await (isShared ? shared : mcp)(req, res, parsed);
   };
 }
 

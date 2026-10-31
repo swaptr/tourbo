@@ -6,6 +6,7 @@ import { TourParams } from "@tourbo/core/shared/types.ts";
 import { startRun } from "../../server/agent/orchestrator.server";
 import { checkOwner, deleteOwned, forbidden, notFound, ownerKeyOf } from "../../server/owner.server";
 import { apiError } from "../../server/agent/errors";
+import { runLimit } from "../../server/limits.server";
 import type { Route } from "./+types/api.events.$id";
 
 // One event (PLAN Q21). GET: the event. POST (X-Owner-Key): { event } saves the fields;
@@ -29,7 +30,11 @@ export async function action({ params, request }: Route.ActionArgs) {
     const body = (await request.json().catch(() => null)) as { intent?: string; event?: unknown; basis?: string; peers?: string; styles?: string } | null;
     const current = await getEvent(params.id);
     if (!current) return notFound("This event");
-    if (body?.intent === "help") return Response.json(await helpPick(current, body));
+    if (body?.intent === "help") {
+      const limited = !current.runId && runLimit(request);
+      if (limited) return Response.json({ error: limited }, { status: 429 });
+      return Response.json(await helpPick(current, body));
+    }
     const parsed = EventFields.safeParse(body?.event);
     if (!parsed.success) return Response.json({ error: parsed.error.issues[0]?.message ?? "Check the event and save again." }, { status: 400 });
     const event = await updateEvent(params.id, parsed.data);

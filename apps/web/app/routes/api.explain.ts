@@ -3,6 +3,7 @@ import { z } from "zod";
 import { grade, type ExplainItem } from "@tourbo/core/engine/explain.ts";
 import { explainMany, itemsForRun } from "../../server/agent/explain.server";
 import { apiError } from "../../server/agent/errors";
+import { aiAllowed } from "../../server/limits.server";
 import type { Route } from "./+types/api.explain";
 
 // POST /api/explain { runId, ids?: ["night:0", "deal:2"], items?: ExplainItem[] }
@@ -40,8 +41,10 @@ export async function action({ request }: Route.ActionArgs) {
   const { runId, ids = [], items = [] } = body.data;
   try {
     const built = runId && ids.length ? await itemsForRun(runId, ids) : [];
-    // Client items: the evidence grade is a display hint only; a "strong" claim with no facts can't spend tokens.
-    const client = items.map((i): ExplainItem => (i.facts.length < 2 && i.evidence === "strong" ? { ...i, evidence: grade({ margin: 0.1 }) } : i));
+    // Client items: the evidence grade is a display hint only; a "strong" claim with no facts can't
+    // spend tokens, and past the per-IP limit page-built items get the plain template (no AI call).
+    const ai = !items.some((i) => i.evidence === "strong") || aiAllowed(request);
+    const client = items.map((i): ExplainItem => ((i.facts.length < 2 || !ai) && i.evidence === "strong" ? { ...i, evidence: grade({ margin: 0.1 }) } : i));
     const results = await explainMany([...built, ...client], { runId });
     return Response.json({ results });
   } catch (error) {

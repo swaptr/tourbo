@@ -10,6 +10,7 @@ import { isActive } from "./agent/runs.server.ts";
 
 export const OWNER_HEADER = "x-owner-key";
 export const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+export const CHECK_FAILED = "We couldn't check that this is yours just now. Try again in a moment.";
 export const FORBIDDEN = "Only the browser that made this can change or delete it. Open it from that browser, or import your work there.";
 
 const hash = (key: string) => createHash("sha256").update(key).digest("hex");
@@ -45,11 +46,12 @@ export function keyMatches(stored: string, key: string | null | undefined) {
 
 export type OwnerCheck = "ok" | "missing" | "forbidden";
 
-// strict: rows without an owner key are refused too (delete). Otherwise they stay open (legacy).
+// strict: rows without an owner key are refused too (delete). Otherwise they stay open (legacy),
+// except plans: every website plan gets a key, so an ownerless one (made via MCP) is read-only here.
 export async function checkOwner(kind: OwnedKind, id: string, key: string | null | undefined, strict = false): Promise<OwnerCheck> {
   const stored = await ownerHash(kind, id);
   if (stored === undefined) return "missing";
-  if (stored === null) return strict ? "forbidden" : "ok";
+  if (stored === null) return strict || kind === "run" ? "forbidden" : "ok";
   return keyMatches(stored, key) ? "ok" : "forbidden";
 }
 
@@ -93,6 +95,7 @@ export async function ownerGuard(request: Request): Promise<string | undefined> 
   if (request.method === "GET" || request.method === "HEAD") return undefined;
   const m = OWNED_PATH.exec(new URL(request.url).pathname);
   if (!m) return undefined;
-  const check = await checkOwner(m[1] === "plan" ? "run" : m[1] === "events" ? "event" : "project", m[2], ownerKeyOf(request)).catch(() => "ok" as const);
+  const check = await checkOwner(m[1] === "plan" ? "run" : m[1] === "events" ? "event" : "project", m[2], ownerKeyOf(request)).catch(() => "error" as const);
+  if (check === "error") return CHECK_FAILED; // fail closed
   return check === "forbidden" ? FORBIDDEN : undefined;
 }

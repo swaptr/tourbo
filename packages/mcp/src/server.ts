@@ -5,6 +5,7 @@ import type { Emit } from "@tourbo/core/engine/trace.ts";
 import { cityOnlyBrief } from "@tourbo/core/engine/brief.ts";
 import { findCity, seedCities } from "@tourbo/core/engine/cities.ts";
 import { ensureWorld } from "@tourbo/core/engine/world.server.ts";
+import { db } from "@tourbo/core/db/client.server.ts";
 import { getProject, projectMarkdown } from "@tourbo/core/projects/projects.server.ts";
 import { locationQuery, PerformerKind, Region, REGION_NAMES } from "@tourbo/core/shared/types.ts";
 
@@ -16,7 +17,7 @@ import "./extra/tools.ts"; // registers tourbo_export_ics + tourbo_export_markdo
 import "./extra/plan-edit.ts"; // registers tourbo_plan_edit
 import { planMarkdown } from "./extra/markdown.ts";
 import { runPlan } from "./extra/runs.ts";
-import { NO_KEY, plainError, toolFailure } from "./errors.ts";
+import { NO_KEY, plainError, toolFailure, UserError } from "./errors.ts";
 
 export { NO_KEY } from "./errors.ts";
 
@@ -67,13 +68,26 @@ export const annotationsOf = (tool: ToolDef) => ({
   ...(tool.hints.readOnly ? {} : { destructiveHint: tool.hints.destructive ?? false }),
 });
 
-function registerTourbo(server: McpServer, tool: ToolDef) {
+// Published-token servers (publicOnly): no project tools (they list everyone's), and plan edits
+// only on plans nobody on the website owns (viewing stays open, like a share link).
+export const isPrivateTool = (name: string) => name.startsWith("tourbo_project_");
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+async function refuseOwnedEdit(input: unknown) {
+  const p = (input ?? {}) as { run_id?: unknown; action?: string; edits?: unknown[] };
+  if ((p.action ?? (p.edits?.length ? "apply" : "view")) === "view" || typeof p.run_id !== "string" || !UUID_RE.test(p.run_id)) return;
+  const [row] = await (await db())<{ owner_hash: string | null }[]>`select owner_hash from runs where id = ${p.run_id}`;
+  if (row?.owner_hash) throw new UserError("That plan belongs to someone on the Tourbo website, so this token can only view it: plan your own with tourbo_plan_tour.");
+}
+
+function registerTourbo(server: McpServer, tool: ToolDef, publicOnly = false) {
   server.registerTool(
     tool.name,
     { title: tool.title, description: tool.description, inputSchema: tool.input, outputSchema: tool.output, annotations: annotationsOf(tool) },
     async (input: unknown, ctx: ServerContext) => {
       try {
         await ensureWorld(); // world city index (no-op after the first call; seeds if the DB is down)
+        if (publicOnly && tool.name === "tourbo_plan_edit") await refuseOwnedEdit(input);
+        if (publicOnly && (input as { project_id?: unknown })?.project_id) throw new UserError("Projects aren't available with this token: export a plan with run_id or plan instead.");
         return result(await tool.run(input, progressEmit(ctx)));
       } catch (error) {
         return failure(error, tool.name);
@@ -204,14 +218,15 @@ const readError = (error: unknown, where: string) => {
   return new Error(plainError(error, where));
 };
 
-function registerResources(server: McpServer) {
+// publicOnly: no project resource (projects are private work).
+function registerResources(server: McpServer, publicOnly = false) {
   server.registerResource(
     "disciplines",
     "tourbo://disciplines",
     { title: "Tourbo disciplines", description: "Kinds of act Tourbo plans for and how each maps to fan data", mimeType: "application/json", cacheHint: { ttlMs: 3_600_000, cacheScope: "public" } },
     async (uri) => ({ contents: [{ uri: uri.href, mimeType: "application/json", text: JSON.stringify(await disciplineCatalog(), null, 2) }] }),
   );
-  server.registerResource(
+  if (!publicOnly) server.registerResource(
     "project",
     new ResourceTemplate("tourbo://project/{id}", { list: undefined }),
     { title: "Tour project", description: "One project (notes, to-dos, setlists, briefs, attached plans) as markdown", mimeType: "text/markdown", cacheHint: PRIVATE },
@@ -266,16 +281,16 @@ const ALL_TOURBO = () => [...TOURBO_TOOLS, IDEAS_TOOL];
 // Lists are identical for every caller (hosted and self-hosted): cacheable for an hour.
 const LIST_HINT = { ttlMs: 3_600_000, cacheScope: "public" as const };
 
-export function createTourboServer(opts: { toolsets?: Toolset[] } = {}) {
+export function createTourboServer(opts: { toolsets?: Toolset[]; publicOnly?: boolean } = {}) {
   const toolsets = opts.toolsets ?? ["tourbo", "qloo"];
   const server = new McpServer(SERVER_INFO, {
     capabilities: { tools: {}, prompts: {}, resources: {} },
     instructions: INSTRUCTIONS,
     cacheHints: { "tools/list": LIST_HINT, "prompts/list": LIST_HINT, "resources/list": LIST_HINT, "resources/templates/list": LIST_HINT },
   });
-  if (toolsets.includes("tourbo")) for (const tool of ALL_TOURBO()) registerTourbo(server, tool);
+  if (toolsets.includes("tourbo")) for (const tool of ALL_TOURBO()) if (!opts.publicOnly || !isPrivateTool(tool.name)) registerTourbo(server, tool, opts.publicOnly);
   if (toolsets.includes("qloo")) registerQloo(server);
-  registerResources(server);
+  registerResources(server, opts.publicOnly);
   registerPrompts(server);
   return server;
 }

@@ -26,6 +26,7 @@ import { TAB_LABEL, TAB_PATH, dateRange, played, roadNight, shortDate, tabOf, ty
 import { cn } from "~/lib/utils";
 import { recordWork, rememberRun } from "~/lib/work";
 import { startRun } from "../../server/agent/orchestrator.server";
+import { runLimit } from "../../server/limits.server";
 import { ownerHash } from "../../server/owner.server";
 import { getRun, type RunStatus } from "../../server/agent/runs.server";
 import { basePlan, changeEdits, editState, loadPool } from "@tourbo/core/runs/edits.server.ts";
@@ -142,6 +143,8 @@ export async function action({ params, request }: Route.ActionArgs) {
   if (form.get("intent") === "adjust") {
     const params = adjusted(run.params, form);
     if (!params.success) return { error: params.error.issues[0]?.message ? `Check the numbers: ${params.error.issues[0].message}.` : "Check the numbers and try again." };
+    const limited = runLimit(request);
+    if (limited) return { error: limited };
     const id = await startRun(params.data, { ownerFrom: run.id });
     const project = await projectOfRun(run.id).catch(() => undefined);
     if (project) await attachRun(project.id, id).catch(() => {});

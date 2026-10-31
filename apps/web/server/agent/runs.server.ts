@@ -86,5 +86,6 @@ export function markActive(id: string) {
 }
 
 export const isActive = (id: string) => active.has(id);
+export const activeCount = () => active.size;
 
 export { getSteps, savePlan, saveStep } from "@tourbo/core/runs/steps.server.ts";

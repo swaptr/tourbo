@@ -18,6 +18,7 @@ import {
 } from "../../server/agent/proposals.server";
 import { getRun } from "../../server/agent/runs.server";
 import { checkOwner, forbidden, notFound, ownerHash, ownerKeyOf } from "../../server/owner.server";
+import { ipOf } from "../../server/limits.server";
 import type { Route } from "./+types/api.chat";
 
 // Conversation layer API (PLAN §18 Q20). One route, owner-key protected writes:
@@ -31,7 +32,6 @@ import type { Route } from "./+types/api.chat";
 // Shared links can read but not write: writes without the owner key get one plain 403 sentence.
 
 const UUID = z.uuid();
-const ipOf = (r: Request) => r.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || r.headers.get("x-real-ip") || "local";
 const bad = (error: string, status = 400) => Response.json({ error }, { status });
 
 export async function loader({ request }: Route.LoaderArgs) {

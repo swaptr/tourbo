@@ -43,6 +43,7 @@ import { startRun } from "../../server/agent/orchestrator.server";
 import { apiError } from "../../server/agent/errors";
 import { checkOwner, newOwnerKey } from "../../server/owner.server";
 import { getWebEnv } from "../../server/env.server";
+import { runLimit } from "../../server/limits.server";
 import { attachRun } from "@tourbo/core/projects/projects.server.ts";
 import { discipline, workspaceFor } from "@tourbo/core/disciplines/index.ts";
 import { actKinds } from "@tourbo/core/disciplines/labels.server.ts";
@@ -169,6 +170,8 @@ export async function action({ request }: Route.ActionArgs) {
     return {
       error: `Something in the form isn't right: ${z.prettifyError(parsed.error).split("\n")[0]}`,
     };
+  const limited = runLimit(request);
+  if (limited) return { error: limited };
   try {
     const owner = newOwnerKey();
     const id = await startRun(parsed.data, {

@@ -289,8 +289,8 @@ function Transfer({ hasItems, onDone }: { hasItems: boolean; onDone: (s?: string
   );
 }
 
-// Can this browser edit the item? Items made before owner keys (owned=false) are open to anyone
-// with the link; owned ones need the key from this browser's work list. False until hydrated.
+// Can this browser edit the plan? Owned plans need the key from this browser's work list; plans
+// without an owner key (made via MCP or before keys) are read-only. False until hydrated.
 export function useCanEdit(id: string, owned: boolean) {
   const [has, setHas] = useState(false);
   useEffect(() => {
@@ -298,7 +298,7 @@ export function useCanEdit(id: string, owned: boolean) {
     check();
     return subscribeWork(check);
   }, [id]);
-  return !owned || has;
+  return owned && has;
 }
 
 export function ReadOnlyNote({ what }: { what: string }) {
