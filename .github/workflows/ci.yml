@@ -5,7 +5,7 @@
 #   Changed a secret only? Actions → ci → Run workflow, to push it out.
 # - "Run workflow" with "seed cities" ticked: load GeoNames cities into DATABASE_URL (one-time).
 # Required secrets: RENDER_API_KEY, RENDER_SERVICE_ID, DATABASE_URL, QLOO_API_KEY, ANTHROPIC_API_KEY.
-# Optional variable: MCP_PUBLIC_TOKEN (shared demo token for /mcp, shown on /connect). Optional secrets: MCP_TOKENS, RESEND_API_KEY, RESEND_WEBHOOK_SECRET, OUTREACH_REPLY_DOMAIN.
+# Optional variable or secret: MCP_PUBLIC_TOKEN (shared demo token for /mcp, shown on /connect). Optional secrets: MCP_TOKENS, RESEND_API_KEY, RESEND_WEBHOOK_SECRET, OUTREACH_REPLY_DOMAIN.
 # Variables: TOURBO_URL (https://<service>.onrender.com), used as PUBLIC_URL and by keepalive.yml;
 # QLOO_BASE_URL (optional, defaults to https://hackathon.api.qloo.com).
 name: ci
@@ -74,10 +74,10 @@ jobs:
       APP_QLOO_API_KEY: ${{ secrets.QLOO_API_KEY }}
       APP_QLOO_BASE_URL: ${{ vars.QLOO_BASE_URL || 'https://hackathon.api.qloo.com' }}
       APP_ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
-      APP_PUBLIC_URL: ${{ vars.TOURBO_URL }}
+      APP_PUBLIC_URL: ${{ vars.TOURBO_URL || secrets.TOURBO_URL }}
       APP_DEMO_DISCIPLINES: all
       APP_MCP_TOKENS: ${{ secrets.MCP_TOKENS }}
-      APP_MCP_PUBLIC_TOKEN: ${{ vars.MCP_PUBLIC_TOKEN }}
+      APP_MCP_PUBLIC_TOKEN: ${{ vars.MCP_PUBLIC_TOKEN || secrets.MCP_PUBLIC_TOKEN }}
       APP_RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
       APP_RESEND_WEBHOOK_SECRET: ${{ secrets.RESEND_WEBHOOK_SECRET }}
       APP_OUTREACH_REPLY_DOMAIN: ${{ secrets.OUTREACH_REPLY_DOMAIN }}
