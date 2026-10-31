@@ -12,6 +12,8 @@ const PORT = Number.parseInt(process.env.PORT || "3000");
 const app = express();
 
 app.disable("x-powered-by");
+// Render sits one proxy hop in front: req.protocol (and so request.url in loaders) reads https from it.
+app.set("trust proxy", 1);
 app.get("/healthz", (req, res) => {
   // Dev only: /healthz?cache = cache hit/miss/stale counters per namespace.
   if (DEVELOPMENT && "cache" in req.query) return res.json({ status: "ok", cache: /** @type {any} */ (globalThis).__tourboCacheStats?.() ?? {} });
