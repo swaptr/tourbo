@@ -33,11 +33,13 @@ const own = {
     servers: { tourbo: { type: "stdio", ...NPX, env: { QLOO_API_KEY: "${input:qloo-key}" } } },
   }),
 };
-const ours = (url: string) => ({
-  claudeCode: `claude mcp add --transport http tourbo ${url} --header "Authorization: Bearer ${TOKEN}"`,
-  cursor: json({ mcpServers: { tourbo: { url, headers: { Authorization: `Bearer ${TOKEN}` } } } }),
-  vscode: json({ servers: { tourbo: { type: "http", url, headers: { Authorization: `Bearer ${TOKEN}` } } } }),
-  gemini: json({ mcpServers: { tourbo: { httpUrl: url, headers: { Authorization: `Bearer ${TOKEN}` } } } }),
+// The hosted snippets carry the deployment's public demo token when it has one.
+const ours = (url: string, token = TOKEN) => ({
+  token,
+  claudeCode: `claude mcp add --transport http tourbo ${url} --header "Authorization: Bearer ${token}"`,
+  cursor: json({ mcpServers: { tourbo: { url, headers: { Authorization: `Bearer ${token}` } } } }),
+  vscode: json({ servers: { tourbo: { type: "http", url, headers: { Authorization: `Bearer ${token}` } } } }),
+  gemini: json({ mcpServers: { tourbo: { httpUrl: url, headers: { Authorization: `Bearer ${token}` } } } }),
 });
 
 function Snippet({ title, code, primary }: { title: string; code: string; primary?: boolean }) {
@@ -130,7 +132,7 @@ type Mode = (typeof MODES)[number]["id"];
 // The page is three steps: pick your assistant, pick where Tourbo runs, copy one block.
 // Both pickers are Base UI tabs (arrows, Home/End); the hash (#gemini, #own) deep-links either.
 export default function Connect({ loaderData }: Route.ComponentProps) {
-  const { tourbo, qloo, remoteEnabled, mcpUrl } = loaderData;
+  const { tourbo, qloo, remoteEnabled, publicToken, mcpUrl } = loaderData;
   const [mode, setMode] = useState<Mode>(remoteEnabled ? "ours" : "own");
   const [tab, setTab] = useState("claude");
   useEffect(() => {
@@ -144,7 +146,7 @@ export default function Connect({ loaderData }: Route.ComponentProps) {
     return () => window.removeEventListener("hashchange", pick);
   }, []);
   const go = (id: string) => history.replaceState(null, "", `#${id}`);
-  const hosted = ours(mcpUrl);
+  const hosted = ours(mcpUrl, publicToken);
 
   return (
     <main className="container mx-auto max-w-3xl px-4 py-10 sm:py-14">
@@ -192,8 +194,10 @@ export default function Connect({ loaderData }: Route.ComponentProps) {
                     ))}
                   </TabsList>
                   <TabsContent value="ours" className="max-w-prose rounded-md text-muted-foreground outline-none focus-visible:ring-3 focus-visible:ring-ring/50">
-                    Nothing to install: your assistant talks to this Tourbo. You need a token: ask whoever runs this Tourbo for one. Each
-                    token gets 60 tool calls every 10 minutes.
+                    Nothing to install: your assistant talks to this Tourbo.{" "}
+                    {publicToken
+                      ? "The setup below already has the shared demo token in it. Each connection gets 60 tool calls every 10 minutes."
+                      : "You need a token: ask whoever runs this Tourbo for one. Each token gets 60 tool calls every 10 minutes."}
                   </TabsContent>
                   <TabsContent value="own" className="grid gap-3 rounded-md outline-none focus-visible:ring-3 focus-visible:ring-ring/50">
                     <p className="max-w-prose text-muted-foreground">{OWN_NOTE}</p>
@@ -291,7 +295,7 @@ function ClientSetup({ client, mode, hosted, mcpUrl }: { client: string; mode: M
         return (
           <>
             <Snippet primary title="Address (Streamable HTTP)" code={mcpUrl} />
-            <Snippet title="Header your assistant sends" code={`Authorization: Bearer ${TOKEN}`} />
+            <Snippet title="Header your assistant sends" code={`Authorization: Bearer ${hosted.token}`} />
           </>
         );
     }
@@ -302,7 +306,6 @@ function ClientSetup({ client, mode, hosted, mcpUrl }: { client: string; mode: M
         <>
           <Snippet primary title="Claude Code" code={own.claudeCode} />
           <Snippet title="Claude Desktop: claude_desktop_config.json" code={own.mcpServers} />
-          <Snippet title="Claude Code inside a Tourbo checkout: nothing to set up (.mcp.json registers Tourbo)" code={"claude\n> Plan a 4-show tour for Japanese Breakfast near Seattle that makes money"} />
         </>
       );
     case "chatgpt":

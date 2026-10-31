@@ -1,5 +1,5 @@
-// @ts-nocheck: optional dev tool; playwright is installed ad hoc (see SUBMISSION.md).
-// Silent walkthrough footage of the demo flow (order follows the video script in SUBMISSION.md).
+// @ts-nocheck: optional dev tool; playwright is installed ad hoc.
+// Silent walkthrough footage of the demo flow.
 // Usage (playwright is not a project dependency):
 //   npm i --no-save playwright && npx playwright install chromium-headless-shell
 //   BASE=http://localhost:3000 node scripts/record-demo.cjs   # video lands in /tmp/tourbo-video

@@ -1,6 +1,6 @@
 # Tourbo — nice to have
 
-Things we could build next. None of them block the submission. Required work lives in `TODO.md`; the build queue is in `PLAN.md` §18.
+Things we could build next. None of them block the submission. The build queue is in `PLAN.md` §18.
 
 ## Once fan-data quota returns
 - Re-prewarm the home examples with a stricter room fit, so no stadium act lands in a jazz club. Bring the dancer gate and thin kinds back to the landing page.
@@ -41,7 +41,4 @@ Things we could build next. None of them block the submission. Required work liv
 - Home card: size it to the tallest example; smoother rapid Next clicks.
 - Throttled-CPU home performance: fewer long tasks at startup.
 - Tone guard: tighten the copy critic so AI text never embellishes ("comes home to Capitol Hill").
-- A narrated ~2 min demo video (the raw footage exists).
-
-## Dev tooling
-- `mock/`: record real responses on demand into a local fixture set (never committed) to speed up offline dev; real `/v2/audiences` and compare shapes once quota returns.
+- A narrated ~2 min demo video.

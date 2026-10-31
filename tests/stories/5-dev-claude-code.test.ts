@@ -1,20 +1,15 @@
-// Story 5: Dev uses Tourbo from Claude Code: .mcp.json starts the stdio server, tools list.
+// Story 5: Dev uses Tourbo from Claude Code: `npm run mcp` (the stdio bin) starts, tools list.
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
 import { test } from "node:test";
 import { Client } from "@modelcontextprotocol/client";
 import { StdioClientTransport } from "@modelcontextprotocol/client/stdio";
 
 const root = new URL("../../", import.meta.url).pathname;
 
-test("Dev: the project .mcp.json starts Tourbo and exposes its tools", async () => {
-  const config = JSON.parse(readFileSync(`${root}.mcp.json`, "utf8"));
-  const server = config.mcpServers.tourbo;
-  assert.ok(server, ".mcp.json registers tourbo");
-  assert.ok(!JSON.stringify(server).match(/QLOO_API_KEY=|[0-9a-f]{32}/i), "no credential in the config");
+test("Dev: the stdio server starts and exposes its tools", async () => {
   const transport = new StdioClientTransport({
-    command: server.command === "node" ? process.execPath : server.command,
-    args: server.args,
+    command: process.execPath,
+    args: ["--env-file-if-exists=.env", "packages/mcp/src/bin/stdio.ts"],
     cwd: root,
     env: { ...(process.env as Record<string, string>), QLOO_CACHE: "memory" },
   });

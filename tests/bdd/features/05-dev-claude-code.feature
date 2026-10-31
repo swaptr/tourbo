@@ -1,8 +1,5 @@
 @story-5
 Feature: Dev uses Tourbo from his own AI assistant
-  Scenario: The project registers the Tourbo server for his assistant
-    Then the project's assistant config registers the Tourbo server
-
   Scenario: His assistant sees Tourbo's tools and can plan with them
     Given an AI assistant connected to Tourbo
     Then it can see the tools "tourbo_plan_tour", "tourbo_resolve_act", "tourbo_score_cities", "tourbo_ideas" and "tourbo_disciplines"

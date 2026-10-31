@@ -7,7 +7,6 @@ README.md
 compose.yaml
 .data
 packages/mcp/dist
-mock/
 .git
 .github
 tests

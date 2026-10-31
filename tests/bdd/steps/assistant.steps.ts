@@ -2,13 +2,10 @@
 // MCP client of the Tourbo server (as tests/stories/_mcp.ts), on the suite's fan-data double
 // and throwaway DB.
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
-import { join } from "node:path";
 
 import { Given, Then, When } from "@cucumber/cucumber";
 
 import { distanceKm } from "@tourbo/core/shared/geo.ts";
-import { ROOT } from "../support/harness.ts";
 import { KINDS } from "../support/kinds.ts";
 import { mcp } from "../../stories/_mcp.ts";
 import type { TourboWorld } from "../support/world.ts";
@@ -17,14 +14,6 @@ const CHICAGO = { lat: 41.88, lon: -87.63 };
 
 Given("an AI assistant connected to Tourbo", async function (this: TourboWorld) {
   this.mcp ??= await mcp();
-});
-
-Then("the project's assistant config registers the Tourbo server", function () {
-  const config = JSON.parse(readFileSync(join(ROOT, ".mcp.json"), "utf8"));
-  const server = config.mcpServers?.tourbo;
-  assert.ok(server, ".mcp.json has no tourbo server");
-  assert.ok(String(server.args?.join(" ")).includes("packages/mcp/src/bin/stdio.ts"), "tourbo server doesn't start the stdio bin");
-  assert.doesNotMatch(JSON.stringify(config), /api[_-]?key"\s*:\s*"[^<]/i, "a key is committed in .mcp.json");
 });
 
 Then("it can see the tools {string}, {string}, {string}, {string} and {string}", async function (this: TourboWorld, a: string, b: string, c: string, d: string, e: string) {

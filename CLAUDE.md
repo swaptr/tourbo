@@ -25,7 +25,7 @@ Recommendation engine for touring artists, grounded in Qloo taste data: per city
 - `npm run build` / `npm start` — production build / serve
 - `npm run typecheck`
 - `npm run test:stories` — all story tests (live Qloo, no LLM); `STORY_LLM=1 npm run test:stories` adds full Claude runs. One file: `node --env-file-if-exists=.env --test tests/stories/<file>` (the npm script always runs every file)
-- `npm run mcp` — Tourbo MCP server on stdio (Claude Code picks it up from `.mcp.json`)
+- `npm run mcp` — Tourbo MCP server on stdio (add it with `claude mcp add tourbo -- node --env-file-if-exists=.env packages/mcp/src/bin/stdio.ts` from the repo root)
 - `npm run test -w @tourbo/mcp` — MCP smoke test
 - `npm run qloo:ping` / `qloo:probe` (raw output in /tmp only) / `qloo:prewarm`
 - `npm run examples:export` — DB → static landing bundle (`apps/web/public/landing/`); run before `build`/Docker. `npm run landing:load` — load check of the prerendered `/`

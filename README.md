@@ -30,24 +30,24 @@ Tourbo gives you what a local would tell you, with the numbers to prove it. If y
 
 ## See it in action
 
-![Home: where an act's fans live, with real example tours](assets/gallery/01-home.png)
+![Home: where an act's fans live, with real example tours](assets/01-home.png)
 
-![A finished tour: nights, route, money, and "why?" for the numbers](assets/gallery/03-plan-and-why.png)
+![A finished tour: nights, route, money, and "why?" for the numbers](assets/03-plan-and-why.png)
 
-![Covers: one idea per night from what that city's fans love](assets/gallery/05-covers.png)
+![Covers: one idea per night from what that city's fans love](assets/05-covers.png)
 
 <details>
 <summary>More screens</summary>
 
-![Pick what you do](assets/gallery/02-pick-what-you-do.png)
-![Whole-tour money](assets/gallery/04-tour-money.png)
-![Ideas for any city, with a local-flavour dial](assets/gallery/06-ideas-for-a-city.png)
-![Show notes checked against the fan data](assets/gallery/07-show-notes.png)
-![Venue emails: nothing sends until you approve](assets/gallery/08-venue-emails.png)
-![The same tour from fan data vs a plain AI guess](assets/gallery/09-fan-data-vs-ai-guess.png)
-![The tour in numbers](assets/gallery/10-tour-in-numbers.png)
-![How Tourbo decided, step by step](assets/gallery/11-how-tourbo-decided.png)
-![Use Tourbo from your own AI assistant](assets/gallery/12-use-from-your-assistant.png)
+![Pick what you do](assets/02-pick-what-you-do.png)
+![Whole-tour money](assets/04-tour-money.png)
+![Ideas for any city, with a local-flavour dial](assets/06-ideas-for-a-city.png)
+![Show notes checked against the fan data](assets/07-show-notes.png)
+![Venue emails: nothing sends until you approve](assets/08-venue-emails.png)
+![The same tour from fan data vs a plain AI guess](assets/09-fan-data-vs-ai-guess.png)
+![The tour in numbers](assets/10-tour-in-numbers.png)
+![How Tourbo decided, step by step](assets/11-how-tourbo-decided.png)
+![Use Tourbo from your own AI assistant](assets/12-use-from-your-assistant.png)
 
 </details>
 
@@ -110,13 +110,19 @@ Claude Desktop (`claude_desktop_config.json`), Cursor (`.cursor/mcp.json`) and m
 { "mcpServers": { "tourbo": { "command": "npx", "args": ["-y", "@tourbo/mcp"], "env": { "QLOO_API_KEY": "<your-key>" } } } }
 ```
 
-**Hosted:** add `https://tourbo-30ec.onrender.com/mcp` with an `Authorization: Bearer <your-token>` header. Tokens come from whoever runs the deployment.
+**Hosted (nothing to install, no Qloo key):** point your assistant at `https://tourbo-30ec.onrender.com/mcp` with the shared demo token `tourbo-demo`. Each IP gets 60 tool calls every 10 minutes.
 
 ```bash
-claude mcp add --transport http tourbo https://tourbo-30ec.onrender.com/mcp --header "Authorization: Bearer <your-token>"
+claude mcp add --transport http tourbo https://tourbo-30ec.onrender.com/mcp --header "Authorization: Bearer tourbo-demo"
 ```
 
-Never put a real key or token in a config you share. More options (HTTP mode, Docker, VS Code) are in [`packages/mcp/README.md`](packages/mcp/README.md).
+Cursor (`.cursor/mcp.json`), Gemini CLI and other Streamable HTTP clients:
+
+```json
+{ "mcpServers": { "tourbo": { "url": "https://tourbo-30ec.onrender.com/mcp", "headers": { "Authorization": "Bearer tourbo-demo" } } } }
+```
+
+Every client's setup is on [`/connect`](https://tourbo-30ec.onrender.com/connect). Never put your own Qloo key in a config you share. More options (HTTP mode, Docker, VS Code) are in [`packages/mcp/README.md`](packages/mcp/README.md).
 
 ## Run it locally
 

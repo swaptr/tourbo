@@ -46,17 +46,23 @@ export async function connectMcp(emit: Emit, toolsets?: Toolset[]): Promise<McpS
 
 // Remote MCP (Streamable HTTP) for other agents: the same handler self-hosters run
 // (`tourbo-mcp --http`), with a per-token and per-IP limit (60 tool calls / 10 min). Off unless
-// MCP_TOKENS is set: it spends this deployment's Qloo key, and the hackathon rules forbid sharing
-// a credential openly.
+// MCP_TOKENS or MCP_PUBLIC_TOKEN is set: it spends this deployment's Qloo key, so the public
+// token is a rate-limited demo pass, never the key itself.
 let handler: ReturnType<typeof createMcpHttpHandler> | undefined;
 
+function mcpTokens() {
+  const { MCP_TOKENS, MCP_PUBLIC_TOKEN } = getWebEnv();
+  return MCP_PUBLIC_TOKEN ? [...new Set([...MCP_TOKENS, MCP_PUBLIC_TOKEN])] : MCP_TOKENS;
+}
+
 export const mcpHttp: RequestHandler = (req, res, next) => {
-  const tokens = getWebEnv().MCP_TOKENS;
+  const tokens = mcpTokens();
   if (!tokens.length) {
     res.status(404).json({ error: "The remote endpoint is off on this server: run your own copy instead (see /connect)." });
     return;
   }
-  handler ??= createMcpHttpHandler({ tokens, rateLimit: HOSTED_RATE_LIMIT, trustProxy: true });
+  const shared = getWebEnv().MCP_PUBLIC_TOKEN;
+  handler ??= createMcpHttpHandler({ tokens, sharedTokens: shared ? [shared] : [], rateLimit: HOSTED_RATE_LIMIT, trustProxy: true });
   void handler(req, res).catch(next);
 };
 
@@ -64,5 +70,5 @@ export const mcpHttp: RequestHandler = (req, res, next) => {
 export function mcpCatalog() {
   const tourbo = [IDEAS_TOOL, ...TOURBO_TOOLS].map((t) => ({ name: t.name, title: t.title, description: t.description }));
   const qloo = Object.entries(WORKFLOW_META).map(([op, m]) => ({ name: `qloo_${op}`, title: m.title, description: m.description }));
-  return { tourbo, qloo, remoteEnabled: getWebEnv().MCP_TOKENS.length > 0, publicUrl: getWebEnv().PUBLIC_URL };
+  return { tourbo, qloo, remoteEnabled: mcpTokens().length > 0, publicToken: getWebEnv().MCP_PUBLIC_TOKEN, publicUrl: getWebEnv().PUBLIC_URL };
 }

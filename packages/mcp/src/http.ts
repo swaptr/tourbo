@@ -14,6 +14,7 @@ export type McpHttpOptions = {
   tokens: string[]; // accepted bearer tokens; empty + noAuth = open
   noAuth?: boolean;
   rateLimit?: RateLimit; // tool calls per token and per IP; unset = unlimited
+  sharedTokens?: string[]; // published tokens: limited per IP only, so one visitor can't lock out the rest
   trustProxy?: boolean; // client IP from X-Forwarded-For (behind a proxy / load balancer)
   allowedOrigins?: string[]; // browser origins allowed to call; none by default
   allowedHosts?: string[]; // Host header allowlist (DNS-rebinding guard); unset = any host
@@ -124,7 +125,8 @@ export function createMcpHttpHandler(opts: McpHttpOptions) {
 
     if (calls && requests) {
       const fwd = opts.trustProxy ? String(req.headers["x-forwarded-for"] ?? "").split(",")[0]?.trim() : "";
-      const keys = [`ip:${fwd || req.socket.remoteAddress || "?"}`, ...(token ? [`token:${token}`] : [])];
+      const perToken = token && !opts.sharedTokens?.includes(token);
+      const keys = [`ip:${fwd || req.socket.remoteAddress || "?"}`, ...(perToken ? [`token:${token}`] : [])];
       const wait = Math.max(requests(keys, 1), calls(keys, countCalls(parsed)));
       if (wait) {
         const minutes = Math.max(1, Math.ceil(wait / 60_000));

@@ -17,6 +17,9 @@ const schema = z.object({
     .string()
     .optional()
     .transform((s) => (s ? s.split(",").map((t) => t.trim()).filter(Boolean) : [])),
+  // Optional token published on /connect and in the README so anyone can try /mcp; accepted
+  // alongside MCP_TOKENS (it alone turns the endpoint on). Same per-token and per-IP limit.
+  MCP_PUBLIC_TOKEN: z.string().trim().optional(),
   // Disciplines the website offers: "all" (default) or comma-separated keys. MCP always accepts every one.
   DEMO_DISCIPLINES: z
     .string()

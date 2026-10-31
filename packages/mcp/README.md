@@ -85,7 +85,13 @@ From the Tourbo repo: `docker compose --profile mcp up -d --build mcp` (reads `Q
 
 ## Hosted
 
-The Tourbo web app serves the same server at `https://<host>/mcp` with its own key, behind bearer tokens and a per-token and per-IP rate limit (60 tool calls per 10 minutes). See `/connect` on the deployment.
+The Tourbo web app serves the same server at `https://<host>/mcp` with its own key, behind bearer tokens and a per-token and per-IP rate limit (60 tool calls per 10 minutes). The public deployment takes the shared demo token `tourbo-demo`:
+
+```sh
+claude mcp add --transport http tourbo https://tourbo-30ec.onrender.com/mcp --header "Authorization: Bearer tourbo-demo"
+```
+
+On your own deployment, `MCP_PUBLIC_TOKEN` sets a token that `/connect` shows to everyone; `MCP_TOKENS` holds private ones. See `/connect` on the deployment.
 
 ## Build from source
 
