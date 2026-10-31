@@ -28,6 +28,29 @@ Tourbo gives you what a local would tell you, with the numbers to prove it. If y
 - **Not in the fan data yet?** Most small acts aren't. Pick acts you sound like, a style, or just the city, and you still get ideas. The screen always says what they're based on.
 - **Use it from your own AI assistant.** The same tools run as an MCP server for Claude Code, Claude Desktop, Cursor and other clients.
 
+## See it in action
+
+![Home: where an act's fans live, with real example tours](assets/gallery/01-home.png)
+
+![A finished tour: nights, route, money, and "why?" for the numbers](assets/gallery/03-plan-and-why.png)
+
+![Covers: one idea per night from what that city's fans love](assets/gallery/05-covers.png)
+
+<details>
+<summary>More screens</summary>
+
+![Pick what you do](assets/gallery/02-pick-what-you-do.png)
+![Whole-tour money](assets/gallery/04-tour-money.png)
+![Ideas for any city, with a local-flavour dial](assets/gallery/06-ideas-for-a-city.png)
+![Show notes checked against the fan data](assets/gallery/07-show-notes.png)
+![Venue emails: nothing sends until you approve](assets/gallery/08-venue-emails.png)
+![The same tour from fan data vs a plain AI guess](assets/gallery/09-fan-data-vs-ai-guess.png)
+![The tour in numbers](assets/gallery/10-tour-in-numbers.png)
+![How Tourbo decided, step by step](assets/gallery/11-how-tourbo-decided.png)
+![Use Tourbo from your own AI assistant](assets/gallery/12-use-from-your-assistant.png)
+
+</details>
+
 ## How it works
 
 1. **Qloo** knows taste: where your fans cluster, which artists they love more in one city than elsewhere, what each city is into (TV, teams, food, places, people, trends), and which rooms and local acts fit.
